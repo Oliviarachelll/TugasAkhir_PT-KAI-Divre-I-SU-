@@ -1,0 +1,352 @@
+// This is your Prisma schema file
+// Based on ERD: erdini.drawio
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUM DEFINITIONS
+// ============================================================
+
+// Hierarki peran:
+// IT           → Super admin teknis, akses penuh termasuk audit & config sistem
+// ADMIN_GLOBAL → Admin seluruh unit, kelola pengguna & laporan semua unit
+// USER_UNIT    → Pengguna per unit, hanya akses data unit sendiri
+enum PeranPengguna {
+  IT
+  ADMIN_GLOBAL
+  USER_UNIT
+}
+
+enum StatusLaporan {
+  DRAFT
+  DIAJUKAN
+  DISETUJUI
+  DITOLAK
+  REVISI
+}
+
+enum StatusInternal {
+  PENDING
+  DALAM_PROSES
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusPermintaan {
+  MENUNGGU
+  DIPROSES
+  SELESAI
+  DITOLAK
+}
+
+enum JenisPermintaan {
+  BANTUAN_TEKNIS
+  KLARIFIKASI_DATA
+  PERMINTAAN_AKSES
+  LAINNYA
+}
+
+// Jenis unit bersifat scalable — hanya penanda kategori
+enum JenisUnit {
+  PUSAT
+  DAERAH
+  CABANG
+}
+
+enum KategoriTarget {
+  KNA
+  PENUMPANG
+  BARANG
+  KEUANGAN
+  OPERASIONAL
+}
+
+// ============================================================
+// TABEL: Unit
+// ============================================================
+
+model Unit {
+  id_unit    Int       @id @default(autoincrement())
+  nama_unit  String    @db.VarChar(100)
+  jenis_unit JenisUnit
+
+  // Relasi
+  pengguna         Pengguna[]
+  laporan          Laporan[]
+  target           Target[]
+  komoditi_barang  KomoditiBarang[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("unit")
+}
+
+// ============================================================
+// TABEL: Pengguna
+// ============================================================
+
+model Pengguna {
+  id_pengguna      Int           @id @default(autoincrement())
+  nama             String        @db.VarChar(100)
+  email            String        @unique @db.VarChar(150)
+  kata_sandi       String        @db.VarChar(255)
+  peran            PeranPengguna @default(USER_UNIT)
+  no_hp            String?       @db.VarChar(20)
+  percobaan_login  Int           @default(0)
+  terkunci         Boolean       @default(false)
+
+  // Foreign Key
+  id_unit Int
+  unit    Unit @relation(fields: [id_unit], references: [id_unit])
+
+  // Relasi
+  laporan_dibuat     Laporan[]          @relation("PembuatLaporan")
+  token_reset        TokenReset[]
+  log_audit          LogAudit[]
+  permintaan_diajukan PermintaanBantuan[] @relation("PengajuPermintaan")
+  permintaan_ditangani PermintaanBantuan[] @relation("PenanggungPermintaan")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("pengguna")
+}
+
+// ============================================================
+// TABEL: Token Reset (untuk reset password via email/WA)
+// ============================================================
+
+model TokenReset {
+  id_token_reset  Int      @id @default(autoincrement())
+  token           String   @unique @db.VarChar(255)
+  sudah_dipakai   Boolean  @default(false)
+  kedaluwarsa_pada DateTime
+
+  // Foreign Key
+  id_pengguna Int
+  pengguna    Pengguna @relation(fields: [id_pengguna], references: [id_pengguna])
+
+  created_at DateTime @default(now())
+
+  @@map("token_reset")
+}
+
+// ============================================================
+// TABEL: Log Audit
+// ============================================================
+
+model LogAudit {
+  id_log_audit Int    @id @default(autoincrement())
+  aksi         String @db.VarChar(100)
+  detail       String @db.Text
+
+  // Foreign Key
+  id_pengguna Int
+  pengguna    Pengguna @relation(fields: [id_pengguna], references: [id_pengguna])
+
+  created_at DateTime @default(now())
+
+  @@map("log_audit")
+}
+
+// ============================================================
+// TABEL: Target
+// ============================================================
+
+model Target {
+  id_target Int            @id @default(autoincrement())
+  tahun     Int
+  kategori  KategoriTarget
+  nilai     Decimal        @db.Decimal(15, 2)
+
+  // Foreign Key
+  id_unit Int
+  unit    Unit @relation(fields: [id_unit], references: [id_unit])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([tahun, kategori, id_unit])
+  @@map("target")
+}
+
+// ============================================================
+// TABEL: Laporan (induk semua sub-laporan)
+// ============================================================
+
+model Laporan {
+  id_laporan      Int            @id @default(autoincrement())
+  tanggal         DateTime       @db.Date
+  status_internal StatusInternal @default(PENDING)
+  status          StatusLaporan  @default(DRAFT)
+  kotak_detail    String?        @db.Text // Catatan/keterangan tambahan
+
+  // Foreign Keys
+  id_unit     Int
+  id_pengguna Int
+  unit        Unit     @relation(fields: [id_unit], references: [id_unit])
+  pengguna    Pengguna @relation("PembuatLaporan", fields: [id_pengguna], references: [id_pengguna])
+
+  // Relasi ke sub-laporan
+  laporan_kna        LaporanKNA?
+  laporan_penumpang  LaporanPenumpang[]
+  laporan_barang     LaporanBarang[]
+  laporan_keuangan   LaporanKeuangan?
+
+  // Relasi ke Permintaan Bantuan
+  permintaan_bantuan PermintaanBantuan[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("laporan")
+}
+
+// ============================================================
+// TABEL: Permintaan Bantuan
+// ============================================================
+
+model PermintaanBantuan {
+  id_permintaan Int              @id @default(autoincrement())
+  jenis         JenisPermintaan
+  deskripsi     String           @db.Text
+  status        StatusPermintaan @default(MENUNGGU)
+
+  // Foreign Keys
+  id_pengguna_pengaju  Int
+  id_pengguna_penanganan Int?
+  id_laporan           Int?
+
+  pengaju    Pengguna  @relation("PengajuPermintaan", fields: [id_pengguna_pengaju], references: [id_pengguna])
+  penanggung Pengguna? @relation("PenanggungPermintaan", fields: [id_pengguna_penanganan], references: [id_pengguna])
+  laporan    Laporan?  @relation(fields: [id_laporan], references: [id_laporan])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("permintaan_bantuan")
+}
+
+// ============================================================
+// TABEL: Komoditi Barang
+// ============================================================
+
+model KomoditiBarang {
+  id_komoditi   Int    @id @default(autoincrement())
+  nama_komoditi String @db.VarChar(150)
+  satuan        String @db.VarChar(50) // Contoh: TON, KG, UNIT
+
+  // Foreign Key
+  id_unit Int
+  unit    Unit @relation(fields: [id_unit], references: [id_unit])
+
+  // Relasi
+  laporan_barang LaporanBarang[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("komoditi_barang")
+}
+
+// ============================================================
+// TABEL: Laporan KNA (Keselamatan Nasional & Aset / ROW)
+// Catatan: ROW = Right of Way (lahan KAI)
+// ============================================================
+
+model LaporanKNA {
+  id_laporan_kna    Int     @id @default(autoincrement())
+
+  // Data ROW (Right of Way)
+  jml_kontrak_row   Int?
+  luas_row          Decimal? @db.Decimal(15, 4) // dalam m² atau ha
+  nilai_row         Decimal? @db.Decimal(15, 2)
+  target_rkad       Decimal? @db.Decimal(15, 2) // target RKAD
+  realisasi_rkad    Decimal? @db.Decimal(15, 2)
+
+  // Data Non-ROW
+  jml_kontrak_non_row Int?
+  luas_non_row        Decimal? @db.Decimal(15, 4)
+  nilai_non_row       Decimal? @db.Decimal(15, 2)
+
+  // Foreign Key (1-to-1 dengan Laporan)
+  id_laporan Int    @unique
+  laporan    Laporan @relation(fields: [id_laporan], references: [id_laporan])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("laporan_kna")
+}
+
+// ============================================================
+// TABEL: Laporan Penumpang
+// ============================================================
+
+model LaporanPenumpang {
+  id_laporan_penumpang Int     @id @default(autoincrement())
+  nama_ka              String  @db.VarChar(150) // Nama kereta api
+  jml_penumpang        Int
+  pendapatan           Decimal @db.Decimal(15, 2)
+
+  // Foreign Key
+  id_laporan Int
+  laporan    Laporan @relation(fields: [id_laporan], references: [id_laporan])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("laporan_penumpang")
+}
+
+// ============================================================
+// TABEL: Laporan Barang
+// ============================================================
+
+model LaporanBarang {
+  id_laporan_barang Int     @id @default(autoincrement())
+  jml_ka            Int     // Jumlah kereta api
+  volume            Decimal @db.Decimal(15, 4)
+  pendapatan        Decimal @db.Decimal(15, 2)
+
+  // Foreign Keys
+  id_laporan  Int
+  id_komoditi Int
+
+  laporan  Laporan        @relation(fields: [id_laporan], references: [id_laporan])
+  komoditi KomoditiBarang @relation(fields: [id_komoditi], references: [id_komoditi])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("laporan_barang")
+}
+
+// ============================================================
+// TABEL: Laporan Keuangan
+// ============================================================
+
+model LaporanKeuangan {
+  id_laporan_keuangan Int     @id @default(autoincrement())
+  pendapatan          Decimal @db.Decimal(15, 2)
+  pengeluaran         Decimal @db.Decimal(15, 2)
+  laba_rugi           Decimal @db.Decimal(15, 2) // bisa computed: pendapatan - pengeluaran
+
+  // Foreign Key (1-to-1 dengan Laporan)
+  id_laporan Int     @unique
+  laporan    Laporan @relation(fields: [id_laporan], references: [id_laporan])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("laporan_keuangan")
+}

@@ -1,0 +1,30 @@
+Node.js >= 18.0.0
+npm >= 9.0.0
+MySQL >= 8.0
+
+# Backend Dependencies (Express.js)
+express
+cors
+dotenv
+nodemon
+prisma
+@prisma/client
+jsonwebtoken
+bcryptjs
+socket.io
+@whiskeysockets/baileys
+pino
+
+# Frontend Dependencies (React.js + Vite)
+react
+react-dom
+react-router-dom
+axios
+zustand
+lucide-react
+recharts
+socket.io-client
+tailwindcss@3
+postcss@8
+autoprefixer@10
+vite

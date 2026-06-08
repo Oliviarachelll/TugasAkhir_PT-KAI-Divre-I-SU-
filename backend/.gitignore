@@ -1,0 +1,19 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Environment
+.env
+
+# Prisma
+prisma/migrations/
+
+# WhatsApp session (jangan commit credentials)
+whatsapp-session/
+
+# Uploads
+uploads/
+
+# OS
+.DS_Store
+Thumbs.db
