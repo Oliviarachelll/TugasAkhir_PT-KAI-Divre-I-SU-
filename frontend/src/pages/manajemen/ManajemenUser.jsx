@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { PlusCircle, Search, Edit2, Trash2, KeyRound } from 'lucide-react';
 
 const dummyUsers = [
-  { id: 'USR001', nama: 'Budi Santoso', email: 'budi@rache.id', peran: 'USER_UNIT', unit: 'Unit DAOP 1', status: 'Aktif' },
-  { id: 'USR002', nama: 'Siti Aminah', email: 'siti@rache.id', peran: 'ADMIN_GLOBAL', unit: 'Pusat', status: 'Aktif' },
-  { id: 'USR003', nama: 'Andi Irawan', email: 'andi@rache.id', peran: 'IT', unit: 'Pusat', status: 'Aktif' },
-  { id: 'USR004', nama: 'Eko Prasetyo', email: 'eko@rache.id', peran: 'USER_UNIT', unit: 'Unit DAOP 2', status: 'Terkunci' },
+  { id: 'USR001', nama: 'Nama User 1', email: 'email@domain.id', role: 'Role A', unit: 'Nama Unit', status: 'Aktif' },
+  { id: 'USR002', nama: 'Nama User 2', email: 'email@domain.id', role: 'Role B', unit: '—', status: 'Aktif' },
+  { id: 'USR003', nama: 'Nama User 3', email: 'email@domain.id', role: 'Role A', unit: 'Nama Unit', status: 'Terkunci' },
+  { id: 'USR004', nama: 'Nama User 4', email: 'email@domain.id', role: 'Role C', unit: '—', status: 'Aktif' },
+  { id: 'USR005', nama: 'Nama User 5', email: 'email@domain.id', role: 'Role A', unit: 'Nama Unit', status: 'Aktif' },
 ];
 
 const ManajemenUser = () => {
@@ -15,41 +15,30 @@ const ManajemenUser = () => {
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Manajemen User</h2>
-          <p className="page-subtitle">Kelola akun pengguna, peran, dan penugasan unit.</p>
+          <div className="text-sm text-muted font-medium mb-1">Manajemen <span className="mx-1">&gt;</span> <span className="text-primary">Manajemen User</span></div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <PlusCircle size={18} /> Tambah User
-        </button>
       </div>
 
-      <div className="card mb-4" style={{ padding: '16px 24px', marginBottom: '24px' }}>
-        <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="flex gap-3" style={{ display: 'flex', gap: '12px' }}>
-            <select className="form-control form-control-sm" style={{ width: 'auto', padding: '6px 12px' }}>
-              <option>Semua Peran</option>
-              <option>IT</option>
-              <option>ADMIN_GLOBAL</option>
-              <option>USER_UNIT</option>
-            </select>
-            <select className="form-control form-control-sm" style={{ width: 'auto', padding: '6px 12px' }}>
-              <option>Semua Unit</option>
-              <option>Pusat</option>
-              <option>DAOP 1</option>
-              <option>DAOP 2</option>
-            </select>
-            <select className="form-control form-control-sm" style={{ width: 'auto', padding: '6px 12px' }}>
-              <option>Status Aktif</option>
-              <option>Terkunci</option>
-            </select>
-          </div>
-          <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
-            <div className="relative" style={{ position: 'relative' }}>
-              <Search className="absolute left-2.5 top-2 text-muted" size={16} style={{ position: 'absolute', left: '10px', top: '8px', color: 'var(--text-muted)' }} />
-              <input type="text" className="form-control form-control-sm pl-8" placeholder="Cari nama/email..." style={{ paddingLeft: '32px' }} />
-            </div>
-          </div>
-        </div>
+      <div className="flex gap-3 mb-4 items-center" style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+        <input 
+          type="text" 
+          className="form-control form-control-sm" 
+          placeholder="Cari nama / email..." 
+          style={{ width: '250px', padding: '8px 12px' }} 
+        />
+        <select className="form-control form-control-sm" style={{ width: 'auto', padding: '8px 24px 8px 12px' }}>
+          <option>Filter A</option>
+        </select>
+        <select className="form-control form-control-sm" style={{ width: 'auto', padding: '8px 24px 8px 12px' }}>
+          <option>Filter B</option>
+        </select>
+        <button 
+          className="btn btn-secondary btn-sm" 
+          style={{ backgroundColor: '#cbd5e1', color: '#1e293b', border: '1px solid #94a3b8', padding: '8px 16px' }}
+          onClick={() => setShowModal(true)}
+        >
+          + Tambah User Baru
+        </button>
       </div>
 
       <div className="card p-0" style={{ padding: 0 }}>
@@ -57,50 +46,47 @@ const ManajemenUser = () => {
           <table>
             <thead>
               <tr>
-                <th>Nama Lengkap</th>
-                <th>Email / Username</th>
-                <th>Peran</th>
-                <th>Unit Tugas</th>
-                <th>Status</th>
-                <th className="text-right">Aksi</th>
+                <th>NAMA</th>
+                <th>EMAIL</th>
+                <th>ROLE</th>
+                <th>UNIT</th>
+                <th>STATUS</th>
+                <th>AKSI</th>
               </tr>
             </thead>
             <tbody>
               {dummyUsers.map(u => (
                 <tr key={u.id}>
-                  <td className="font-medium text-primary">{u.nama}</td>
+                  <td>{u.nama}</td>
                   <td>{u.email}</td>
-                  <td>
-                    <span className="badge" style={{ 
-                      background: u.peran === 'IT' ? 'rgba(236,72,153,0.1)' : u.peran === 'ADMIN_GLOBAL' ? 'rgba(99,102,241,0.1)' : 'rgba(56,189,248,0.1)',
-                      color: u.peran === 'IT' ? 'var(--accent-rose)' : u.peran === 'ADMIN_GLOBAL' ? 'var(--brand-400)' : 'var(--info)',
-                      border: 'none'
-                    }}>
-                      {u.peran}
-                    </span>
-                  </td>
+                  <td>{u.role}</td>
                   <td>{u.unit}</td>
                   <td>
-                    {u.status === 'Aktif' ? (
-                      <span className="badge badge-disetujui">AKTIF</span>
-                    ) : (
-                      <span className="badge badge-revisi" style={{ background: 'rgba(251,113,133,0.1)', color: 'var(--danger)' }}>TERKUNCI</span>
-                    )}
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '2px 10px',
+                      borderRadius: '16px',
+                      border: '1px solid #94a3b8',
+                      fontSize: '12px',
+                      color: '#475569',
+                      backgroundColor: 'transparent'
+                    }}>
+                      {u.status}
+                    </span>
                   </td>
                   <td>
-                    <div className="flex justify-end gap-2" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                      {u.status === 'Terkunci' && (
-                        <button className="btn btn-secondary btn-sm py-1 px-2 text-success" title="Buka Kunci" style={{ color: 'var(--success)', borderColor: 'var(--success)' }}>
-                          <KeyRound size={14} />
-                        </button>
-                      )}
-                      <button className="btn btn-secondary btn-sm py-1 px-2 text-brand-400" title="Edit">
-                        <Edit2 size={14} />
-                      </button>
-                      <button className="btn btn-secondary btn-sm py-1 px-2 text-danger" title="Hapus">
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    <button className="text-brand-500 hover:underline mr-1" onClick={() => setShowModal(true)}>
+                      [edit]
+                    </button>
+                    {u.status === 'Aktif' ? (
+                       <button className="text-brand-500 hover:underline">
+                         [kunci]
+                       </button>
+                    ) : (
+                       <button className="text-brand-500 hover:underline">
+                         [buka]
+                       </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -110,53 +96,48 @@ const ManajemenUser = () => {
       </div>
 
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <h3 className="modal-title">Tambah User Baru</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+        <div className="modal-overlay" style={{ alignItems: 'center' }}>
+          <div className="modal" style={{ maxWidth: '800px', width: '100%', padding: '24px' }}>
+            <div className="mb-4">
+              <h3 className="font-bold text-base text-gray-800">Modal Tambah / Edit User</h3>
             </div>
             
-            <div className="grid grid-cols-2 gap-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div className="form-group">
-                <label className="form-label">Nama Lengkap</label>
-                <input type="text" className="form-control" placeholder="Nama lengkap user" />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px' }}>
+              <div className="form-group mb-0">
+                <label className="form-label text-sm mb-1 text-gray-500">Nama Lengkap</label>
+                <input type="text" className="form-control" placeholder="Nama Lengkap..." />
               </div>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input type="email" className="form-control" placeholder="email@rache.id" />
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Peran (Role)</label>
-                <select className="form-control">
-                  <option value="USER_UNIT">USER_UNIT (Admin Unit)</option>
-                  <option value="ADMIN_GLOBAL">ADMIN_GLOBAL (Pusat)</option>
-                  <option value="IT">IT (Support)</option>
+              <div className="form-group mb-0">
+                <label className="form-label text-sm mb-1 text-gray-500">Role</label>
+                <select className="form-control text-gray-400">
+                  <option value="">Pilih Role</option>
                 </select>
               </div>
-              <div className="form-group">
-                <label className="form-label">Unit Penugasan</label>
-                <select className="form-control">
-                  <option value="">Pilih Unit...</option>
-                  <option value="1">Unit DAOP 1</option>
-                  <option value="2">Unit DAOP 2</option>
+              
+              <div className="form-group mb-0">
+                <label className="form-label text-sm mb-1 text-gray-500">Email</label>
+                <input type="email" className="form-control" placeholder="Email..." />
+              </div>
+              <div className="form-group mb-0">
+                <label className="form-label text-sm mb-1 text-gray-500">Unit (jika Role terkait)</label>
+                <select className="form-control text-gray-400">
+                  <option value="">Pilih Unit</option>
                 </select>
               </div>
 
-              <div className="form-group col-span-2" style={{ gridColumn: 'span 2' }}>
-                <label className="form-label">Kata Sandi Awal</label>
-                <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
-                  <input type="text" className="form-control" value="Rache2026!" readOnly />
-                  <button className="btn btn-secondary text-sm px-3" style={{ padding: '0 12px' }}>Generate</button>
-                </div>
-                <p className="text-xs text-muted mt-1">User harus mengganti kata sandi pada login pertama.</p>
+              <div className="form-group mb-0">
+                <label className="form-label text-sm mb-1 text-gray-500">No. Kontak</label>
+                <input type="text" className="form-control" placeholder="No. Kontak..." />
+              </div>
+              <div className="form-group mb-0">
+                <label className="form-label text-sm mb-1 text-gray-500">Password (auto-generated, tampil sekali)</label>
+                <input type="text" className="form-control font-medium" value="XXXXXXXXXX" readOnly style={{ backgroundColor: '#f1f5f9' }} />
               </div>
             </div>
 
-            <div className="modal-footer mt-4">
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-              <button className="btn btn-primary" onClick={() => setShowModal(false)}>Simpan User</button>
+            <div className="flex gap-2 mt-6" style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn btn-secondary text-sm px-4 py-1.5" style={{ backgroundColor: '#f8fafc', border: '1px solid #94a3b8' }} onClick={() => setShowModal(false)}>Batal</button>
+              <button className="btn btn-secondary text-sm px-4 py-1.5" style={{ backgroundColor: '#cbd5e1', color: '#1e293b', border: '1px solid #94a3b8' }} onClick={() => setShowModal(false)}>Simpan</button>
             </div>
           </div>
         </div>

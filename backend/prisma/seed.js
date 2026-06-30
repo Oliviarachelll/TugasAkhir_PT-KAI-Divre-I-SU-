@@ -12,10 +12,11 @@
  * ========================================
  *
  * UNIT (modular — tambah unit baru cukup INSERT baris baru):
- * Unit 1: Unit Pusat (PUSAT)
- * Unit 2: DAOP 1 Jakarta (DAERAH)
- * Unit 3: DAOP 2 Bandung (DAERAH)
- * Unit 4: DAOP 3 Cirebon (DAERAH)
+ * Unit 1: Unit Pusat (Menampung IT & Admin Global)
+ * Unit 2: Unit KNA
+ * Unit 3: Unit Angkutan Barang
+ * Unit 4: Unit Angkutan Penumpang
+ * Unit 5: Unit Keuangan
  */
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
@@ -27,10 +28,11 @@ const prisma = new PrismaClient();
 // Sistem bersifat data-driven: akses kontrol berdasarkan id_unit di DB
 // ================================================================
 const UNITS = [
-  { nama_unit: 'Unit Pusat',     jenis_unit: 'PUSAT'  },
-  { nama_unit: 'DAOP 1 Jakarta', jenis_unit: 'DAERAH' },
-  { nama_unit: 'DAOP 2 Bandung', jenis_unit: 'DAERAH' },
-  { nama_unit: 'DAOP 3 Cirebon', jenis_unit: 'DAERAH' },
+  { nama_unit: 'Unit Pusat',              jenis_unit: 'PUSAT'  },
+  { nama_unit: 'Unit KNA',                jenis_unit: 'CABANG' },
+  { nama_unit: 'Unit Angkutan Barang',    jenis_unit: 'CABANG' },
+  { nama_unit: 'Unit Angkutan Penumpang', jenis_unit: 'CABANG' },
+  { nama_unit: 'Unit Keuangan',           jenis_unit: 'CABANG' },
 ];
 
 async function main() {
@@ -52,7 +54,7 @@ async function main() {
     console.log(`  ✅ ${unit.nama_unit} (ID: ${unit.id_unit})`);
   }
 
-  const [unitPusat, unitDaop1, unitDaop2, unitDaop3] = createdUnits;
+  const [unitPusat, unitKNA, unitBarang, unitPenumpang, unitKeuangan] = createdUnits;
 
   // ============================================================
   // 2. Seed Pengguna per Peran
@@ -94,25 +96,39 @@ async function main() {
   // USER_UNIT — Satu pengguna per unit (modular)
   const userUnitSeeds = [
     {
-      nama: 'User DAOP 1',
-      email: 'user.daop1@rache.id',
-      password: 'user@daop1123',
+      nama: 'Admin Unit KNA',
+      email: 'unit.kna@rache.id',
+      password: 'kna@rache123',
       no_hp: '6281234560011',
-      id_unit: unitDaop1.id_unit,
+      id_unit: unitKNA.id_unit,
     },
     {
-      nama: 'User DAOP 2',
-      email: 'user.daop2@rache.id',
-      password: 'user@daop2123',
+      nama: 'Admin Unit Barang',
+      email: 'unit.barang@rache.id',
+      password: 'barang@rache123',
       no_hp: '6281234560012',
-      id_unit: unitDaop2.id_unit,
+      id_unit: unitBarang.id_unit,
     },
     {
-      nama: 'User DAOP 3',
-      email: 'user.daop3@rache.id',
-      password: 'user@daop3123',
+      nama: 'Admin Unit Penumpang',
+      email: 'unit.penumpang@rache.id',
+      password: 'penumpang@rache123',
       no_hp: '6281234560013',
-      id_unit: unitDaop3.id_unit,
+      id_unit: unitPenumpang.id_unit,
+    },
+    {
+      nama: 'Admin Unit Keuangan',
+      email: 'unit.keuangan@rache.id',
+      password: 'keuangan@rache123',
+      no_hp: '6281234560014',
+      id_unit: unitKeuangan.id_unit,
+    },
+    {
+      nama: 'User Terkunci',
+      email: 'terkunci@rache.id',
+      password: 'admin123',
+      no_hp: '6281234560099',
+      id_unit: unitPusat.id_unit,
     },
   ];
 
@@ -127,6 +143,8 @@ async function main() {
         peran: 'USER_UNIT',
         no_hp: u.no_hp,
         id_unit: u.id_unit,
+        terkunci: u.email === 'terkunci@rache.id' ? true : false,
+        percobaan_login: u.email === 'terkunci@rache.id' ? 5 : 0,
       },
     });
     const namaUnit = createdUnits.find(cu => cu.id_unit === u.id_unit)?.nama_unit;
@@ -139,12 +157,12 @@ async function main() {
   console.log('\n📦 Seeding komoditi...');
 
   const KOMODITI = [
-    { nama_komoditi: 'Batu Bara',  satuan: 'TON', id_unit: unitDaop1.id_unit },
-    { nama_komoditi: 'Semen',      satuan: 'TON', id_unit: unitDaop1.id_unit },
-    { nama_komoditi: 'Pupuk',      satuan: 'TON', id_unit: unitDaop2.id_unit },
-    { nama_komoditi: 'BBM',        satuan: 'KL',  id_unit: unitDaop2.id_unit },
-    { nama_komoditi: 'Beras',      satuan: 'TON', id_unit: unitDaop3.id_unit },
-    { nama_komoditi: 'Kontainer',  satuan: 'TEU', id_unit: unitDaop3.id_unit },
+    { nama_komoditi: 'Batu Bara',  satuan: 'TON', id_unit: unitBarang.id_unit },
+    { nama_komoditi: 'Semen',      satuan: 'TON', id_unit: unitBarang.id_unit },
+    { nama_komoditi: 'Pupuk',      satuan: 'TON', id_unit: unitBarang.id_unit },
+    { nama_komoditi: 'BBM',        satuan: 'KL',  id_unit: unitBarang.id_unit },
+    { nama_komoditi: 'Beras',      satuan: 'TON', id_unit: unitBarang.id_unit },
+    { nama_komoditi: 'Kontainer',  satuan: 'TEU', id_unit: unitBarang.id_unit },
   ];
 
   for (const k of KOMODITI) {
@@ -164,19 +182,10 @@ async function main() {
   const tahunIni = new Date().getFullYear();
 
   const TARGETS = [
-    // DAOP 1
-    { tahun: tahunIni, kategori: 'PENUMPANG',   nilai: 8000000,       id_unit: unitDaop1.id_unit },
-    { tahun: tahunIni, kategori: 'BARANG',       nilai: 3000000,       id_unit: unitDaop1.id_unit },
-    { tahun: tahunIni, kategori: 'KEUANGAN',     nilai: 150000000000,  id_unit: unitDaop1.id_unit },
-    { tahun: tahunIni, kategori: 'KNA',          nilai: 500,           id_unit: unitDaop1.id_unit },
-    // DAOP 2
-    { tahun: tahunIni, kategori: 'PENUMPANG',   nilai: 5000000,       id_unit: unitDaop2.id_unit },
-    { tahun: tahunIni, kategori: 'BARANG',       nilai: 2000000,       id_unit: unitDaop2.id_unit },
-    { tahun: tahunIni, kategori: 'KEUANGAN',     nilai: 100000000000,  id_unit: unitDaop2.id_unit },
-    // DAOP 3
-    { tahun: tahunIni, kategori: 'PENUMPANG',   nilai: 4000000,       id_unit: unitDaop3.id_unit },
-    { tahun: tahunIni, kategori: 'BARANG',       nilai: 2500000,       id_unit: unitDaop3.id_unit },
-    { tahun: tahunIni, kategori: 'KEUANGAN',     nilai: 90000000000,   id_unit: unitDaop3.id_unit },
+    { tahun: tahunIni, kategori: 'KNA',          nilai: 500,           id_unit: unitKNA.id_unit },
+    { tahun: tahunIni, kategori: 'BARANG',       nilai: 3000000,       id_unit: unitBarang.id_unit },
+    { tahun: tahunIni, kategori: 'PENUMPANG',    nilai: 8000000,       id_unit: unitPenumpang.id_unit },
+    { tahun: tahunIni, kategori: 'KEUANGAN',     nilai: 150000000000,  id_unit: unitKeuangan.id_unit },
   ];
 
   for (const t of TARGETS) {
@@ -205,12 +214,13 @@ async function main() {
   createdUnits.forEach(u => console.log(`  [${u.id_unit}] ${u.nama_unit} (${u.jenis_unit})`));
 
   console.log('\n🔑 AKUN LOGIN:');
-  console.log('  Peran         Email                    Password');
-  console.log('  IT          : it@rache.id            → it@rache123');
-  console.log('  ADMIN_GLOBAL: admin@rache.id          → admin@rache123');
-  console.log('  USER_UNIT   : user.daop1@rache.id     → user@daop1123');
-  console.log('  USER_UNIT   : user.daop2@rache.id     → user@daop2123');
-  console.log('  USER_UNIT   : user.daop3@rache.id     → user@daop3123');
+  console.log('  Peran         Email                      Password');
+  console.log('  IT          : it@rache.id              → it@rache123');
+  console.log('  ADMIN_GLOBAL: admin@rache.id           → admin@rache123');
+  console.log('  USER_UNIT   : unit.kna@rache.id        → kna@rache123');
+  console.log('  USER_UNIT   : unit.barang@rache.id     → barang@rache123');
+  console.log('  USER_UNIT   : unit.penumpang@rache.id  → penumpang@rache123');
+  console.log('  USER_UNIT   : unit.keuangan@rache.id   → keuangan@rache123');
 
   console.log('\n💡 Untuk menambah unit baru:');
   console.log('  POST /api/unit { nama_unit, jenis_unit } (login sebagai IT)');

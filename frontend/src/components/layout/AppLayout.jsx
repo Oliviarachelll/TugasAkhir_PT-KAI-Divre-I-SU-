@@ -5,14 +5,24 @@ import Header from './Header';
 
 const AppLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
   return (
-    <div className="app-container">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className={`app-container ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+        isCollapsed={isCollapsed}
+        toggleCollapse={toggleCollapse}
+      />
       
       <main className="main-content">
         <Header onMenuClick={toggleSidebar} />

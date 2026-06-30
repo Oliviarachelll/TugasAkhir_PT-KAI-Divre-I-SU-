@@ -17,16 +17,19 @@
 
 let makeWASocket, useMultiFileAuthState, DisconnectReason, Browsers;
 
-try {
-  const baileys = require('@whiskeysockets/baileys');
-  makeWASocket = baileys.default || baileys.makeWASocket;
-  useMultiFileAuthState = baileys.useMultiFileAuthState;
-  DisconnectReason = baileys.DisconnectReason;
-  Browsers = baileys.Browsers;
-} catch {
-  console.warn('[WA] @whiskeysockets/baileys belum terinstall.');
-  console.warn('[WA] Jalankan: npm install @whiskeysockets/baileys');
-  console.warn('[WA] Fitur WhatsApp dinonaktifkan sementara.');
+async function loadBaileys() {
+  if (makeWASocket) return true;
+  try {
+    const baileys = await import('@whiskeysockets/baileys');
+    makeWASocket = baileys.default || baileys.makeWASocket;
+    useMultiFileAuthState = baileys.useMultiFileAuthState;
+    DisconnectReason = baileys.DisconnectReason;
+    Browsers = baileys.Browsers;
+    return true;
+  } catch (err) {
+    console.warn('[WA] @whiskeysockets/baileys gagal diload:', err.message);
+    return false;
+  }
 }
 
 const path = require('path');
@@ -46,7 +49,8 @@ class WhatsAppService extends EventEmitter {
    * Inisialisasi koneksi WhatsApp (dipanggil saat server start)
    */
   async connect() {
-    if (!makeWASocket) {
+    const loaded = await loadBaileys();
+    if (!loaded) {
       this.emit('unavailable');
       return;
     }
@@ -72,6 +76,8 @@ class WhatsAppService extends EventEmitter {
 
         if (qr) {
           console.log('[WA] 📱 Scan QR Code untuk login WhatsApp');
+          const qrcode = require('qrcode-terminal');
+          qrcode.generate(qr, { small: true });
           this.emit('qr', qr);
         }
 
@@ -115,7 +121,8 @@ class WhatsAppService extends EventEmitter {
    * @param {string} teks - Isi pesan
    */
   async kirimPesan(nomor, teks) {
-    if (!makeWASocket) {
+    const loaded = await loadBaileys();
+    if (!loaded) {
       console.warn(`[WA] Baileys tidak tersedia. Pesan ke ${nomor} tidak terkirim.`);
       return false;
     }

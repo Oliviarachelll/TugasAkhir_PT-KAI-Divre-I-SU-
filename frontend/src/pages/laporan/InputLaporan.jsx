@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { CheckCircle2, ChevronRight, Save, Send, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { CheckCircle2, Save, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import useLaporanStore from '../../store/laporan.store';
+import useAuthStore from '../../store/auth.store';
+import toast from 'react-hot-toast';
+
+import FormKNA from './components/FormKNA';
+import FormBarang from './components/FormBarang';
+import FormPenumpang from './components/FormPenumpang';
+import FormKeuangan from './components/FormKeuangan';
 
 const steps = [
   { id: 1, name: 'DRAFT', status: 'current' },
@@ -9,89 +17,92 @@ const steps = [
 
 const InputLaporan = () => {
   const [currentStep, setCurrentStep] = useState(1);
+  const { draftLaporan, setDraft, submitDraft, isLoading } = useLaporanStore();
+  const { user } = useAuthStore();
 
-  // Form A: Data Harian
-  const renderFormA = () => (
-    <div className="card mb-4" style={{ marginBottom: '24px' }}>
-      <h3 className="section-title">Data Harian *</h3>
-      <div className="table-wrapper mb-4">
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Kolom A</th>
-              <th>Kolom B (Satuan)</th>
-              <th>Kolom C (Rp)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[1, 2, 3].map(i => (
-              <tr key={i}>
-                <td>Item {i}</td>
-                <td><input type="number" className="form-control form-control-sm" placeholder="0" /></td>
-                <td><input type="number" className="form-control form-control-sm" placeholder="0.0" /></td>
-                <td><input type="number" className="form-control form-control-sm" placeholder="0" /></td>
-              </tr>
-            ))}
-            <tr>
-              <td colSpan={4}>
-                <button className="btn btn-secondary btn-sm">+ Tambah Item</button>
-              </td>
-            </tr>
-            <tr style={{ background: 'var(--bg-card-2)' }}>
-              <td className="font-bold text-primary">TOTAL HARIAN</td>
-              <td className="font-bold text-primary">—</td>
-              <td className="font-bold text-primary">—</td>
-              <td className="font-bold text-primary">—</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
+  const unitName = user?.unit?.nama_unit || '';
 
-  // Form B: Data Kumulatif & Target
-  const renderFormB = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '24px' }}>
-      <div className="card">
-        <h3 className="section-title">Data Kumulatif *</h3>
-        <div className="form-group">
-          <label className="form-label">Total Nilai Kumulatif (Satuan)</label>
-          <input type="number" className="form-control" placeholder="0.0" />
-        </div>
-        <div className="form-group mb-0">
-          <label className="form-label">Total Nilai Kumulatif (Rp)</label>
-          <input type="number" className="form-control" placeholder="0" />
-          <p className="form-error text-muted mt-1">Akumulasi periode berjalan</p>
-        </div>
-      </div>
-      
-      <div className="card">
-        <h3 className="section-title">Target vs Realisasi *</h3>
-        <div className="form-group">
-          <label className="form-label">Target (Satuan)</label>
-          <input type="number" className="form-control" placeholder="0.0" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">Realisasi (Satuan)</label>
-          <input type="number" className="form-control" placeholder="0.0" />
-        </div>
-        <div className="mt-4">
-          <label className="form-label text-xs">Persentase (auto)</label>
-          <div className="text-2xl font-bold text-primary mb-2">00%</div>
-          <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{ width: '0%', height: '100%', background: 'var(--brand-500)' }}></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  // Inisialisasi draft saat pertama kali render
+  useEffect(() => {
+    if (!draftLaporan.id_unit && user?.id_unit) {
+      setDraft({ id_unit: user.id_unit });
+    }
+    if (!draftLaporan.kna) {
+      setDraft({ kna: { 
+        target_rkad: '', realisasi_rkad: '', 
+        jml_kontrak_row: '', luas_t_row: '', luas_b_row: '', nilai_row: '',
+        jml_kontrak_non_row: '', luas_t_non_row: '', luas_b_non_row: '', nilai_non_row: ''
+      } });
+    }
+    if (!draftLaporan.keuangan) setDraft({ keuangan: { pendapatan: '', pengeluaran: '' } });
+
+    if (!draftLaporan.barangItems || draftLaporan.barangItems.length === 0) {
+      setDraft({ barangItems: [
+        { id_komoditi: 10, jml_ka: '', volume: '', volume_kumulatif: '', volume_program: '', volume_pencapaian: '', pendapatan: '', pendapatan_kumulatif: '', pendapatan_program: '', pendapatan_pencapaian: '' },
+        { id_komoditi: 11, jml_ka: '', volume: '', volume_kumulatif: '', volume_program: '', volume_pencapaian: '', pendapatan: '', pendapatan_kumulatif: '', pendapatan_program: '', pendapatan_pencapaian: '' },
+        { id_komoditi: 12, jml_ka: '', volume: '', volume_kumulatif: '', volume_program: '', volume_pencapaian: '', pendapatan: '', pendapatan_kumulatif: '', pendapatan_program: '', pendapatan_pencapaian: '' },
+        { id_komoditi: 13, jml_ka: '', volume: '', volume_kumulatif: '', volume_program: '', volume_pencapaian: '', pendapatan: '', pendapatan_kumulatif: '', pendapatan_program: '', pendapatan_pencapaian: '' },
+        { id_komoditi: 14, jml_ka: '', volume: '', volume_kumulatif: '', volume_program: '', volume_pencapaian: '', pendapatan: '', pendapatan_kumulatif: '', pendapatan_program: '', pendapatan_pencapaian: '' },
+        { id_komoditi: 15, jml_ka: '', volume: '', volume_kumulatif: '', volume_program: '', volume_pencapaian: '', pendapatan: '', pendapatan_kumulatif: '', pendapatan_program: '', pendapatan_pencapaian: '' },
+      ]});
+    }
+
+    if (!draftLaporan.barangTotal) {
+      setDraft({ barangTotal: { volume: '', volume_kumulatif: '', volume_program: '', volume_pencapaian: '', pendapatan: '', pendapatan_kumulatif: '', pendapatan_program: '', pendapatan_pencapaian: '' } });
+    }
+  }, [draftLaporan.kna, draftLaporan.keuangan, draftLaporan.id_unit, draftLaporan.barangItems, draftLaporan.barangTotal, user, setDraft]);
+
+  const handleSubmit = async () => {
+    const success = await submitDraft();
+    if (success) {
+      setCurrentStep(3); // pindah ke step waiting
+    }
+  };
+
+  const handleSimpanDraft = () => {
+    setCurrentStep(1);
+    toast.success('Draft berhasil disimpan secara lokal!', { icon: <Save size={18} color="var(--brand-500)" /> });
+  };
+
+  const handleValidasi = () => {
+    // Basic check: pastikan ada data yang diisi (bisa diperluas nanti)
+    let hasData = false;
+    if (unitName === 'Unit KNA') {
+      hasData = draftLaporan.kna && Object.values(draftLaporan.kna).some(v => v !== '');
+    } else if (unitName === 'Unit Angkutan Penumpang') {
+      hasData = draftLaporan.penumpangItems && draftLaporan.penumpangItems.length > 0;
+    } else if (unitName === 'Unit Angkutan Barang') {
+      hasData = draftLaporan.barangItems && draftLaporan.barangItems.length > 0;
+    } else if (unitName === 'Unit Keuangan') {
+      hasData = draftLaporan.keuangan && (draftLaporan.keuangan.pendapatan !== '' || draftLaporan.keuangan.pengeluaran !== '');
+    } else {
+      hasData = true;
+    }
+
+    if (!hasData) {
+      toast.error('Gagal validasi: Data laporan masih kosong!');
+      return;
+    }
+
+    setDraft({ status_internal: 'SELESAI' });
+    setCurrentStep(2);
+    toast.success('Validasi sukses! Data siap untuk disubmit.', { icon: <ShieldCheck size={18} color="var(--brand-500)" /> });
+  };
+
+  const handleChangeKNA = (field, value) => {
+    setDraft({
+      kna: {
+        ...(draftLaporan.kna || {}),
+        [field]: value
+      }
+    });
+  };
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Input Laporan Harian</h2>
+          <div className="text-sm text-muted font-medium mb-1">Input Laporan <span className="mx-1">&gt;</span> <span className="text-primary">{unitName || '...'}</span></div>
         </div>
       </div>
 
@@ -122,47 +133,64 @@ const InputLaporan = () => {
       </div>
 
       {/* Header Laporan */}
-      <div className="card mb-4" style={{ marginBottom: '24px' }}>
-        <h3 className="section-title">Header Laporan</h3>
-        <div className="form-grid-3">
-          <div className="form-group mb-0">
-            <label className="form-label">Nama Unit</label>
-            <input type="text" className="form-control bg-input opacity-70" value="Unit DAOP 1" disabled />
-          </div>
-          <div className="form-group mb-0">
-            <label className="form-label">Jenis Laporan</label>
-            <select className="form-control">
-              <option>Data Harian</option>
-              <option>Data Penumpang</option>
-            </select>
-          </div>
-          <div className="form-group mb-0">
-            <label className="form-label">Tanggal</label>
-            <input type="date" className="form-control" defaultValue={new Date().toISOString().split('T')[0]} />
-          </div>
+      <div className="card mb-4" style={{ marginBottom: '24px', padding: '16px 24px' }}>
+        <h4 className="font-bold mb-3 text-sm text-primary">Header Laporan</h4>
+        <div className="grid grid-cols-3 gap-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+          <input 
+            type="text" 
+            className="form-control bg-card-2 text-muted" 
+            style={{ padding: '8px 12px' }}
+            value={unitName || 'Loading...'} 
+            disabled 
+          />
+          <input 
+            type="text" 
+            className="form-control bg-card-2 text-muted" 
+            style={{ padding: '8px 12px' }}
+            value="Data Harian" 
+            disabled 
+          />
+          <input 
+            type="date" 
+            className="form-control" 
+            style={{ padding: '8px 12px' }}
+            value={draftLaporan.tanggal} 
+            onChange={(e) => setDraft({ tanggal: e.target.value })} 
+          />
         </div>
       </div>
 
-      {renderFormA()}
-      {renderFormB()}
+      {/* RENDER FORM DINAMIS BERDASARKAN UNIT */}
+      {unitName === 'Unit Angkutan Penumpang' && <FormPenumpang draftLaporan={draftLaporan} setDraft={setDraft} />}
+      {unitName === 'Unit Angkutan Barang' && <FormBarang draftLaporan={draftLaporan} setDraft={setDraft} />}
+      {unitName === 'Unit Keuangan' && <FormKeuangan draftLaporan={draftLaporan} setDraft={setDraft} />}
+      {unitName === 'Unit KNA' && <FormKNA draftLaporan={draftLaporan} handleChangeKNA={handleChangeKNA} />}
 
       {/* Catatan */}
       <div className="card mb-6" style={{ marginBottom: '24px' }}>
-        <h3 className="section-title">Catatan (opsional)</h3>
-        <textarea className="form-control" rows="3" placeholder="Tambahkan catatan jika diperlukan..."></textarea>
+        <h3 className="section-title">Catatan Tambahan / Kotak Detail (opsional)</h3>
+        <textarea 
+          className="form-control" 
+          rows="3" 
+          placeholder="Tambahkan catatan untuk Admin Global..."
+          value={draftLaporan.kotak_detail || ''}
+          onChange={(e) => setDraft({ kotak_detail: e.target.value })}
+        ></textarea>
       </div>
 
       {/* Actions */}
       <div className="flex gap-3 mt-6 pt-4 border-t border-border" style={{ display: 'flex', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-        <button className="btn btn-secondary" onClick={() => setCurrentStep(1)}>
+        <button className="btn btn-secondary" onClick={handleSimpanDraft}>
           <Save size={18} /> Simpan Draft
         </button>
-        <button className="btn btn-secondary" onClick={() => setCurrentStep(2)}>
+        <button className="btn btn-secondary" onClick={handleValidasi}>
           <ShieldCheck size={18} /> Validasi Internal
         </button>
-        <button className="btn btn-primary" onClick={() => setCurrentStep(3)}>
-          <Send size={18} /> Submit Laporan
-        </button>
+        {currentStep >= 2 && (
+          <button className="btn btn-primary" onClick={handleSubmit} disabled={isLoading}>
+            <Send size={18} /> {isLoading ? 'Menyimpan...' : 'Submit Laporan'}
+          </button>
+        )}
       </div>
     </div>
   );

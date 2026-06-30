@@ -3,7 +3,7 @@ import useAuthStore from '../store/auth.store';
 import toast from 'react-hot-toast';
 
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json',
   },

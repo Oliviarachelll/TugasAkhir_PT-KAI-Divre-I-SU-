@@ -1,92 +1,110 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, ArrowLeft, Send } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import useLaporanStore from '../../store/laporan.store';
+import useAuthStore from '../../store/auth.store';
+import ReviewKNA from './components/ReviewKNA';
+import ReviewPenumpang from './components/ReviewPenumpang';
+import ReviewBarang from './components/ReviewBarang';
+import ReviewKeuangan from './components/ReviewKeuangan';
 
 const ReviewLaporan = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const { fetchLaporanById, laporanDetail, updateStatusLaporan, isLoading } = useLaporanStore();
+  const { user } = useAuthStore();
+  const isAdmin = user?.peran === 'ADMIN_GLOBAL';
+
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState(''); // 'acc' or 'revisi'
   const [catatan, setCatatan] = useState('');
+
+  useEffect(() => {
+    if (id) {
+      fetchLaporanById(id);
+    }
+  }, [id, fetchLaporanById]);
 
   const handleAction = (action) => {
     setModalAction(action);
     setShowModal(true);
   };
 
+  const submitAction = async () => {
+    const status = modalAction === 'acc' ? 'DISETUJUI' : 'REVISI';
+    const success = await updateStatusLaporan(id, status, catatan);
+    if (success) {
+      setShowModal(false);
+      navigate('/dashboard/admin');
+    }
+  };
+
+  if (isLoading && !laporanDetail) {
+    return <div className="p-8 text-center text-muted">Memuat data laporan...</div>;
+  }
+
+  if (!laporanDetail) {
+    return <div className="p-8 text-center text-danger">Laporan tidak ditemukan.</div>;
+  }
+
   return (
     <div>
-      <div className="mb-4">
-        <button className="btn btn-secondary btn-sm" onClick={() => navigate('/dashboard/admin')}>
-          <ArrowLeft size={16} /> Kembali
-        </button>
-      </div>
+      
       <div className="page-header">
         <div>
-          <h2 className="page-title">Review Laporan</h2>
+          <button className="btn btn-secondary btn-sm mb-4" onClick={() => navigate(isAdmin ? '/dashboard/admin' : '/laporan/history')}><ArrowLeft size={16} /> Kembali</button>
+          <div className="text-sm text-muted font-medium mb-1">Laporan <span className="mx-1">&gt;</span> <span className="text-primary">Review Laporan</span></div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+      <div className={`grid grid-cols-1 ${isAdmin ? 'lg:grid-cols-3' : ''} gap-6`} style={{ display: 'grid', gridTemplateColumns: isAdmin ? '2fr 1fr' : '1fr', gap: '24px' }}>
         
         {/* Kiri: Data Read Only */}
         <div>
           <div className="card mb-4">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <h3 className="text-lg font-bold">Unit DAOP 1</h3>
-                <p className="text-muted text-sm mt-1">Data Harian • 08 Jun 2026</p>
+                <h3 className="text-lg font-bold">{laporanDetail.unit?.nama_unit || `Unit ID: ${laporanDetail.id_unit}`}</h3>
+                <p className="text-muted text-sm mt-1">LPR-{laporanDetail.id_laporan} • {new Date(laporanDetail.tanggal).toLocaleDateString('id-ID')}</p>
+                <p className="text-muted text-sm">Pelapor: {laporanDetail.pengguna?.nama}</p>
               </div>
-              <span className="badge badge-diajukan">MENUNGGU REVIEW</span>
+              <span className={`badge ${laporanDetail.status === 'DISETUJUI' ? 'badge-disetujui' : laporanDetail.status === 'DITOLAK' ? 'badge-ditolak' : 'badge-diajukan'}`}>
+                {laporanDetail.status}
+              </span>
             </div>
           </div>
 
-          <div className="card mb-4">
-            <h3 className="section-title">Data Harian</h3>
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Item</th>
-                    <th>Kolom A</th>
-                    <th>Kolom B (Satuan)</th>
-                    <th>Kolom C (Rp)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[1, 2, 3].map(i => (
-                    <tr key={i}>
-                      <td>Item {i}</td>
-                      <td>1,23{i}</td>
-                      <td>12.{i}0</td>
-                      <td>Rp 1.{i}00.000</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {laporanDetail.unit?.nama_unit === 'Unit KNA' && laporanDetail.laporan_kna && (
+            <ReviewKNA laporan_kna={laporanDetail.laporan_kna} />
+          )}
+
+          {laporanDetail.unit?.nama_unit === 'Unit Angkutan Penumpang' && laporanDetail.laporan_penumpang && laporanDetail.laporan_penumpang.length > 0 && (
+            <ReviewPenumpang laporan_penumpang={laporanDetail.laporan_penumpang} />
+          )}
+
+          {laporanDetail.unit?.nama_unit === 'Unit Angkutan Barang' && laporanDetail.laporan_barang && laporanDetail.laporan_barang.length > 0 && (
+            <ReviewBarang laporan_barang={laporanDetail.laporan_barang} />
+          )}
+
+          {laporanDetail.unit?.nama_unit === 'Unit Keuangan' && laporanDetail.laporan_keuangan && (
+            <ReviewKeuangan laporan_keuangan={laporanDetail.laporan_keuangan} />
+          )}
 
           <div className="card">
-            <h3 className="section-title">Target vs Realisasi</h3>
+            <h3 className="section-title">Informasi Proses & Catatan</h3>
             <div className="flex justify-between text-sm mb-2">
-              <span className="text-muted">Target: 1,000 Satuan</span>
-              <span className="text-muted">Realisasi: 850 Satuan</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-2xl font-bold text-primary">85%</div>
-              <div style={{ flex: 1, height: '8px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ width: '85%', height: '100%', background: 'var(--brand-500)' }}></div>
-              </div>
+              <span className="text-muted">Status Proses Internal: {laporanDetail.status_internal}</span>
             </div>
             <div className="divider"></div>
             <div>
-              <p className="text-sm font-bold mb-1">Catatan Detail (opsional dari Unit):</p>
-              <p className="text-sm text-secondary">Terjadi penurunan pada shift sore karena cuaca buruk.</p>
+              <p className="text-sm font-bold mb-1">Catatan Detail / Kotak Detail (opsional dari Unit):</p>
+              <p className="text-sm text-secondary">{laporanDetail.kotak_detail || '—'}</p>
             </div>
           </div>
         </div>
 
         {/* Kanan: Panel Tindakan */}
+        {isAdmin && (
         <div>
           <div className="card sticky top-24" style={{ position: 'sticky', top: '90px' }}>
             <h3 className="section-title">Tindakan Review</h3>
@@ -130,6 +148,7 @@ const ReviewLaporan = () => {
             </p>
           </div>
         </div>
+        )}
       </div>
 
       {/* Modal Konfirmasi */}
@@ -158,12 +177,10 @@ const ReviewLaporan = () => {
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
               <button 
                 className={`btn ${modalAction === 'acc' ? 'btn-primary' : 'btn-danger'}`}
-                onClick={() => {
-                  setShowModal(false);
-                  navigate('/dashboard/admin');
-                }}
+                onClick={submitAction}
+                disabled={isLoading}
               >
-                Konfirmasi {modalAction === 'acc' ? 'ACC' : 'Revisi'}
+                {isLoading ? 'Memproses...' : `Konfirmasi ${modalAction === 'acc' ? 'ACC' : 'Revisi'}`}
               </button>
             </div>
           </div>

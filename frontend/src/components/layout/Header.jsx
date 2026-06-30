@@ -38,17 +38,17 @@ const Header = () => {
   };
 
   return (
-    <header className="h-[80px] bg-white border-b border-gray-300 flex items-center justify-between px-8 shrink-0 z-30">
+    <header className="h-[80px] border-b flex items-center justify-between px-8 shrink-0 z-30" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
       <div className="flex-1">
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">{getPageTitle()}</h1>
+        <h1 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>{getPageTitle()}</h1>
       </div>
 
       <div className="flex items-center gap-4">
         <div className="text-right">
-          <div className="text-sm font-bold text-gray-900">{userName}</div>
-          <div className="text-xs text-gray-500">{userRole}</div>
+          <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{userName}</div>
+          <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{userRole}</div>
         </div>
-        <div className="w-10 h-10 rounded-full border border-gray-400 flex items-center justify-center bg-gray-100 text-gray-600 font-medium text-sm">
+        <div className="w-10 h-10 rounded-full border flex items-center justify-center font-medium text-sm" style={{ backgroundColor: 'var(--bg-card-2)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}>
           {getInitials(userName)}
         </div>
       </div>

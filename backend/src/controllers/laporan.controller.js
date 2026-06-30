@@ -45,6 +45,9 @@ const getAllLaporan = async (req, res) => {
       include: {
         pengguna: { select: { nama: true } },
         unit: { select: { nama_unit: true } },
+        laporan_kna: true,
+        laporan_penumpang: true,
+        laporan_barang: { include: { komoditi: true } },
         _count: {
           select: {
             laporan_penumpang: true,

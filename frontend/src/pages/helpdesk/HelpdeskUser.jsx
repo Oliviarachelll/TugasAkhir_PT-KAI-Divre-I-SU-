@@ -3,23 +3,41 @@ import { PlusCircle, Search } from 'lucide-react';
 
 const HelpdeskUser = () => {
   const [showModal, setShowModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('Semua Status');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [tickets] = useState([
+    { id: 'TKT-001', date: '08 Jun 2026', category: 'Lupa Password', desc: 'Mohon direset password untuk akun ini...', status: 'IN PROGRESS', action: 'Sedang ditangani oleh Admin IT' },
+    { id: 'TKT-002', date: '01 Jun 2026', category: 'Buka Kunci Akun', desc: 'Salah input password 3x', status: 'RESOLVED', action: 'Kunci akun telah dibuka' },
+    { id: 'TKT-003', date: '15 Jun 2026', category: 'Buka Akses Laporan', desc: 'Mohon akses edit untuk LPR-123 karena ada salah input KNA', status: 'RESOLVED', action: <span><strong>Token: 8X9A2B</strong>. Silakan gunakan token ini untuk edit.</span> }
+  ]);
+
+  const filteredTickets = tickets.filter(ticket => {
+    const matchStatus = statusFilter === 'Semua Status' || ticket.status === statusFilter;
+    const matchSearch = ticket.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        ticket.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        ticket.desc.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchStatus && matchSearch;
+  });
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Helpdesk & Bantuan</h2>
-          <p className="page-subtitle">Ajukan tiket bantuan ke IT Support untuk kendala sistem.</p>
+          <div className="text-sm text-muted font-medium mb-1">Helpdesk <span className="mx-1">&gt;</span> <span className="text-primary">Helpdesk & Bantuan</span></div>
+
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
-          <PlusCircle size={18} /> Buat Tiket Baru
-        </button>
       </div>
 
       <div className="card mb-4" style={{ padding: '16px 24px', marginBottom: '24px' }}>
         <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="flex gap-3" style={{ display: 'flex', gap: '12px' }}>
-            <select className="form-control form-control-sm" style={{ width: 'auto', padding: '6px 12px' }}>
+            <select 
+              className="form-control form-control-sm" 
+              style={{ width: 'auto', padding: '6px 12px' }}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
               <option>Semua Status</option>
               <option>OPEN</option>
               <option>IN PROGRESS</option>
@@ -29,8 +47,18 @@ const HelpdeskUser = () => {
           <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
             <div className="relative" style={{ position: 'relative' }}>
               <Search className="absolute left-2.5 top-2 text-muted" size={16} style={{ position: 'absolute', left: '10px', top: '8px', color: 'var(--text-muted)' }} />
-              <input type="text" className="form-control form-control-sm pl-8" placeholder="Cari tiket..." style={{ paddingLeft: '32px' }} />
+              <input 
+                type="text" 
+                className="form-control form-control-sm pl-8" 
+                placeholder="Cari tiket..." 
+                style={{ paddingLeft: '32px' }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
+            <button className="btn btn-primary btn-sm ml-2" onClick={() => setShowModal(true)}>
+              <PlusCircle size={16} /> Buat Tiket Baru
+            </button>
           </div>
         </div>
       </div>
@@ -49,22 +77,26 @@ const HelpdeskUser = () => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="font-medium text-primary">TKT-001</td>
-                <td>08 Jun 2026</td>
-                <td>Lupa Password</td>
-                <td>Mohon direset password untuk akun ini...</td>
-                <td><span className="badge badge-diajukan">IN PROGRESS</span></td>
-                <td>Sedang ditangani oleh Admin IT</td>
-              </tr>
-              <tr>
-                <td className="font-medium text-primary">TKT-002</td>
-                <td>01 Jun 2026</td>
-                <td>Buka Kunci Akun</td>
-                <td>Salah input password 3x</td>
-                <td><span className="badge badge-disetujui">RESOLVED</span></td>
-                <td>Kunci akun telah dibuka</td>
-              </tr>
+              {filteredTickets.length > 0 ? (
+                filteredTickets.map(ticket => (
+                  <tr key={ticket.id}>
+                    <td className="font-medium text-primary">{ticket.id}</td>
+                    <td>{ticket.date}</td>
+                    <td>{ticket.category}</td>
+                    <td>{ticket.desc}</td>
+                    <td>
+                      <span className={`badge ${ticket.status === 'RESOLVED' ? 'badge-disetujui' : ticket.status === 'IN PROGRESS' ? 'badge-diajukan' : 'badge-ditolak'}`}>
+                        {ticket.status}
+                      </span>
+                    </td>
+                    <td>{ticket.action}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-muted">Tidak ada tiket yang ditemukan.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -84,6 +116,7 @@ const HelpdeskUser = () => {
                 <option value="">Pilih Kategori...</option>
                 <option value="TIPE_A">TIPE A - Lupa Password / Reset Akses</option>
                 <option value="TIPE_B">TIPE B - Buka Kunci Akun / Banned</option>
+                <option value="TIPE_C">TIPE C - Request Buka Akses Edit Laporan ACC</option>
                 <option value="LAINNYA">Lainnya - Kendala Sistem</option>
               </select>
             </div>

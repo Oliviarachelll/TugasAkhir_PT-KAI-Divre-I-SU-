@@ -5,31 +5,161 @@
 @tailwind utilities;
 
 :root {
-  /* Enterprise Light Theme Colors (Wireframe Match) */
-  --bg-main: #F4F5F7; /* Very light grey for app background */
-  --bg-card: #FFFFFF; /* Pure white for cards and content */
-  --bg-card-2: #F9FAFB;
-  --bg-sidebar: #2E2E2E; /* Exact wireframe dark grey */
+  /* Warna Utama */
+  --brand-500: #6A35FF;
+  --brand-600: #5524DF;
+  --brand-700: #4A22B8;
+  --brand-50: #EFE9FF;
+  --brand-25: #F6F1FF;
+
+  /* Aksen Dari Logo */
+  --accent-magenta: #FFE8F6;
+  --accent-magenta-border: #F0C6E6;
+
+  /* Warna Dasar UI */
+  --bg-main: #F5F7FC;
+  --bg-card: #FFFFFF;
+  --surface-soft: #EEF1FB;
+  --surface-strong: #E6E9F8;
+  --border: #D9DEF0;
+  --border-strong: #C7CEE8;
+
+  /* Warna Teks */
+  --text-primary: #141B34;
+  --text-secondary: #5F6788;
+
+  /* Warna Informasi dan Status */
+  --info: #5B8CFF;
+  --info-bg: #EDF3FF;
+  --success: #1F9D63;
+  --success-bg: #E9F8F0;
+  --warning: #D97706;
+  --warning-bg: #FFF4E8;
+  --danger: #C2410C;
+  --danger-bg: #FFF0EA;
+  --state-info: #2563EB;
+  --state-info-bg: #EEF4FF;
+
+  /* System Mappings & Aliases */
+  --bg: var(--bg-main);
+  --card: var(--bg-card);
+  --bg-card-2: var(--surface-soft);
+  --text-muted: var(--text-secondary);
+  --text-inverse: #FFFFFF;
+  --border-focus: var(--border-strong);
+  --divider: var(--border);
+
+  --sidebar: #FFFFFF;
+  --bg-sidebar: var(--sidebar);
+  --sidebar-hover: var(--surface-soft);
+  --sidebar-active: var(--brand-50);
+  --sidebar-active-text: var(--brand-600);
   
-  --text-primary: #111827;
-  --text-secondary: #374151;
-  --text-muted: #6B7280;
+  --error: var(--danger);
+  --accent-blue: var(--info);
+}
+
+[data-theme="dark"] {
+  /* KAI Standard Variables */
+  --kai-navy: #2B6CB0;
+  --kai-blue: #38BDF8;
+  --kai-orange: #FB923C;
+
+  --bg: #0B1220;
+  --sidebar: #162032; /* Changed from #0F1B2D for higher contrast */
+  --card: #162032;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+
+  --success: #22C55E;
+  --warning: #FBBF24;
+  --danger: #EF4444;
+  --offline: #94A3B8;
+
+  /* System Mappings */
+  --bg-main: var(--bg);
+  --bg-card: var(--card);
+  --bg-card-2: #111827; /* Surface */
+  --bg-sidebar: var(--sidebar);
+  
+  --text-muted: #94A3B8;
+  --text-disabled: #64748B;
   --text-inverse: #FFFFFF;
   
-  --border: #E5E7EB;
-  --border-focus: #9CA3AF;
+  --border: #243244;
+  --border-focus: #334155;
+  --divider: #1E293B;
+
+  --sidebar-hover: #1A2940;
+  --sidebar-active: #1D4ED8;
+  --sidebar-active-text: #FFFFFF;
   
-  --brand-500: #0F172A; /* Slate 900 for dark/professional accents */
-  --brand-400: #1E293B;
-  --brand-600: #000000;
-  
-  --accent-blue: #2563EB; /* Clear blue for primary actions */
-  --accent-blue-hover: #1D4ED8;
-  
-  --success: #10B981;
-  --danger: #EF4444;
-  --warning: #F59E0B;
-  --info: #3B82F6;
+  --brand-500: var(--kai-navy);
+  --brand-400: var(--kai-blue);
+  --brand-600: #1E40AF;
+  --accent-blue: var(--kai-orange);
+  --accent-blue-hover: #EA580C;
+  --info: var(--kai-blue);
+}
+
+/* =============================================
+   SIDEBAR UTILITY CLASSES
+   Both Light + Dark mode via CSS variables
+   ============================================= */
+
+/* Menu item hover bg */
+.sidebar-bg-hover:hover {
+  background-color: var(--sidebar-hover) !important;
+}
+
+/* Active menu item background */
+.sidebar-bg-active {
+  background-color: var(--sidebar-active) !important;
+}
+
+/* Active menu item text */
+.sidebar-text-active {
+  color: var(--sidebar-active-text) !important;
+}
+
+/* Hover text on inactive items */
+.sidebar-text-hover:hover {
+  color: var(--sidebar-active-text) !important;
+}
+
+/* Sidebar brand title (e.g. "NIT KAI") */
+.sidebar-title-text {
+  color: var(--sidebar-active-text);
+}
+
+/* Sidebar subtitle (e.g. "Network Infrastructure") */
+.sidebar-subtitle-text {
+  color: var(--text-muted);
+}
+
+/* Sidebar border lines (header border-b, footer border-t) */
+.sidebar-border-line {
+  border-color: var(--border);
+}
+
+/* Sidebar collapse toggle button */
+.sidebar-toggle-btn {
+  background-color: var(--card);
+}
+
+/* Toggle icon inherits sidebar-active-text */
+.sidebar-toggle-icon {
+  color: var(--sidebar-active-text);
+}
+
+/* Logout button */
+.sidebar-logout-btn {
+  color: var(--text-muted);
+}
+.sidebar-logout-btn:hover {
+  color: var(--danger);
+  background-color: var(--sidebar-hover);
 }
 
 body {
@@ -51,23 +181,40 @@ body {
 .sidebar {
   width: 260px;
   background-color: var(--bg-sidebar);
-  color: var(--text-inverse);
+  color: var(--text-primary);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  transition: all 0.3s ease;
+  transition: width 0.3s ease;
   z-index: 40;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  bottom: 16px;
+  height: calc(100vh - 32px);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  /* border-right removed for floating style */
 }
 
+.sidebar.collapsed {
+  width: 80px;
+}
+
+/* Reset sidebar link defaults — utility classes handle active/hover states */
 .sidebar a {
-  color: #D1D5DB; /* light grey text for sidebar links */
+  color: var(--text-muted);
   text-decoration: none;
   transition: all 0.2s;
 }
 
-.sidebar a:hover, .sidebar a.active {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
+.sidebar a:hover {
+  color: var(--sidebar-active-text);
+}
+
+.sidebar a.active {
+  /* Handled by sidebar-bg-active + sidebar-text-active utility classes */
+  color: var(--sidebar-active-text);
 }
 
 .main-content {
@@ -76,6 +223,13 @@ body {
   flex-direction: column;
   min-width: 0; /* Important for preventing flexbox overflow */
   background-color: var(--bg-main);
+  margin-left: 292px; /* 16px left gap + 260px width + 16px right gap */
+  min-height: 100vh;
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar-collapsed .main-content {
+  margin-left: 112px; /* 16px left gap + 80px width + 16px right gap */
 }
 
 .header {
@@ -142,7 +296,7 @@ body {
 .form-control {
   width: 100%;
   padding: 10px 14px;
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-primary);
@@ -158,7 +312,7 @@ body {
 }
 
 .form-control::placeholder {
-  color: #9CA3AF;
+  color: var(--text-muted);
 }
 
 /* Buttons */
@@ -188,13 +342,13 @@ body {
 }
 
 .btn-secondary {
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   color: var(--text-secondary);
-  border: 1px solid #D1D5DB;
+  border: 1px solid var(--border-focus);
 }
 
 .btn-secondary:hover {
-  background-color: #F3F4F6;
+  background-color: var(--bg-card-2);
   color: var(--text-primary);
 }
 
@@ -267,32 +421,29 @@ tbody tr:hover {
   display: flex;
   min-height: 100vh;
   width: 100%;
-}
-
-.login-left {
-  flex: 1;
-  background-color: #2E2E2E; /* Exact wireframe color */
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: white;
-  padding: 40px;
-}
-
-.login-right {
-  flex: 1;
-  background-color: #FFFFFF;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
+  background-image: url('./assets/kaibg.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
 }
 
 .login-form-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 450px;
+  background: rgba(15, 23, 42, 0.75); /* Dark Glass */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
 }
 
 /* Divider */
@@ -308,3 +459,69 @@ tbody tr:hover {
 .text-danger { color: var(--danger); }
 .text-warning { color: var(--warning); }
 .text-info { color: var(--info); }
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--bg-card);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 450px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.modal-close:hover {
+  background: var(--bg-main);
+  color: var(--text-primary);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Fix autofill styles for dark inputs in LoginPage */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    transition: background-color 5000s ease-in-out 0s;
+    -webkit-text-fill-color: white !important;
+}

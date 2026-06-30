@@ -15,7 +15,7 @@ const ManajemenUnit = () => {
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Manajemen Unit</h2>
+          <div className="text-sm text-muted font-medium mb-1">Manajemen <span className="mx-1">&gt;</span> <span className="text-primary">Manajemen Unit</span></div>
           <p className="page-subtitle">Kelola struktur unit operasional sistem.</p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowModal(true)}>

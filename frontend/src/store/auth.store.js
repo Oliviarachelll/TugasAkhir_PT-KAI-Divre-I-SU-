@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import apiClient from '../api/client';
+
 const useAuthStore = create(
   persist(
     (set) => ({
@@ -10,6 +12,18 @@ const useAuthStore = create(
 
       setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
       
+      login: async (email, password) => {
+        try {
+          // Response dari backend memiliki struktur: { status, message, data: { token, user } }
+          const response = await apiClient.post('/auth/login', { email, kata_sandi: password });
+          const { token, pengguna } = response.data;
+          set({ user: pengguna, token, isAuthenticated: true });
+          return pengguna;
+        } catch (error) {
+          throw error;
+        }
+      },
+
       logout: () => {
         // Hapus token dari localStorage
         localStorage.removeItem('auth-storage');

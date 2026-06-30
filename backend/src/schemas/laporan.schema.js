@@ -22,12 +22,14 @@ const updateLaporanSchema = z.object({
 // Sub-laporan schemas
 const laporanKNASchema = z.object({
   jml_kontrak_row: z.number().int().nonnegative().optional().nullable(),
-  luas_row: z.number().nonnegative().optional().nullable(),
+  luas_t_row: z.number().nonnegative().optional().nullable(),
+  luas_b_row: z.number().nonnegative().optional().nullable(),
   nilai_row: z.number().nonnegative().optional().nullable(),
   target_rkad: z.number().nonnegative().optional().nullable(),
   realisasi_rkad: z.number().nonnegative().optional().nullable(),
   jml_kontrak_non_row: z.number().int().nonnegative().optional().nullable(),
-  luas_non_row: z.number().nonnegative().optional().nullable(),
+  luas_t_non_row: z.number().nonnegative().optional().nullable(),
+  luas_b_non_row: z.number().nonnegative().optional().nullable(),
   nilai_non_row: z.number().nonnegative().optional().nullable(),
 });
 
@@ -42,6 +44,13 @@ const laporanBarangSchema = z.object({
   volume: z.number().nonnegative(),
   pendapatan: z.number().nonnegative(),
   id_komoditi: z.number().int().positive(),
+  nama_kustom: z.string().max(100).optional().nullable(),
+  volume_kumulatif: z.number().nonnegative().optional().nullable(),
+  volume_program: z.number().nonnegative().optional().nullable(),
+  volume_pencapaian: z.number().nonnegative().optional().nullable(),
+  pendapatan_kumulatif: z.number().nonnegative().optional().nullable(),
+  pendapatan_program: z.number().nonnegative().optional().nullable(),
+  pendapatan_pencapaian: z.number().nonnegative().optional().nullable(),
 });
 
 const laporanKeuanganSchema = z.object({

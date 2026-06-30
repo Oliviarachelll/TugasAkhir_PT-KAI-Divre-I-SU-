@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 150">
+  <defs>
+    <linearGradient id="gradA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#DB2777;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gradSwoosh" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#DB2777;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Main A -->
+  <text x="10" y="100" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="90" font-style="italic" fill="url(#gradA)">A</text>
+  <!-- ccess -->
+  <text x="85" y="100" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="70" font-style="italic" fill="#6D28D9" letter-spacing="-2">ccess</text>
+  <!-- Swoosh -->
+  <path d="M 12 110 Q 150 45 200 40 L 180 50 Q 80 95 20 120 Z" fill="url(#gradSwoosh)"/>
+  <!-- by KAI -->
+  <text x="210" y="130" font-family="Inter, Arial, sans-serif" font-weight="bold" font-size="24" font-style="italic" fill="#4C1D95">by KAI</text>
+</svg>

@@ -15,6 +15,8 @@ const validateBody = (schema) => (req, res, next) => {
       field: e.path.join('.'),
       message: e.message,
     }));
+    console.error("ZOD VALIDATION ERROR:", JSON.stringify(errors, null, 2));
+    console.error("PAYLOAD RECEIVED:", req.body);
     return sendError(res, 'Validasi gagal', 422, errors);
   }
   req.body = result.data; // data sudah diparse & dibersihkan

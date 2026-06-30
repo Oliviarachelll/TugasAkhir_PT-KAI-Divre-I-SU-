@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { useNavigate } from 'react-router-dom';
 import { FileText, CheckCircle, Clock, AlertTriangle, Download } from 'lucide-react';
 import StatCard from '../../components/ui/StatCard';
+import useLaporanStore from '../../store/laporan.store';
 import {
   BarChart,
   Bar,
@@ -30,11 +34,33 @@ const dummyLineData = [
 ];
 
 const DashboardAdmin = () => {
+  const navigate = useNavigate();
+  const { laporanList, fetchLaporan, isLoading } = useLaporanStore();
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text('Laporan Dashboard Admin KAI', 14, 15);
+    doc.autoTable({
+      head: [['Metric', 'Value']],
+      body: [
+        ['Total Laporan', '1,284'],
+        ['Menunggu Review', '45'],
+        ['Kinerja Rata-rata', '94%']
+      ],
+      startY: 20
+    });
+    doc.save('Dashboard_Admin_KAI.pdf');
+  };
+
+  useEffect(() => {
+    // Ambil data laporan
+    fetchLaporan({ limit: 10 });
+  }, [fetchLaporan]);
+
   return (
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Dashboard Admin Global</h2>
           <p className="page-subtitle">Ringkasan laporan dari seluruh unit operasional.</p>
         </div>
         <div className="flex gap-3">
@@ -44,7 +70,7 @@ const DashboardAdmin = () => {
             <option>DAOP 1</option>
             <option>DAOP 2</option>
           </select>
-          <button className="btn btn-secondary">
+          <button className="btn btn-secondary" onClick={handleExportPDF}>
             <Download size={18} /> Export PDF
           </button>
         </div>
@@ -79,67 +105,91 @@ const DashboardAdmin = () => {
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
               <BarChart data={dummyBarData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '8px' }}
-                  itemStyle={{ color: 'var(--text-primary)' }}
+                  cursor={{ fill: '#F9FAFB' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#F3F4F6', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}
+                  itemStyle={{ color: '#111827', fontWeight: '500' }}
                 />
-                <Bar dataKey="value" fill="var(--brand-500)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" fill="var(--brand-500)" radius={[6, 6, 0, 0]} barSize={32} />
               </BarChart>
             </ResponsiveContainer>
           </div>
+          <div style={{ display: 'flex', gap: '24px', color: '#64748b', fontSize: '12px' }}>
+            <span>AVERAGE: —</span>
+            <span>PEAK: —</span>
+            <span>GROWTH: —</span>
+          </div>
         </div>
 
-        <div className="card">
-          <h3 className="section-title">Tren Laporan (6 Bulan)</h3>
-          <div style={{ width: '100%', height: 300 }}>
+        <div className="card" style={{ padding: '24px' }}>
+          <h3 className="font-bold text-lg mb-4">Judul Grafik Trend</h3>
+          <div style={{ width: '100%', height: 200, marginBottom: '16px' }}>
             <ResponsiveContainer>
               <LineChart data={dummyLineData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F3F4F6" />
+                <XAxis dataKey="name" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#F3F4F6', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}
                 />
-                <Line type="monotone" dataKey="value" stroke="var(--accent-cyan)" strokeWidth={3} dot={{ r: 4, fill: 'var(--bg-card)', strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="a" stroke="var(--brand-500)" strokeWidth={2} dot={{ r: 4, fill: 'var(--brand-500)' }} />
+                <Line type="monotone" dataKey="b" stroke="#D1D5DB" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+          <div style={{ display: 'flex', gap: '24px', color: '#6B7280', fontSize: '12px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '12px', height: '3px', backgroundColor: 'var(--brand-500)', borderRadius: '2px' }}></div> Label A</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div style={{ width: '12px', height: '3px', backgroundColor: '#D1D5DB', borderRadius: '2px' }}></div> Label B</span>
           </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="section-title" style={{ marginBottom: 0 }}>Laporan Terbaru Menunggu Review</h3>
-          <button className="btn btn-secondary btn-sm">Lihat Semua →</button>
+      <div className="card p-0" style={{ padding: 0 }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+          <h3 className="font-bold text-lg m-0">Judul Tabel <span style={{ fontSize: '14px', fontWeight: 'normal', color: '#64748b' }}>Lihat Semua →</span></h3>
         </div>
         
-        <div className="table-wrapper">
+        <div className="table-wrapper" style={{ border: 'none' }}>
           <table>
             <thead>
               <tr>
-                <th>ID Laporan</th>
-                <th>Nama Unit</th>
-                <th>Waktu Lapor</th>
-                <th>Jenis</th>
-                <th>Status</th>
-                <th>Aksi</th>
+                <th>ID UNIT</th>
+                <th>NAMA UNIT</th>
+                <th>WAKTU LAPOR</th>
+                <th>JENIS</th>
+                <th>STATUS</th>
+                <th>AKSI</th>
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3].map((i) => (
-                <tr key={i}>
-                  <td className="font-medium text-primary">LPR-2606-{i.toString().padStart(3, '0')}</td>
-                  <td>Unit DAOP {i}</td>
-                  <td>Hari ini, 09:{i}0 WIB</td>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="6" className="text-center text-muted p-4">Memuat data...</td>
+                </tr>
+              ) : laporanList.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center text-muted p-4">Tidak ada data laporan.</td>
+                </tr>
+              ) : laporanList.map((item) => (
+                <tr key={item.id_laporan}>
+                  <td className="font-medium text-primary">LPR-{item.id_laporan}</td>
+                  <td>{item.unit?.nama_unit || `Unit ID: ${item.id_unit}`}</td>
+                  <td>{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
                   <td>Data Harian</td>
                   <td>
-                    <span className="badge badge-diajukan">MENUNGGU REVIEW</span>
+                    <span className={`badge ${item.status === 'DISETUJUI' ? 'badge-disetujui' : item.status === 'DITOLAK' || item.status === 'REVISI' ? 'badge-revisi' : 'badge-diajukan'}`}>
+                      {item.status}
+                    </span>
                   </td>
                   <td>
-                    <button className="text-brand-400 hover:text-brand-300 font-medium text-sm">Review</button>
+                    <button 
+                      className="btn btn-primary btn-sm"
+                      onClick={() => navigate(`/laporan/review/${item.id_laporan}`)}
+                    >
+                      Review
+                    </button>
                   </td>
                 </tr>
               ))}

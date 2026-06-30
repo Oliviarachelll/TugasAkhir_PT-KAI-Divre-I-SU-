@@ -129,14 +129,14 @@ const requestResetPassword = async (req, res) => {
     },
   });
 
+  // Selalu tampilkan token di console untuk mempermudah testing
+  console.log(`[RESET TOKEN] ${pengguna.email}: ${token}`);
+
   // Kirim token via WhatsApp jika no_hp tersedia
   if (pengguna.no_hp) {
     whatsappService
       .kirimTokenReset(pengguna.no_hp, pengguna.nama, token)
       .catch((err) => console.error('[WA] Gagal kirim token reset:', err.message));
-  } else {
-    // Fallback: tampilkan di console (untuk dev / jika WA tidak aktif)
-    console.log(`[RESET TOKEN] ${pengguna.email}: ${token}`);
   }
 
   return sendSuccess(res, null, 'Instruksi reset kata sandi telah dikirim.');
@@ -148,7 +148,10 @@ const requestResetPassword = async (req, res) => {
 const resetPassword = async (req, res) => {
   const { token, kata_sandi_baru } = req.body;
 
-  const tokenRecord = await prisma.tokenReset.findUnique({ where: { token } });
+  const tokenRecord = await prisma.tokenReset.findUnique({ 
+    where: { token },
+    include: { pengguna: { select: { no_hp: true } } }
+  });
 
   if (!tokenRecord) {
     return sendError(res, 'Token tidak valid', 400);
@@ -176,14 +179,14 @@ const resetPassword = async (req, res) => {
   ]);
 
   // Notifikasi WhatsApp jika password berhasil direset
-  if (pengguna.no_hp) {
+  if (tokenRecord.pengguna.no_hp) {
     const pesan =
       '✅ *Kata sandi berhasil direset*\n\n' +
       'Halo, kata sandi akun Anda telah berhasil diubah.\n' +
       'Jika ini bukan Anda, segera hubungi admin.';
 
     whatsappService
-      .kirimPesan(pengguna.no_hp, pesan)
+      .kirimPesan(tokenRecord.pengguna.no_hp, pesan)
       .catch((err) => console.error('[WA] Gagal kirim notif reset:', err.message));
   }
 

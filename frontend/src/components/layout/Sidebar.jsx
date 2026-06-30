@@ -11,12 +11,17 @@ import {
   Users,
   Building2,
   Bell,
-  Activity
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import useAuthStore from '../../store/auth.store';
 import toast from 'react-hot-toast';
+import kaiLogo from '../../assets/kai-logo.svg';
 
-const Sidebar = ({ className }) => {
+const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) => {
   const navigate = useNavigate();
   const { user, setAuth } = useAuthStore();
 
@@ -30,61 +35,87 @@ const Sidebar = ({ className }) => {
     USER_UNIT: [
       { path: '/dashboard/unit', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/laporan/input', label: 'Input Laporan', icon: FileText },
-      { path: '/laporan/history', label: 'History Laporan', icon: History },
-      { path: '/target', label: 'Target Saya', icon: Target },
+      { path: '/laporan/history', label: 'Riwayat Laporan', icon: History },
       { path: '/helpdesk', label: 'Helpdesk', icon: Headset },
-      { path: '/settings', label: 'Settings', icon: Settings },
+      { path: '/settings', label: 'Pengaturan', icon: Settings },
     ],
     ADMIN_GLOBAL: [
       { path: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/laporan/review', label: 'Laporan', icon: FileText },
-      { path: '/laporan/history', label: 'History Laporan', icon: History },
       { path: '/manajemen/unit', label: 'Manajemen Unit', icon: Building2 },
       { path: '/manajemen/user', label: 'Manajemen User', icon: Users },
       { path: '/helpdesk', label: 'Helpdesk', icon: Headset },
       { path: '/notifikasi', label: 'Notifikasi', icon: Bell },
-      { path: '/settings', label: 'Settings', icon: Settings },
+      { path: '/settings', label: 'Pengaturan', icon: Settings },
     ],
     IT: [
       { path: '/dashboard/it', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/monitoring', label: 'Monitoring Sistem', icon: Activity },
       { path: '/helpdesk', label: 'Helpdesk', icon: Headset },
       { path: '/notifikasi', label: 'Notifikasi', icon: Bell },
-      { path: '/settings', label: 'Settings', icon: Settings },
+      { path: '/settings', label: 'Pengaturan', icon: Settings },
     ]
   };
 
   const currentNav = user?.peran ? navItems[user.peran] : [];
 
   return (
-    <aside className={`sidebar ${className || ''}`}>
-      <div className="p-6 border-b border-gray-700">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 border border-gray-500 flex items-center justify-center text-gray-300">
-            Logo
+    <aside className={`sidebar bg-[var(--sidebar)] ${className || ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ borderRight: '1px solid var(--border)' }}>
+      <div className="px-6 py-5 border-b relative flex flex-col items-start gap-4" style={{ height: '88px', justifyContent: 'center', borderColor: 'var(--border)' }}>
+        <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : 'gap-4'}`}>
+          <div className="flex items-center justify-center p-1.5 rounded-xl flex-shrink-0" style={{ backgroundColor: 'var(--bg-main)' }}>
+            <img src={kaiLogo} alt="KAI Logo" className="h-7 w-auto object-contain" />
           </div>
-          <span className="text-xl font-medium text-white tracking-tight">App Name</span>
+          <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-[200px] opacity-100'}`}>
+            <span className="text-[15px] font-bold tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>Access by KAI</span>
+            <span className="text-xs mt-1.5 font-medium truncate" style={{ color: 'var(--text-secondary)' }}>Divre 1 SUMUT</span>
+          </div>
         </div>
+        
+        <button 
+          onClick={toggleCollapse}
+          className="absolute -right-3.5 top-6 rounded-xl p-1.5 border hidden md:block transition-colors shadow-sm"
+          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--sidebar)', color: 'var(--text-secondary)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-main)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+        >
+          {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1">
+      <div className="flex-1 overflow-y-auto py-6">
+        <ul className="space-y-1.5">
           {currentNav.map((item) => {
             const Icon = item.icon;
             return (
-              <li key={item.path}>
+              <li key={item.path} className="px-4">
                 <NavLink
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-6 py-3 text-sm font-medium ${
+                    `flex items-center px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                       isActive 
-                        ? 'bg-white/10 text-white border-l-4 border-white' 
-                        : 'text-gray-400 hover:bg-white/5 hover:text-white border-l-4 border-transparent'
-                    }`
+                        ? 'shadow-sm' 
+                        : ''
+                    } ${isCollapsed ? 'justify-center' : ''}`
                   }
+                  style={({ isActive }) => ({
+                    backgroundColor: isActive ? 'var(--sidebar-active)' : 'transparent',
+                    color: isActive ? 'var(--sidebar-active-text)' : 'var(--text-secondary)'
+                  })}
+                  onMouseEnter={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'var(--bg-main)'; e.currentTarget.style.color = 'var(--sidebar-active-text)'; } }}
+                  onMouseLeave={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
+                  title={isCollapsed ? item.label : ""}
                 >
-                  <Icon size={18} />
-                  {item.label}
+                  {({ isActive }) => (
+                    <>
+                      <div className="flex-shrink-0">
+                        <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
+                      </div>
+                      <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}`}>
+                        {item.label}
+                      </span>
+                    </>
+                  )}
                 </NavLink>
               </li>
             );
@@ -92,14 +123,26 @@ const Sidebar = ({ className }) => {
         </ul>
       </div>
 
-      <div className="p-4 border-t border-gray-700">
-        <button 
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-2 py-3 text-sm font-medium text-gray-400 hover:text-white w-full text-left"
-        >
-          <LogOut size={18} />
-          Keluar
-        </button>
+      <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+        <ul className="px-1">
+          <li>
+            <button 
+              onClick={handleLogout}
+              className={`flex items-center px-4 py-3 rounded-xl text-sm font-semibold w-full transition-all duration-200 ${isCollapsed ? 'justify-center' : 'text-left'}`}
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; e.currentTarget.style.color = 'var(--danger)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              title={isCollapsed ? "Keluar" : ""}
+            >
+              <div className="flex-shrink-0">
+                <LogOut size={18} strokeWidth={2} />
+              </div>
+              <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}`}>
+                Keluar
+              </span>
+            </button>
+          </li>
+        </ul>
       </div>
     </aside>
   );

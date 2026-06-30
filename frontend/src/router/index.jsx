@@ -47,7 +47,8 @@ const AppRouter = () => {
         {/* ADMIN_GLOBAL Routes */}
         <Route element={<ProtectedRoute allowedRoles={['ADMIN_GLOBAL']} />}>
           <Route path="/dashboard/admin" element={<DashboardAdmin />} />
-          <Route path="/laporan/review" element={<ReviewLaporan />} />
+          <Route path="/laporan/review" element={<HistoryLaporan />} />
+          <Route path="/laporan/review/:id" element={<ReviewLaporan />} />
           <Route path="/manajemen/user" element={<ManajemenUser />} />
           <Route path="/manajemen/unit" element={<ManajemenUnit />} />
         </Route>
@@ -68,6 +69,7 @@ const AppRouter = () => {
         {/* Shared Routes: Admin & User Unit */}
         <Route element={<ProtectedRoute allowedRoles={['ADMIN_GLOBAL', 'USER_UNIT']} />}>
           <Route path="/laporan/history" element={<HistoryLaporan />} />
+          <Route path="/laporan/detail/:id" element={<ReviewLaporan />} />
         </Route>
 
         {/* Shared Routes: All */}

@@ -268,14 +268,16 @@ model LaporanKNA {
 
   // Data ROW (Right of Way)
   jml_kontrak_row   Int?
-  luas_row          Decimal? @db.Decimal(15, 4) // dalam m² atau ha
+  luas_t_row        Decimal? @db.Decimal(15, 4) // Tanah (dalam m² atau ha)
+  luas_b_row        Decimal? @db.Decimal(15, 4) // Bangunan
   nilai_row         Decimal? @db.Decimal(15, 2)
   target_rkad       Decimal? @db.Decimal(15, 2) // target RKAD
   realisasi_rkad    Decimal? @db.Decimal(15, 2)
 
   // Data Non-ROW
   jml_kontrak_non_row Int?
-  luas_non_row        Decimal? @db.Decimal(15, 4)
+  luas_t_non_row      Decimal? @db.Decimal(15, 4)
+  luas_b_non_row      Decimal? @db.Decimal(15, 4)
   nilai_non_row       Decimal? @db.Decimal(15, 2)
 
   // Foreign Key (1-to-1 dengan Laporan)
@@ -295,6 +297,10 @@ model LaporanKNA {
 model LaporanPenumpang {
   id_laporan_penumpang Int     @id @default(autoincrement())
   nama_ka              String  @db.VarChar(150) // Nama kereta api
+  no_ka                String? @db.VarChar(50)
+  lintas               String? @db.VarChar(100)
+  berangkat            String? @db.VarChar(50)
+  kedatangan           String? @db.VarChar(50)
   jml_penumpang        Int
   pendapatan           Decimal @db.Decimal(15, 2)
 
@@ -315,8 +321,15 @@ model LaporanPenumpang {
 model LaporanBarang {
   id_laporan_barang Int     @id @default(autoincrement())
   jml_ka            Int     // Jumlah kereta api
+  nama_kustom       String? @db.VarChar(100)
   volume            Decimal @db.Decimal(15, 4)
+  volume_kumulatif  Decimal? @db.Decimal(15, 4)
+  volume_program    Decimal? @db.Decimal(15, 4)
+  volume_pencapaian Decimal? @db.Decimal(15, 2)
   pendapatan        Decimal @db.Decimal(15, 2)
+  pendapatan_kumulatif Decimal? @db.Decimal(15, 2)
+  pendapatan_program   Decimal? @db.Decimal(15, 2)
+  pendapatan_pencapaian Decimal? @db.Decimal(15, 2)
 
   // Foreign Keys
   id_laporan  Int

@@ -37,7 +37,7 @@ const AnalitikPage = () => {
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Analitik & Grafik</h2>
+          <div className="text-sm text-muted font-medium mb-1">Analitik <span className="mx-1">&gt;</span> <span className="text-primary">Analitik & Grafik</span></div>
           <p className="page-subtitle">Analisis mendalam data operasional dan tren.</p>
         </div>
         <div className="flex gap-2">

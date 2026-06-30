@@ -1,0 +1,212 @@
+import React, { useState, useMemo } from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell
+} from 'recharts';
+// import { Send } from 'lucide-react';
+
+const DashboardKNA = ({ laporanList, approvedLaporan }) => {
+  const [chartDays, setChartDays] = useState(7);
+
+  // Target RKAD (Khusus KNA)
+  const latestLaporanKNA = useMemo(() => {
+    const found = laporanList.find(l => l.laporan_kna);
+    return found ? found.laporan_kna : null;
+  }, [laporanList]);
+
+  const targetRKAD = latestLaporanKNA?.target_rkad ? parseFloat(latestLaporanKNA.target_rkad) : 0;
+
+  // Kalkulasi Akumulasi KNA
+  let realisasiRKAD = 0;
+  let totalLuasTanahRow = 0;
+  let totalLuasBangunanRow = 0;
+  let totalLuasTanahNonRow = 0;
+  let totalLuasBangunanNonRow = 0;
+  let totalKontrakRow = 0;
+  let totalKontrakNonRow = 0;
+
+  approvedLaporan.forEach(l => {
+    if (l.laporan_kna) {
+      const kna = l.laporan_kna;
+      realisasiRKAD += kna.realisasi_rkad ? parseFloat(kna.realisasi_rkad) : 0;
+      totalLuasTanahRow += kna.luas_t_row ? parseFloat(kna.luas_t_row) : 0;
+      totalLuasBangunanRow += kna.luas_b_row ? parseFloat(kna.luas_b_row) : 0;
+      totalLuasTanahNonRow += kna.luas_t_non_row ? parseFloat(kna.luas_t_non_row) : 0;
+      totalLuasBangunanNonRow += kna.luas_b_non_row ? parseFloat(kna.luas_b_non_row) : 0;
+      totalKontrakRow += kna.jml_kontrak_row ? parseInt(kna.jml_kontrak_row) : 0;
+      totalKontrakNonRow += kna.jml_kontrak_non_row ? parseInt(kna.jml_kontrak_non_row) : 0;
+    }
+  });
+
+  const persentaseKNA = targetRKAD > 0 ? ((realisasiRKAD / targetRKAD) * 100).toFixed(1) : 0;
+
+  const donutDataKNA = [
+    { name: 'Realisasi', value: realisasiRKAD },
+    { name: 'Sisa Target', value: Math.max(0, targetRKAD - realisasiRKAD) }
+  ];
+  const donutColors = ['var(--brand-500)', 'var(--border-strong)'];
+
+  const chartData = useMemo(() => {
+    const data = [];
+    const today = new Date();
+    
+    for (let i = chartDays - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      
+      const laporanHariIni = approvedLaporan.filter(l => l.tanggal.startsWith(dateStr) && l.laporan_kna);
+      
+      let sumROW = 0;
+      let sumNonROW = 0;
+      laporanHariIni.forEach(l => {
+        sumROW += l.laporan_kna.nilai_row ? parseFloat(l.laporan_kna.nilai_row) : 0;
+        sumNonROW += l.laporan_kna.nilai_non_row ? parseFloat(l.laporan_kna.nilai_non_row) : 0;
+      });
+      data.push({
+        name: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        ROW: sumROW,
+        NonROW: sumNonROW
+      });
+    }
+    return data;
+  }, [approvedLaporan, chartDays]);
+
+  const knaSummary = useMemo(() => {
+    if (chartData.length === 0) return { max: 'Rp 0', min: 'Rp 0', avg: 'Rp 0', growth: '0%' };
+    const dailyTotals = chartData.map(d => (d.ROW || 0) + (d.NonROW || 0));
+    const nonZeroTotals = dailyTotals.filter(t => t > 0);
+    const max = dailyTotals.length ? Math.max(...dailyTotals) : 0;
+    const min = nonZeroTotals.length ? Math.min(...nonZeroTotals) : 0;
+    const avg = dailyTotals.length ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length : 0;
+    const firstDay = dailyTotals[0] || 0;
+    const lastDay = dailyTotals[dailyTotals.length - 1] || 0;
+    
+    let growth = 0;
+    if (firstDay > 0) {
+      growth = ((lastDay - firstDay) / firstDay) * 100;
+    } else if (lastDay > 0) {
+      growth = 100; 
+    }
+
+    return {
+      max: `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(max)}`,
+      min: `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(min)}`,
+      avg: `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(avg)}`,
+      growth: `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`
+    };
+  }, [chartData]);
+
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px', marginBottom: '24px' }}>
+        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Tanah ROW</p>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasTanahRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+        </div>
+        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Bangunan ROW</p>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasBangunanRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+        </div>
+        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Tanah Non-ROW</p>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasTanahNonRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+        </div>
+        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Bgn Non-ROW</p>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasBangunanNonRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+        </div>
+        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <p className="text-muted text-xs mb-1 font-medium text-center">Total Kontrak ROW</p>
+          <h3 className="text-xl font-bold text-gray-800 text-center">{totalKontrakRow.toLocaleString('id-ID')}</h3>
+        </div>
+        <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <p className="text-muted text-xs mb-1 font-medium text-center">Total Kontrak Non-ROW</p>
+          <h3 className="text-xl font-bold text-gray-800 text-center">{totalKontrakNonRow.toLocaleString('id-ID')}</h3>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 className="font-semibold text-lg m-0 text-gray-800">Nilai Kontrak KNA</h3>
+            <select value={chartDays} onChange={(e) => setChartDays(parseInt(e.target.value))} className="form-control" style={{ width: 'auto', padding: '4px 12px', height: 'auto' }}>
+              <option value={7}>7 Hari Terakhir</option>
+              <option value={14}>14 Hari Terakhir</option>
+              <option value={30}>30 Hari Terakhir</option>
+            </select>
+          </div>
+          <div style={{ width: '100%', height: 320 }}>
+            <ResponsiveContainer>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value) => `Rp ${value.toLocaleString('id-ID')}`} cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }} />
+                <Bar dataKey="ROW" name="Nilai ROW" fill="var(--brand-500)" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="NonROW" name="Nilai Non-ROW" fill="#6366F1" radius={[4, 4, 0, 0]} barSize={30} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', paddingTop: '20px', borderTop: '1px dashed var(--border)' }}>
+            <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+              <p className="text-xs text-muted mb-1">Tertinggi ({chartDays}h)</p>
+              <p className="font-semibold text-gray-800">{knaSummary.max}</p>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+              <p className="text-xs text-muted mb-1">Terendah ({chartDays}h)</p>
+              <p className="font-semibold text-gray-800">{knaSummary.min}</p>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border)' }}>
+              <p className="text-xs text-muted mb-1">Rata-rata Harian</p>
+              <p className="font-semibold text-gray-800">{knaSummary.avg}</p>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <p className="text-xs text-muted mb-1">Trend Pertumbuhan</p>
+              <p className={`font-semibold ${knaSummary.growth.startsWith('+') ? 'text-success' : knaSummary.growth === '0%' ? 'text-muted' : 'text-danger'}`}>
+                {knaSummary.growth}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div className="card" style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <h3 className="font-semibold text-lg m-0 text-gray-800 mb-4">Pencapaian RKAD</h3>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <div style={{ width: '100%', height: 180 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie data={donutDataKNA} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value" stroke="none">
+                      {donutDataKNA.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={donutColors[index]} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
+                <h2 className="text-3xl font-bold" style={{ color: 'var(--brand-500)' }}>{persentaseKNA}%</h2>
+                <p className="text-xs text-muted">Realisasi</p>
+              </div>
+            </div>
+            <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
+                <p className="text-xs text-muted mb-1">Total Realisasi</p>
+                <p className="font-semibold text-gray-800">Rp {realisasiRKAD.toLocaleString('id-ID')}</p>
+              </div>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <p className="text-xs text-muted mb-1">Target RKAD</p>
+                <p className="font-semibold text-gray-800">Rp {targetRKAD.toLocaleString('id-ID')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </>
+  );
+};
+
+export default DashboardKNA;
