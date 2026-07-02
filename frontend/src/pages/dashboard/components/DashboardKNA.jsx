@@ -3,10 +3,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
-// import { Send } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const DashboardKNA = ({ laporanList, approvedLaporan }) => {
   const [chartDays, setChartDays] = useState(7);
+  const { t } = useTranslation();
 
   // Target RKAD (Khusus KNA)
   const latestLaporanKNA = useMemo(() => {
@@ -101,27 +102,27 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Tanah ROW</p>
+          <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.land_row')}</p>
           <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasTanahRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Bangunan ROW</p>
+          <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.building_row')}</p>
           <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasBangunanRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Tanah Non-ROW</p>
+          <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.land_non_row')}</p>
           <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasTanahNonRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-xs mb-1 font-medium text-center">Luas Bgn Non-ROW</p>
+          <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.building_non_row')}</p>
           <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasBangunanNonRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-xs mb-1 font-medium text-center">Total Kontrak ROW</p>
+          <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.contract_row')}</p>
           <h3 className="text-xl font-bold text-gray-800 text-center">{totalKontrakRow.toLocaleString('id-ID')}</h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-xs mb-1 font-medium text-center">Total Kontrak Non-ROW</p>
+          <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.contract_non_row')}</p>
           <h3 className="text-xl font-bold text-gray-800 text-center">{totalKontrakNonRow.toLocaleString('id-ID')}</h3>
         </div>
       </div>
@@ -129,11 +130,11 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 className="font-semibold text-lg m-0 text-gray-800">Nilai Kontrak KNA</h3>
+            <h3 className="font-semibold text-lg m-0 text-gray-800">{t('kna.contract_value')}</h3>
             <select value={chartDays} onChange={(e) => setChartDays(parseInt(e.target.value))} className="form-control" style={{ width: 'auto', padding: '4px 12px', height: 'auto' }}>
-              <option value={7}>7 Hari Terakhir</option>
-              <option value={14}>14 Hari Terakhir</option>
-              <option value={30}>30 Hari Terakhir</option>
+              <option value={7}>{t('dashboard.last_7_days')}</option>
+              <option value={14}>{t('dashboard.last_14_days')}</option>
+              <option value={30}>{t('dashboard.last_30_days')}</option>
             </select>
           </div>
           <div style={{ width: '100%', height: 320 }}>
@@ -151,19 +152,19 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', paddingTop: '20px', borderTop: '1px dashed var(--border)' }}>
             <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border)' }}>
-              <p className="text-xs text-muted mb-1">Tertinggi ({chartDays}h)</p>
+              <p className="text-xs text-muted mb-1">{t('dashboard.highest')} ({chartDays}h)</p>
               <p className="font-semibold text-gray-800">{knaSummary.max}</p>
             </div>
             <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border)' }}>
-              <p className="text-xs text-muted mb-1">Terendah ({chartDays}h)</p>
+              <p className="text-xs text-muted mb-1">{t('dashboard.lowest')} ({chartDays}h)</p>
               <p className="font-semibold text-gray-800">{knaSummary.min}</p>
             </div>
             <div style={{ flex: 1, textAlign: 'center', borderRight: '1px solid var(--border)' }}>
-              <p className="text-xs text-muted mb-1">Rata-rata Harian</p>
+              <p className="text-xs text-muted mb-1">{t('dashboard.avg')} ({chartDays}h)</p>
               <p className="font-semibold text-gray-800">{knaSummary.avg}</p>
             </div>
             <div style={{ flex: 1, textAlign: 'center' }}>
-              <p className="text-xs text-muted mb-1">Trend Pertumbuhan</p>
+              <p className="text-xs text-muted mb-1">{t('dashboard.growth')}</p>
               <p className={`font-semibold ${knaSummary.growth.startsWith('+') ? 'text-success' : knaSummary.growth === '0%' ? 'text-muted' : 'text-danger'}`}>
                 {knaSummary.growth}
               </p>

@@ -20,10 +20,12 @@ import {
 import useAuthStore from '../../store/auth.store';
 import toast from 'react-hot-toast';
 import kaiLogo from '../../assets/kai-logo.svg';
+import { useTranslation } from 'react-i18next';
 
 const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) => {
   const navigate = useNavigate();
   const { user, setAuth } = useAuthStore();
+  const { t } = useTranslation();
 
   const handleLogout = () => {
     setAuth(null, null);
@@ -33,27 +35,27 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
 
   const navItems = {
     USER_UNIT: [
-      { path: '/dashboard/unit', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/dashboard/unit', label: t('menu.dashboard'), icon: LayoutDashboard },
       { path: '/laporan/input', label: 'Input Laporan', icon: FileText },
-      { path: '/laporan/history', label: 'Riwayat Laporan', icon: History },
-      { path: '/helpdesk', label: 'Helpdesk', icon: Headset },
-      { path: '/settings', label: 'Pengaturan', icon: Settings },
+      { path: '/laporan/history', label: t('menu.laporan'), icon: History },
+      { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
+      { path: '/settings', label: t('menu.settings'), icon: Settings },
     ],
     ADMIN_GLOBAL: [
-      { path: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
-      { path: '/laporan/review', label: 'Laporan', icon: FileText },
+      { path: '/dashboard/admin', label: t('menu.dashboard'), icon: LayoutDashboard },
+      { path: '/laporan/review', label: 'Review Laporan', icon: FileText },
       { path: '/manajemen/unit', label: 'Manajemen Unit', icon: Building2 },
       { path: '/manajemen/user', label: 'Manajemen User', icon: Users },
-      { path: '/helpdesk', label: 'Helpdesk', icon: Headset },
+      { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/notifikasi', label: 'Notifikasi', icon: Bell },
-      { path: '/settings', label: 'Pengaturan', icon: Settings },
+      { path: '/settings', label: t('menu.settings'), icon: Settings },
     ],
     IT: [
-      { path: '/dashboard/it', label: 'Dashboard', icon: LayoutDashboard },
-      { path: '/monitoring', label: 'Monitoring Sistem', icon: Activity },
-      { path: '/helpdesk', label: 'Helpdesk', icon: Headset },
+      { path: '/dashboard/it', label: t('menu.dashboard'), icon: LayoutDashboard },
+      { path: '/monitoring', label: t('menu.monitoring'), icon: Activity },
+      { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/notifikasi', label: 'Notifikasi', icon: Bell },
-      { path: '/settings', label: 'Pengaturan', icon: Settings },
+      { path: '/settings', label: t('menu.settings'), icon: Settings },
     ]
   };
 
@@ -138,7 +140,7 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
                 <LogOut size={18} strokeWidth={2} />
               </div>
               <span className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0 ml-0' : 'max-w-[200px] opacity-100 ml-3'}`}>
-                Keluar
+                {t('menu.logout')}
               </span>
             </button>
           </li>

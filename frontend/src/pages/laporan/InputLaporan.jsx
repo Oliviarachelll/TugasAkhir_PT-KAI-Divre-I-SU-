@@ -3,6 +3,7 @@ import { CheckCircle2, Save, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import useLaporanStore from '../../store/laporan.store';
 import useAuthStore from '../../store/auth.store';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 
 import FormKNA from './components/FormKNA';
 import FormBarang from './components/FormBarang';
@@ -19,6 +20,7 @@ const InputLaporan = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const { draftLaporan, setDraft, submitDraft, isLoading } = useLaporanStore();
   const { user } = useAuthStore();
+  const { t } = useTranslation();
 
   const unitName = user?.unit?.nama_unit || '';
 
@@ -102,7 +104,7 @@ const InputLaporan = () => {
     <div>
       <div className="page-header">
         <div>
-          <div className="text-sm text-muted font-medium mb-1">Input Laporan <span className="mx-1">&gt;</span> <span className="text-primary">{unitName || '...'}</span></div>
+          <div className="text-sm text-muted font-medium mb-1">{t('menu.laporan')} <span className="mx-1">&gt;</span> <span className="text-primary">{t('laporan.input_title')}</span></div>
         </div>
       </div>
 
@@ -188,7 +190,7 @@ const InputLaporan = () => {
         </button>
         {currentStep >= 2 && (
           <button className="btn btn-primary" onClick={handleSubmit} disabled={isLoading}>
-            <Send size={18} /> {isLoading ? 'Menyimpan...' : 'Submit Laporan'}
+            <Send size={18} /> {isLoading ? 'Menyimpan...' : t('laporan.submit')}
           </button>
         )}
       </div>

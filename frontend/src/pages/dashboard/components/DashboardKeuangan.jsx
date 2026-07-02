@@ -2,9 +2,11 @@ import React, { useState, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 
 const DashboardKeuangan = ({ approvedLaporan }) => {
   const [chartDays, setChartDays] = useState(7);
+  const { t } = useTranslation();
 
   // Kalkulasi Akumulasi Keuangan
   let totalPendapatanKeuangan = 0;
@@ -51,25 +53,25 @@ const DashboardKeuangan = ({ approvedLaporan }) => {
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-sm mb-4 font-medium text-center">Total Pendapatan</p>
+          <p className="text-muted text-sm mb-4 font-medium text-center">{t('keuangan.total_income')}</p>
           <h3 className="text-3xl font-bold text-center" style={{ color: '#16a34a' }}>Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalPendapatanKeuangan)}</h3>
         </div>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-sm mb-4 font-medium text-center">Total Pengeluaran</p>
+          <p className="text-muted text-sm mb-4 font-medium text-center">{t('keuangan.total_expense')}</p>
           <h3 className="text-3xl font-bold text-center" style={{ color: '#dc2626' }}>Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalPengeluaranKeuangan)}</h3>
         </div>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <p className="text-muted text-sm mb-4 font-medium text-center">Total Laba/Rugi</p>
+          <p className="text-muted text-sm mb-4 font-medium text-center">{t('keuangan.total_profit')}</p>
           <h3 className="text-3xl font-bold text-center" style={{ color: totalLabaRugiKeuangan >= 0 ? '#16a34a' : '#dc2626' }}>Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalLabaRugiKeuangan)}</h3>
         </div>
       </div>
       <div className="card mb-6" style={{ marginBottom: '24px', padding: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <h3 className="font-semibold text-lg m-0 text-gray-800">Tren Arus Kas (Pendapatan & Pengeluaran)</h3>
+          <h3 className="font-semibold text-lg m-0 text-gray-800">{t('keuangan.cashflow_trend')}</h3>
           <select value={chartDays} onChange={(e) => setChartDays(parseInt(e.target.value))} className="form-control" style={{ width: 'auto', padding: '4px 12px', height: 'auto' }}>
-            <option value={7}>7 Hari Terakhir</option>
-            <option value={14}>14 Hari Terakhir</option>
-            <option value={30}>30 Hari Terakhir</option>
+            <option value={7}>{t('dashboard.last_7_days')}</option>
+            <option value={14}>{t('dashboard.last_14_days')}</option>
+            <option value={30}>{t('dashboard.last_30_days')}</option>
           </select>
         </div>
         <div style={{ height: '350px' }}>

@@ -152,24 +152,37 @@ async function main() {
   }
 
   // ============================================================
-  // 3. Seed Komoditi Barang (per unit)
+  // 3. Bersihkan Data Laporan & Komoditi Lama
   // ============================================================
+  console.log('\n🧹 Menghapus data laporan lama...');
+  await prisma.laporanKNA.deleteMany({});
+  await prisma.laporanBarang.deleteMany({});
+  await prisma.laporanPenumpang.deleteMany({});
+  await prisma.laporanKeuangan.deleteMany({});
+  await prisma.laporan.deleteMany({});
+  console.log('  ✅ Data laporan lama berhasil dihapus.');
+
   console.log('\n📦 Seeding komoditi...');
 
+  // Hapus semua komoditi lama agar tidak ada sisa 'Pupuk', 'Beras', dll.
+  await prisma.komoditiBarang.deleteMany({});
+
+  // Komoditi wajib yang diminta user
   const KOMODITI = [
-    { nama_komoditi: 'Batu Bara',  satuan: 'TON', id_unit: unitBarang.id_unit },
-    { nama_komoditi: 'Semen',      satuan: 'TON', id_unit: unitBarang.id_unit },
-    { nama_komoditi: 'Pupuk',      satuan: 'TON', id_unit: unitBarang.id_unit },
-    { nama_komoditi: 'BBM',        satuan: 'KL',  id_unit: unitBarang.id_unit },
-    { nama_komoditi: 'Beras',      satuan: 'TON', id_unit: unitBarang.id_unit },
-    { nama_komoditi: 'Kontainer',  satuan: 'TEU', id_unit: unitBarang.id_unit },
+    { id_komoditi: 10, nama_komoditi: 'Peti Kemas',  satuan: 'TON', id_unit: unitBarang.id_unit },
+    { id_komoditi: 11, nama_komoditi: 'CPO',         satuan: 'TON', id_unit: unitBarang.id_unit },
+    { id_komoditi: 12, nama_komoditi: 'BBM',         satuan: 'TON', id_unit: unitBarang.id_unit },
+    { id_komoditi: 13, nama_komoditi: 'Palm Kernel', satuan: 'TON', id_unit: unitBarang.id_unit },
+    { id_komoditi: 14, nama_komoditi: 'Lateks',      satuan: 'TON', id_unit: unitBarang.id_unit },
+    { id_komoditi: 15, nama_komoditi: 'BHP',         satuan: 'B',   id_unit: unitBarang.id_unit },
+    // Tambahkan custom komoditi dan total summary (id_unit: 1 sesuai log sebelumnya)
+    { id_komoditi: 98, nama_komoditi: 'CUSTOM KOMODITI', satuan: '-', id_unit: unitPusat.id_unit },
+    { id_komoditi: 99, nama_komoditi: 'TOTAL SUMMARY',   satuan: '-', id_unit: unitPusat.id_unit }
   ];
 
   for (const k of KOMODITI) {
-    const komoditi = await prisma.komoditiBarang.upsert({
-      where: { id_komoditi: KOMODITI.indexOf(k) + 1 },
-      update: {},
-      create: k,
+    const komoditi = await prisma.komoditiBarang.create({
+      data: k,
     });
     console.log(`  ✅ ${komoditi.nama_komoditi} (${komoditi.satuan})`);
   }
@@ -203,6 +216,130 @@ async function main() {
     const namaUnit = createdUnits.find(u => u.id_unit === t.id_unit)?.nama_unit;
     console.log(`  ✅ ${namaUnit} — ${t.kategori} ${t.tahun}: ${t.nilai.toLocaleString('id-ID')}`);
   }
+
+  // ============================================================
+  // 6. Seed Laporan Bervariasi (KNA, Barang, Penumpang) - 50 Data
+  // ============================================================
+  console.log('\n📄 Seeding 50 Laporan bervariasi...');
+
+  const userKna = await prisma.pengguna.findUnique({ where: { email: 'unit.kna@rache.id' } });
+  const userBarang = await prisma.pengguna.findUnique({ where: { email: 'unit.barang@rache.id' } });
+  const userPenumpang = await prisma.pengguna.findUnique({ where: { email: 'unit.penumpang@rache.id' } });
+  
+  const semuaKomoditiBarang = await prisma.komoditiBarang.findMany({
+    where: { 
+      id_unit: unitBarang.id_unit,
+      id_komoditi: { notIn: [98, 99] }
+    }
+  });
+
+  const statusInternalList = ['PENDING', 'DALAM_PROSES', 'SELESAI', 'DIBATALKAN'];
+  const statusLaporanList = ['DRAFT', 'DIAJUKAN', 'DISETUJUI', 'DITOLAK', 'REVISI'];
+  const namaKaList = ['Argo Bromo', 'Argo Lawu', 'Taksaka', 'Gajayana', 'Bima', 'Turangga'];
+
+  let countKNA = 0;
+  let countBarang = 0;
+  let countPenumpang = 0;
+
+  for (let i = 0; i < 30; i++) {
+    // Tanggal berurut dari hari ini mundur 30 hari
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - i);
+    
+    // Fungsi bantuan untuk merandom status
+    const getRandomInternal = () => statusInternalList[Math.floor(Math.random() * statusInternalList.length)];
+    // Beri bobot lebih tinggi (50%) untuk DISETUJUI agar grafik lebih mudah dilihat
+    const getRandomStatus = () => {
+      const rand = Math.random();
+      if (rand < 0.5) return 'DISETUJUI';
+      return statusLaporanList[Math.floor(Math.random() * statusLaporanList.length)];
+    };
+
+    // 1. Seed KNA
+    if (userKna) {
+      await prisma.laporan.create({
+        data: {
+          tanggal: pastDate,
+          status_internal: getRandomInternal(),
+          status: getRandomStatus(),
+          id_unit: unitKNA.id_unit,
+          id_pengguna: userKna.id_pengguna,
+          laporan_kna: {
+            create: {
+              jml_kontrak_row: Math.floor(Math.random() * 20) + 5,
+              luas_t_row: parseFloat((Math.random() * 10000 + 1000).toFixed(4)),
+              luas_b_row: parseFloat((Math.random() * 5000 + 500).toFixed(4)),
+              nilai_row: parseFloat((Math.random() * 500000000 + 50000000).toFixed(2)),
+              target_rkad: 1000000000,
+              realisasi_rkad: parseFloat((Math.random() * 1000000000).toFixed(2)),
+              jml_kontrak_non_row: Math.floor(Math.random() * 10) + 1,
+              luas_t_non_row: parseFloat((Math.random() * 5000 + 500).toFixed(4)),
+              luas_b_non_row: parseFloat((Math.random() * 2000 + 200).toFixed(4)),
+              nilai_non_row: parseFloat((Math.random() * 200000000 + 20000000).toFixed(2))
+            }
+          }
+        }
+      });
+      countKNA++;
+    }
+
+    // 2. Seed Barang
+    if (userBarang && semuaKomoditiBarang.length > 0) {
+      const arrayLaporanBarang = semuaKomoditiBarang.map(komoditi => {
+        return {
+          jml_ka: Math.floor(Math.random() * 15) + 2,
+          volume: parseFloat((Math.random() * 20000 + 5000).toFixed(4)),
+          volume_kumulatif: parseFloat((Math.random() * 100000 + 20000).toFixed(4)),
+          volume_program: 150000,
+          volume_pencapaian: parseFloat((Math.random() * 100).toFixed(2)),
+          pendapatan: parseFloat((Math.random() * 1000000000 + 100000000).toFixed(2)),
+          pendapatan_kumulatif: parseFloat((Math.random() * 5000000000 + 500000000).toFixed(2)),
+          pendapatan_program: 6000000000,
+          pendapatan_pencapaian: parseFloat((Math.random() * 100).toFixed(2)),
+          id_komoditi: komoditi.id_komoditi
+        };
+      });
+
+      await prisma.laporan.create({
+        data: {
+          tanggal: pastDate,
+          status_internal: getRandomInternal(),
+          status: getRandomStatus(),
+          id_unit: unitBarang.id_unit,
+          id_pengguna: userBarang.id_pengguna,
+          laporan_barang: {
+            create: arrayLaporanBarang
+          }
+        }
+      });
+      countBarang++;
+    }
+
+    // 3. Seed Penumpang
+    if (userPenumpang) {
+      const arrayLaporanPenumpang = namaKaList.map(ka => ({
+        nama_ka: ka,
+        jml_penumpang: Math.floor(Math.random() * 5000) + 1000,
+        pendapatan: parseFloat((Math.random() * 500000000 + 50000000).toFixed(2))
+      }));
+
+      await prisma.laporan.create({
+        data: {
+          tanggal: pastDate,
+          status_internal: getRandomInternal(),
+          status: getRandomStatus(),
+          id_unit: unitPenumpang.id_unit,
+          id_pengguna: userPenumpang.id_pengguna,
+          laporan_penumpang: {
+            create: arrayLaporanPenumpang
+          }
+        }
+      });
+      countPenumpang++;
+    }
+  }
+
+  console.log(`  ✅ Berhasil generate ${countKNA} KNA, ${countBarang} Barang, ${countPenumpang} Penumpang bervariasi.`);
 
   // ============================================================
   // RINGKASAN

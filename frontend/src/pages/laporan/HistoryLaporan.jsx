@@ -6,12 +6,14 @@ import { Download, Filter, Eye } from 'lucide-react';
 import useAuthStore from '../../store/auth.store';
 import useLaporanStore from '../../store/laporan.store';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const HistoryLaporan = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.peran === 'ADMIN_GLOBAL';
   const navigate = useNavigate();
   const { laporanList, fetchLaporan, isLoading, setDraft } = useLaporanStore();
+  const { t } = useTranslation();
 
   const [filterUnit, setFilterUnit] = useState('Semua Unit');
   const [filterStatus, setFilterStatus] = useState('Semua Status');
@@ -109,7 +111,7 @@ const HistoryLaporan = () => {
       
       <div className="page-header">
         <div>
-          <div className="text-sm text-muted font-medium mb-1">Laporan <span className="mx-1">&gt;</span> <span className="text-primary">History Laporan</span></div>
+          <div className="text-sm text-muted font-medium mb-1">{t('menu.laporan')} <span className="mx-1">&gt;</span> <span className="text-primary">{t('laporan.history_title')}</span></div>
         </div>
       </div>
 
@@ -160,19 +162,19 @@ const HistoryLaporan = () => {
       {!isAdmin && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
           <div className="card" style={{ padding: '16px 20px' }}>
-            <p className="text-muted text-sm mb-1 font-medium">Total Laporan</p>
+            <p className="text-muted text-sm mb-1 font-medium">{t('admin.total_laporan')}</p>
             <h3 className="text-2xl font-bold">{laporanList.length}</h3>
           </div>
           <div className="card" style={{ padding: '16px 20px' }}>
-            <p className="text-muted text-sm mb-1 font-medium">Disetujui</p>
+            <p className="text-muted text-sm mb-1 font-medium">{t('admin.laporan_disetujui')}</p>
             <h3 className="text-2xl font-bold">{laporanList.filter(l => l.status === 'DISETUJUI').length}</h3>
           </div>
           <div className="card" style={{ padding: '16px 20px' }}>
-            <p className="text-muted text-sm mb-1 font-medium">Revisi</p>
+            <p className="text-muted text-sm mb-1 font-medium">{t('admin.perlu_revisi')}</p>
             <h3 className="text-2xl font-bold">{laporanList.filter(l => l.status === 'REVISI' || l.status === 'DITOLAK').length}</h3>
           </div>
           <div className="card" style={{ padding: '16px 20px' }}>
-            <p className="text-muted text-sm mb-1 font-medium">Menunggu Review</p>
+            <p className="text-muted text-sm mb-1 font-medium">{t('admin.menunggu_review')}</p>
             <h3 className="text-2xl font-bold">{laporanList.filter(l => l.status === 'DIAJUKAN').length}</h3>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Edit2, PowerOff, Power } from 'lucide-react';
 
 const dummyTemplates = [
   { 
@@ -65,12 +66,18 @@ const NotifikasiPage = () => {
                   <td>{t.trigger}</td>
                   <td>{t.penerima}</td>
                   <td>{t.status}</td>
-                  <td>
-                    <button className="text-brand-500 hover:underline mr-1">[edit]</button>
+                  <td style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn btn-secondary btn-sm flex items-center gap-1" style={{ padding: '4px 8px' }}>
+                      <Edit2 size={14} /> Edit
+                    </button>
                     {t.status === 'Aktif' ? (
-                      <button className="text-brand-500 hover:underline">[nonaktif]</button>
+                      <button className="btn btn-secondary btn-sm flex items-center gap-1 text-danger" style={{ padding: '4px 8px', color: '#dc2626', borderColor: '#fca5a5' }}>
+                        <PowerOff size={14} /> Nonaktifkan
+                      </button>
                     ) : (
-                      <button className="text-brand-500 hover:underline">[aktifkan]</button>
+                      <button className="btn btn-secondary btn-sm flex items-center gap-1 text-success" style={{ padding: '4px 8px', color: '#16a34a', borderColor: '#86efac' }}>
+                        <Power size={14} /> Aktifkan
+                      </button>
                     )}
                   </td>
                 </tr>

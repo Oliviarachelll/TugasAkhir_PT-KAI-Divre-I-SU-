@@ -1,0 +1,130 @@
+{
+  "menu": {
+    "dashboard": "Dasbor",
+    "laporan": "Laporan Anda",
+    "monitoring": "Pemantauan",
+    "manajemen": "Manajemen Data",
+    "helpdesk": "Bantuan",
+    "settings": "Pengaturan",
+    "logout": "Keluar"
+  },
+  "dashboard": {
+    "title": "Dasbor Pengguna",
+    "subtitle": "Ringkasan performa dan laporan bulanan unit Anda.",
+    "laporan_masuk": "Laporan Masuk",
+    "disetujui": "Disetujui",
+    "revisi": "Perlu Revisi",
+    "ditolak": "Ditolak",
+    "komparasi_ka": "Komparasi Performa per KA",
+    "history_laporan": "Riwayat Laporan Terakhir",
+    "reminder": "Pengingat: Batas waktu pengisian laporan harian adalah jam 17:00 (Sisa waktu:",
+    "input_btn": "Input Laporan",
+    "filter_all": "Semua",
+    "filter_approved": "Disetujui",
+    "filter_review": "Review",
+    "filter_revision": "Revisi",
+    "table_date": "Tanggal",
+    "table_type": "Jenis Laporan",
+    "table_status": "Status",
+    "table_desc": "Keterangan",
+    "table_action": "Aksi",
+    "last_7_days": "7 Hari Terakhir",
+    "last_14_days": "14 Hari Terakhir",
+    "last_30_days": "30 Hari Terakhir",
+    "highest": "Tertinggi",
+    "lowest": "Terendah",
+    "avg": "Rata-rata",
+    "growth": "Tren Pertumbuhan",
+    "days": "Hari",
+    "people": "Orang",
+    "no_data": "Data tidak tersedia."
+  },
+  "admin": {
+    "title": "Dasbor Admin",
+    "subtitle": "Ringkasan laporan dari seluruh unit operasional.",
+    "semua_unit": "Semua Unit",
+    "export_pdf": "Ekspor PDF",
+    "total_laporan": "Total Laporan",
+    "menunggu_review": "Menunggu Review",
+    "laporan_disetujui": "Laporan Disetujui",
+    "perlu_revisi": "Perlu Revisi",
+    "volume_per_unit": "Volume Laporan per Unit",
+    "trend": "Judul Grafik Tren",
+    "riwayat_terbaru": "Riwayat Laporan Terbaru"
+  },
+  "settings": {
+    "title": "Preferensi Tampilan",
+    "lang_title": "Bahasa / Language",
+    "lang_desc": "Pilih bahasa antarmuka sistem",
+    "mode_title": "Mode Tampilan",
+    "mode_desc": "Terang atau gelap",
+    "save": "Simpan",
+    "reset": "Reset ke Default"
+  },
+  "helpdesk": {
+    "title": "Bantuan & Tiket",
+    "subtitle": "Ajukan keluhan atau permintaan bantuan teknis",
+    "new_ticket": "Buat Tiket Baru",
+    "search": "Cari tiket...",
+    "status": {
+      "all": "Semua Status",
+      "open": "Buka",
+      "progress": "Diproses",
+      "resolved": "Selesai"
+    },
+    "table": {
+      "id": "ID Tiket",
+      "date": "Tanggal",
+      "category": "Kategori",
+      "desc": "Keterangan",
+      "status": "Status",
+      "action": "Tindakan IT"
+    }
+  },
+  "laporan": {
+    "input_title": "Input Laporan Baru",
+    "input_subtitle": "Silakan isi data laporan operasional hari ini",
+    "history_title": "Riwayat Laporan",
+    "history_subtitle": "Data laporan operasional yang telah Anda serahkan",
+    "submit": "Kirim Laporan",
+    "cancel": "Batal"
+  },
+  "unit": {
+    "kna_title": "Pendapatan Kontrak Non-Angkutan (KNA)",
+    "barang_title": "Performa Angkutan Barang",
+    "penumpang_title": "Performa Angkutan Penumpang",
+    "keuangan_title": "Rekapitulasi Keuangan Terpusat"
+  },
+  "keuangan": {
+    "total_income": "Total Pendapatan",
+    "total_expense": "Total Pengeluaran",
+    "total_profit": "Total Laba/Rugi",
+    "cashflow_trend": "Tren Arus Kas (Pendapatan & Pengeluaran)"
+  },
+  "kna": {
+    "land_row": "Luas Tanah ROW",
+    "building_row": "Luas Bangunan ROW",
+    "land_non_row": "Luas Tanah Non-ROW",
+    "building_non_row": "Luas Bgn Non-ROW",
+    "contract_row": "Total Kontrak ROW",
+    "contract_non_row": "Total Kontrak Non-ROW",
+    "contract_value": "Nilai Kontrak KNA"
+  },
+  "barang": {
+    "total_volume": "Total Volume (Ton)",
+    "total_income": "Total Pendapatan (Rp)",
+    "total_trips": "Total Perjalanan KA",
+    "trend": "Tren Volume vs Pendapatan Angkutan Barang",
+    "composition": "Komposisi Volume per Komoditi"
+  },
+  "penumpang": {
+    "total_passengers": "Total Penumpang",
+    "total_income": "Total Pendapatan (Rp)",
+    "total_trips": "Total Perjalanan KA",
+    "trend": "Tren Volume vs Pendapatan Penumpang",
+    "composition": "Komposisi Kelas Penumpang",
+    "comparison": "Komparasi Performa per KA",
+    "grouped_by": "Data dikelompokkan berdasarkan Kereta Api.",
+    "ka_name": "Nama Kereta Api (KA)"
+  }
+}

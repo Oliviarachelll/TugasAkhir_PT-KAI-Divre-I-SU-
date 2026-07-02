@@ -18,9 +18,14 @@ const getAllPermintaan = async (req, res) => {
 
   const where = {
     ...(status && { status }),
-    // USER_UNIT hanya lihat permintaan sendiri
     ...(req.pengguna.peran === 'USER_UNIT' && {
       id_pengguna_pengaju: req.pengguna.id_pengguna,
+    }),
+    ...(req.pengguna.peran === 'IT' && {
+      jenis: { in: ['BANTUAN_TEKNIS', 'PERMINTAAN_AKSES', 'LAINNYA'] },
+    }),
+    ...(req.pengguna.peran === 'ADMIN_GLOBAL' && {
+      jenis: 'KLARIFIKASI_DATA',
     }),
   };
 
@@ -30,7 +35,12 @@ const getAllPermintaan = async (req, res) => {
       skip,
       take,
       include: {
-        pengaju: { select: { nama: true } },
+        pengaju: { 
+          select: { 
+            nama: true, 
+            unit: { select: { nama_unit: true } } 
+          } 
+        },
         penanggung: { select: { nama: true } },
         laporan: { select: { id_laporan: true, tanggal: true } },
       },

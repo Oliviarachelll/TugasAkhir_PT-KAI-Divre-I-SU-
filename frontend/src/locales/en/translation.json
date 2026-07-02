@@ -1,0 +1,130 @@
+{
+  "menu": {
+    "dashboard": "Dashboard",
+    "laporan": "Your Reports",
+    "monitoring": "Monitoring",
+    "manajemen": "Data Management",
+    "helpdesk": "Helpdesk",
+    "settings": "Settings",
+    "logout": "Log Out"
+  },
+  "dashboard": {
+    "title": "User Dashboard",
+    "subtitle": "Performance summary and monthly reports for your unit.",
+    "laporan_masuk": "Submitted Reports",
+    "disetujui": "Approved",
+    "revisi": "Needs Revision",
+    "ditolak": "Rejected",
+    "komparasi_ka": "Train Performance Comparison",
+    "history_laporan": "Recent Report History",
+    "reminder": "Reminder: The deadline for submitting daily reports is 17:00 (Time remaining:",
+    "input_btn": "Submit Report",
+    "filter_all": "All",
+    "filter_approved": "Approved",
+    "filter_review": "In Review",
+    "filter_revision": "Revision",
+    "table_date": "Date",
+    "table_type": "Report Type",
+    "table_status": "Status",
+    "table_desc": "Description",
+    "table_action": "Action",
+    "last_7_days": "Last 7 Days",
+    "last_14_days": "Last 14 Days",
+    "last_30_days": "Last 30 Days",
+    "highest": "Highest",
+    "lowest": "Lowest",
+    "avg": "Average",
+    "growth": "Growth Trend",
+    "days": "Days",
+    "people": "People",
+    "no_data": "No data available."
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "subtitle": "Report summary from all operational units.",
+    "semua_unit": "All Units",
+    "export_pdf": "Export PDF",
+    "total_laporan": "Total Reports",
+    "menunggu_review": "Pending Review",
+    "laporan_disetujui": "Approved Reports",
+    "perlu_revisi": "Needs Revision",
+    "volume_per_unit": "Report Volume per Unit",
+    "trend": "Trend Chart Title",
+    "riwayat_terbaru": "Recent Report History"
+  },
+  "settings": {
+    "title": "Display Preferences",
+    "lang_title": "Language / Bahasa",
+    "lang_desc": "Select system interface language",
+    "mode_title": "Display Mode",
+    "mode_desc": "Light or dark mode",
+    "save": "Save Changes",
+    "reset": "Reset to Default"
+  },
+  "helpdesk": {
+    "title": "Helpdesk & Tickets",
+    "subtitle": "Submit complaints or technical support requests",
+    "new_ticket": "Create New Ticket",
+    "search": "Search tickets...",
+    "status": {
+      "all": "All Status",
+      "open": "Open",
+      "progress": "In Progress",
+      "resolved": "Resolved"
+    },
+    "table": {
+      "id": "Ticket ID",
+      "date": "Date",
+      "category": "Category",
+      "desc": "Description",
+      "status": "Status",
+      "action": "IT Action"
+    }
+  },
+  "laporan": {
+    "input_title": "Input New Report",
+    "input_subtitle": "Please fill in today's operational report data",
+    "history_title": "Report History",
+    "history_subtitle": "Operational report data that you have submitted",
+    "submit": "Submit Report",
+    "cancel": "Cancel"
+  },
+  "unit": {
+    "kna_title": "Non-Transport Contract (KNA) Revenue",
+    "barang_title": "Freight Transport Performance",
+    "penumpang_title": "Passenger Transport Performance",
+    "keuangan_title": "Centralized Financial Recap"
+  },
+  "keuangan": {
+    "total_income": "Total Income",
+    "total_expense": "Total Expense",
+    "total_profit": "Total Profit/Loss",
+    "cashflow_trend": "Cash Flow Trend (Income & Expense)"
+  },
+  "kna": {
+    "land_row": "ROW Land Area",
+    "building_row": "ROW Building Area",
+    "land_non_row": "Non-ROW Land Area",
+    "building_non_row": "Non-ROW Building Area",
+    "contract_row": "Total ROW Contracts",
+    "contract_non_row": "Total Non-ROW Contracts",
+    "contract_value": "KNA Contract Value"
+  },
+  "barang": {
+    "total_volume": "Total Volume (Ton)",
+    "total_income": "Total Revenue (Rp)",
+    "total_trips": "Total Train Trips",
+    "trend": "Volume vs Revenue Trend for Freight",
+    "composition": "Volume Composition per Commodity"
+  },
+  "penumpang": {
+    "total_passengers": "Total Passengers",
+    "total_income": "Total Revenue (Rp)",
+    "total_trips": "Total Train Trips",
+    "trend": "Volume vs Revenue Trend for Passengers",
+    "composition": "Passenger Class Composition",
+    "comparison": "Performance Comparison per Train",
+    "grouped_by": "Data grouped by Train.",
+    "ka_name": "Train Name (KA)"
+  }
+}

@@ -1,31 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
+import useAuthStore from '../../store/auth.store';
+import usePermintaanStore from '../../store/permintaan.store';
+import { useTranslation } from 'react-i18next';
+import toast from 'react-hot-toast';
 
 const HelpdeskUser = () => {
+  const { user } = useAuthStore();
+  const { t } = useTranslation();
+  
+  const { permintaanList, fetchPermintaan, addPermintaan, isLoading } = usePermintaanStore();
+
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState('Semua Status');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [formJenis, setFormJenis] = useState('');
+  const [formDeskripsi, setFormDeskripsi] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [tickets] = useState([
-    { id: 'TKT-001', date: '08 Jun 2026', category: 'Lupa Password', desc: 'Mohon direset password untuk akun ini...', status: 'IN PROGRESS', action: 'Sedang ditangani oleh Admin IT' },
-    { id: 'TKT-002', date: '01 Jun 2026', category: 'Buka Kunci Akun', desc: 'Salah input password 3x', status: 'RESOLVED', action: 'Kunci akun telah dibuka' },
-    { id: 'TKT-003', date: '15 Jun 2026', category: 'Buka Akses Laporan', desc: 'Mohon akses edit untuk LPR-123 karena ada salah input KNA', status: 'RESOLVED', action: <span><strong>Token: 8X9A2B</strong>. Silakan gunakan token ini untuk edit.</span> }
-  ]);
+  useEffect(() => {
+    fetchPermintaan();
+  }, [fetchPermintaan]);
 
-  const filteredTickets = tickets.filter(ticket => {
+  const handleSubmit = async () => {
+    if (!formJenis || !formDeskripsi) {
+      toast.error('Harap isi kategori dan deskripsi');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await addPermintaan({
+        jenis: formJenis,
+        deskripsi: formDeskripsi
+      });
+      toast.success('Tiket bantuan berhasil dibuat');
+      setShowModal(false);
+      setFormJenis('');
+      setFormDeskripsi('');
+    } catch (error) {
+      toast.error('Gagal membuat tiket bantuan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filteredTickets = permintaanList.filter(ticket => {
     const matchStatus = statusFilter === 'Semua Status' || ticket.status === statusFilter;
-    const matchSearch = ticket.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        ticket.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        ticket.desc.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = String(ticket.id_permintaan).includes(searchQuery) || 
+                        ticket.jenis.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        ticket.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
     return matchStatus && matchSearch;
   });
+
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case 'MENUNGGU': return 'badge-diajukan';
+      case 'DIPROSES': return 'badge-diajukan';
+      case 'SELESAI': return 'badge-disetujui';
+      case 'DITOLAK': return 'badge-ditolak';
+      default: return 'badge-diajukan';
+    }
+  };
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <div className="text-sm text-muted font-medium mb-1">Helpdesk <span className="mx-1">&gt;</span> <span className="text-primary">Helpdesk & Bantuan</span></div>
-
+          <div className="text-sm text-muted font-medium mb-1">{t('menu.helpdesk')} <span className="mx-1">&gt;</span> <span className="text-primary">{t('helpdesk.title')}</span></div>
         </div>
       </div>
 
@@ -38,10 +81,11 @@ const HelpdeskUser = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option>Semua Status</option>
-              <option>OPEN</option>
-              <option>IN PROGRESS</option>
-              <option>RESOLVED</option>
+              <option>{t('helpdesk.status.all')}</option>
+              <option>MENUNGGU</option>
+              <option>DIPROSES</option>
+              <option>SELESAI</option>
+              <option>DITOLAK</option>
             </select>
           </div>
           <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
@@ -50,14 +94,14 @@ const HelpdeskUser = () => {
               <input 
                 type="text" 
                 className="form-control form-control-sm pl-8" 
-                placeholder="Cari tiket..." 
+                placeholder={t('helpdesk.search')} 
                 style={{ paddingLeft: '32px' }}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <button className="btn btn-primary btn-sm ml-2" onClick={() => setShowModal(true)}>
-              <PlusCircle size={16} /> Buat Tiket Baru
+              <PlusCircle size={16} /> {t('helpdesk.new_ticket')}
             </button>
           </div>
         </div>
@@ -68,28 +112,30 @@ const HelpdeskUser = () => {
           <table>
             <thead>
               <tr>
-                <th>ID Tiket</th>
-                <th>Tanggal</th>
-                <th>Kategori</th>
-                <th>Keterangan</th>
-                <th>Status</th>
-                <th>Tindakan IT</th>
+                <th>{t('helpdesk.table.id')}</th>
+                <th>{t('helpdesk.table.date')}</th>
+                <th>{t('helpdesk.table.category')}</th>
+                <th>{t('helpdesk.table.desc')}</th>
+                <th>{t('helpdesk.table.status')}</th>
+                <th>Penanggung</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTickets.length > 0 ? (
+              {isLoading && permintaanList.length === 0 ? (
+                <tr><td colSpan="6" className="text-center py-4 text-muted">Memuat data...</td></tr>
+              ) : filteredTickets.length > 0 ? (
                 filteredTickets.map(ticket => (
-                  <tr key={ticket.id}>
-                    <td className="font-medium text-primary">{ticket.id}</td>
-                    <td>{ticket.date}</td>
-                    <td>{ticket.category}</td>
-                    <td>{ticket.desc}</td>
+                  <tr key={ticket.id_permintaan}>
+                    <td className="font-medium text-primary">TKT-{String(ticket.id_permintaan).padStart(3, '0')}</td>
+                    <td>{new Date(ticket.created_at).toLocaleDateString('id-ID')}</td>
+                    <td>{ticket.jenis.replace('_', ' ')}</td>
+                    <td>{ticket.deskripsi}</td>
                     <td>
-                      <span className={`badge ${ticket.status === 'RESOLVED' ? 'badge-disetujui' : ticket.status === 'IN PROGRESS' ? 'badge-diajukan' : 'badge-ditolak'}`}>
+                      <span className={`badge ${getStatusBadge(ticket.status)}`}>
                         {ticket.status}
                       </span>
                     </td>
-                    <td>{ticket.action}</td>
+                    <td>{ticket.penanggung?.nama || '-'}</td>
                   </tr>
                 ))
               ) : (
@@ -112,12 +158,12 @@ const HelpdeskUser = () => {
             
             <div className="form-group">
               <label className="form-label">Kategori Bantuan</label>
-              <select className="form-control">
+              <select className="form-control" value={formJenis} onChange={e => setFormJenis(e.target.value)}>
                 <option value="">Pilih Kategori...</option>
-                <option value="TIPE_A">TIPE A - Lupa Password / Reset Akses</option>
-                <option value="TIPE_B">TIPE B - Buka Kunci Akun / Banned</option>
-                <option value="TIPE_C">TIPE C - Request Buka Akses Edit Laporan ACC</option>
-                <option value="LAINNYA">Lainnya - Kendala Sistem</option>
+                <option value="PERMINTAAN_AKSES">Lupa Password / Akun Terkunci (Ke Tim IT)</option>
+                <option value="BANTUAN_TEKNIS">Kendala Sistem / Error (Ke Tim IT)</option>
+                <option value="KLARIFIKASI_DATA">Permintaan Revisi Laporan ACC (Ke Admin Global)</option>
+                <option value="LAINNYA">Lainnya</option>
               </select>
             </div>
 
@@ -127,12 +173,16 @@ const HelpdeskUser = () => {
                 className="form-control" 
                 rows="4" 
                 placeholder="Jelaskan secara detail kendala yang Anda alami..."
+                value={formDeskripsi}
+                onChange={e => setFormDeskripsi(e.target.value)}
               ></textarea>
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-              <button className="btn btn-primary" onClick={() => setShowModal(false)}>Kirim Tiket</button>
+              <button className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={isSubmitting}>Batal</button>
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? 'Mengirim...' : 'Kirim Tiket'}
+              </button>
             </div>
           </div>
         </div>

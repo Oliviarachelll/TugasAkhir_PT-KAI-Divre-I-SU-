@@ -1,10 +1,17 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import useAuthStore from '../../store/auth.store';
+import { useTranslation } from 'react-i18next';
 
 const Header = () => {
   const location = useLocation();
   const { user } = useAuthStore();
+  const { i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'id' ? 'en' : 'id';
+    i18n.changeLanguage(newLang);
+  };
 
   // Determine the title based on the route
   const getPageTitle = () => {
@@ -44,6 +51,13 @@ const Header = () => {
       </div>
 
       <div className="flex items-center gap-4">
+        <button 
+          onClick={toggleLanguage}
+          className="btn btn-secondary px-3 py-1.5 text-xs font-bold"
+          style={{ minWidth: '40px', borderRadius: '8px' }}
+        >
+          {i18n.language === 'id' ? 'ID' : 'EN'}
+        </button>
         <div className="text-right">
           <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{userName}</div>
           <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{userRole}</div>
