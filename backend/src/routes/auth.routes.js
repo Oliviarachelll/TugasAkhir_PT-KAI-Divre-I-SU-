@@ -14,6 +14,7 @@ const {
   login,
   getProfile,
   requestResetPassword,
+  requestUnlockTicket,
   resetPassword,
   gantiPassword,
 } = require('../controllers/auth.controller');
@@ -21,6 +22,7 @@ const {
 router.post('/login', validateBody(loginSchema), login);
 router.get('/profile', authenticate, getProfile);
 router.post('/reset-password/request', validateBody(resetPasswordRequestSchema), requestResetPassword);
+router.post('/request-unlock-ticket', requestUnlockTicket);
 router.post('/reset-password', validateBody(resetPasswordSchema), resetPassword);
 router.post('/ganti-password', authenticate, validateBody(gantiPasswordSchema), gantiPassword);
 

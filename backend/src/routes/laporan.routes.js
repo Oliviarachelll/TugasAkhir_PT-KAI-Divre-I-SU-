@@ -28,6 +28,7 @@ const {
   updateLaporanBarang,
   deleteLaporanBarang,
   upsertLaporanKeuangan,
+  unlockLaporan
 } = require('../controllers/laporan.controller');
 
 router.use(authenticate);
@@ -38,6 +39,7 @@ router.get('/:id', getLaporanById);
 router.post('/', validateBody(createLaporanSchema), createLaporan);
 router.put('/:id', validateBody(updateLaporanSchema), updateLaporan);
 router.delete('/:id', authorize('IT', 'ADMIN_GLOBAL'), deleteLaporan);
+router.post('/:id/unlock', unlockLaporan);
 
 // Sub-laporan KNA
 router.put('/:id/kna', validateBody(laporanKNASchema), upsertLaporanKNA);

@@ -45,7 +45,7 @@ const Header = () => {
   };
 
   return (
-    <header className="h-[80px] border-b flex items-center justify-between px-8 shrink-0 z-30" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+    <header className="h-[80px] border-b flex items-center justify-between px-8 shrink-0 z-30 backdrop-blur-md" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
       <div className="flex-1">
         <h1 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>{getPageTitle()}</h1>
       </div>

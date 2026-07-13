@@ -32,11 +32,15 @@ const DashboardBarang = ({ approvedLaporan }) => {
 
   const chartData = useMemo(() => {
     const data = [];
-    const today = new Date();
+    let referenceDate = new Date();
+    if (approvedLaporan.length > 0) {
+      const dates = approvedLaporan.map(l => new Date(l.tanggal).getTime());
+      referenceDate = new Date(Math.max(...dates));
+    }
     
     for (let i = chartDays - 1; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
+      const d = new Date(referenceDate);
+      d.setDate(referenceDate.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
       
       const laporanHariIni = approvedLaporan.filter(l => l.tanggal.startsWith(dateStr));
@@ -86,9 +90,10 @@ const DashboardBarang = ({ approvedLaporan }) => {
   }, [approvedLaporan]);
 
   const latestCommodityData = useMemo(() => {
-    const sorted = [...approvedLaporan].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
+    const barangReports = approvedLaporan.filter(l => l.laporan_barang && l.laporan_barang.length > 0);
+    const sorted = [...barangReports].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
     const latest = sorted[0];
-    if (!latest || !latest.laporan_barang) return [];
+    if (!latest) return [];
     
     return latest.laporan_barang
       .filter(b => b.id_komoditi !== 99)
@@ -133,7 +138,7 @@ const DashboardBarang = ({ approvedLaporan }) => {
         {/* Distribusi Volume */}
         <div className="card" style={{ padding: '24px' }}>
           <h3 className="font-semibold text-lg m-0 text-gray-800 mb-4">{t('barang.composition')}</h3>
-          <div style={{ width: '100%', height: 260 }}>
+          <div style={{ width: '100%', height: 260, overflow: 'hidden' }}>
             <ResponsiveContainer>
               <PieChart>
                 <Pie
@@ -153,6 +158,7 @@ const DashboardBarang = ({ approvedLaporan }) => {
                 <Tooltip 
                   formatter={(value) => [`${value.toLocaleString('id-ID')} Ton (${((value / totalCommVolume) * 100).toFixed(1)}%)`, 'Volume']}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  wrapperStyle={{ zIndex: 10 }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
               </PieChart>
@@ -163,7 +169,7 @@ const DashboardBarang = ({ approvedLaporan }) => {
         {/* Distribusi Pendapatan */}
         <div className="card" style={{ padding: '20px' }}>
           <h3 className="font-semibold text-sm m-0 mb-4 text-slate-700">Distribusi Pendapatan Harian per Komoditi</h3>
-          <div style={{ width: '100%', height: 260 }}>
+          <div style={{ width: '100%', height: 260, overflow: 'hidden' }}>
             <ResponsiveContainer>
               <PieChart>
                 <Pie

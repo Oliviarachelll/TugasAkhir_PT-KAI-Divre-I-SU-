@@ -9,7 +9,7 @@ const { generateToken } = require('../utils/jwt');
 const { sendSuccess, sendError } = require('../utils/response');
 const whatsappService = require('../whatsapp/baileys.service');
 
-const MAX_LOGIN_ATTEMPTS = 5;
+const MAX_LOGIN_ATTEMPTS = 3;
 
 /**
  * POST /api/auth/login
@@ -143,10 +143,46 @@ const requestResetPassword = async (req, res) => {
 };
 
 /**
+ * POST /api/auth/request-unlock-ticket
+ * User is locked out, requests IT to send reset token
+ */
+const requestUnlockTicket = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return sendError(res, 'Email wajib diisi', 400);
+  }
+
+  const pengguna = await prisma.pengguna.findUnique({
+    where: { email },
+    include: { unit: true }
+  });
+
+  if (!pengguna) {
+    // Return success to avoid email enumeration
+    return sendSuccess(res, null, 'Jika email valid, permintaan telah dikirim ke IT.');
+  }
+
+  // Create a helpdesk ticket for IT
+  await prisma.permintaanBantuan.create({
+    data: {
+      jenis: 'PERMINTAAN_AKSES',
+      deskripsi: `Akun atas nama ${pengguna.nama} (${pengguna.unit?.nama_unit || 'Unknown Unit'}) terkunci karena 3x percobaan login gagal. Mohon berikan token reset kata sandi.`,
+      status: 'MENUNGGU',
+      id_pengguna_pengaju: pengguna.id_pengguna,
+    }
+  });
+
+  return sendSuccess(res, null, 'Permintaan telah dikirim ke IT. Silakan tunggu Token via WA.');
+};
+
+/**
  * POST /api/auth/reset-password
  */
 const resetPassword = async (req, res) => {
-  const { token, kata_sandi_baru } = req.body;
+  const { kata_sandi_baru } = req.body;
+  const token = req.body.token?.replace(/\s+/g, '');
+  
+  console.log('[DEBUG] Token diterima di backend:', req.body.token, '-> Sesudah strip spasi:', token);
 
   const tokenRecord = await prisma.tokenReset.findUnique({ 
     where: { token },
@@ -218,4 +254,11 @@ const gantiPassword = async (req, res) => {
   return sendSuccess(res, null, 'Kata sandi berhasil diubah');
 };
 
-module.exports = { login, getProfile, requestResetPassword, resetPassword, gantiPassword };
+module.exports = {
+  login,
+  getProfile,
+  requestResetPassword,
+  requestUnlockTicket,
+  resetPassword,
+  gantiPassword,
+};

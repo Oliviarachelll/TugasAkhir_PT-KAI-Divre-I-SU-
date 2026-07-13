@@ -10,8 +10,8 @@ const usePermintaanStore = create((set, get) => ({
   fetchPermintaan: async (params = {}) => {
     set({ isLoading: true, error: null });
     try {
-      const { data, meta } = await getPermintaan(params);
-      set({ permintaanList: data, pagination: meta, isLoading: false });
+      const { data, pagination } = await getPermintaan(params);
+      set({ permintaanList: data || [], pagination, isLoading: false });
     } catch (error) {
       set({ 
         error: error.response?.data?.message || 'Gagal mengambil data permintaan',

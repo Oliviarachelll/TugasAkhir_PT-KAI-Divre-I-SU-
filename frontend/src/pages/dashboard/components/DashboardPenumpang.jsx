@@ -13,7 +13,11 @@ const DashboardPenumpang = ({ approvedLaporan }) => {
     let totalPendapatan = 0;
     const kaMap = {};
 
-    const today = new Date();
+    let today = new Date();
+    if (approvedLaporan.length > 0) {
+      const dates = approvedLaporan.map(l => new Date(l.tanggal).getTime());
+      today = new Date(Math.max(...dates));
+    }
     today.setHours(0, 0, 0, 0);
     
     const cutoffDate = new Date(today);
@@ -77,13 +81,13 @@ const DashboardPenumpang = ({ approvedLaporan }) => {
           <div style={{ width: '100%', height: 300, marginBottom: '32px' }}>
             <ResponsiveContainer>
               <BarChart data={perKaData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" tickFormatter={(val) => Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)} width={60} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value, name) => [name.includes('Pendapatan') ? `Rp ${value.toLocaleString('id-ID')}` : value.toLocaleString('id-ID'), name]} cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }} />
-                <Bar yAxisId="left" dataKey="Penumpang" name={t('penumpang.total_passengers')} fill="var(--brand-500)" radius={[4, 4, 0, 0]} barSize={40} />
-                <Bar yAxisId="right" dataKey="Pendapatan" name={t('penumpang.total_income')} fill="var(--warning)" radius={[4, 4, 0, 0]} barSize={40} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="left" tickFormatter={(val) => Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)} width={60} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value, name) => [name.includes('Pendapatan') ? `Rp ${value.toLocaleString('id-ID')}` : value.toLocaleString('id-ID'), name]} cursor={{ fill: 'var(--chart-grid)' }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
+                <Bar yAxisId="left" dataKey="Penumpang" name={t('penumpang.total_passengers')} fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} barSize={40} />
+                <Bar yAxisId="right" dataKey="Pendapatan" name={t('penumpang.total_income')} fill="var(--chart-bar-highlight)" radius={[4, 4, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>

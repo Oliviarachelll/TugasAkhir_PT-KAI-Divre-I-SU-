@@ -81,7 +81,7 @@ const DashboardUserUnit = () => {
           {isKNA && <DashboardKNA laporanList={laporanList} approvedLaporan={approvedLaporan} />}
           {isBarang && <DashboardBarang approvedLaporan={approvedLaporan} />}
           {isPenumpang && <DashboardPenumpang approvedLaporan={approvedLaporan} />}
-          {isKeuangan && <DashboardKeuangan approvedLaporan={approvedLaporan} />}
+          {isKeuangan && <DashboardKeuangan laporanList={laporanList} approvedLaporan={approvedLaporan} />}
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
             {/* Kiri: History Laporan */}

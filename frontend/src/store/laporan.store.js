@@ -82,6 +82,22 @@ const useLaporanStore = create((set, get) => ({
     }
   },
 
+  unlockLaporan: async (id, token) => {
+    set({ isLoading: true, error: null });
+    try {
+      await laporanApi.unlock(id, token);
+      toast.success('Laporan berhasil dibuka kembali untuk direvisi!');
+      return true;
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Token tidak valid atau gagal membuka laporan';
+      set({ error: msg });
+      toast.error(msg);
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   submitDraft: async () => {
     set({ isLoading: true, error: null });
     try {
@@ -143,8 +159,22 @@ const useLaporanStore = create((set, get) => ({
         }
       }
 
-      if (draft.barangTotal) {
-        const payload = { ...draft.barangTotal, id_komoditi: 99, jml_ka: 0 };
+      // Selalu simpan id_komoditi 99 (TOTAL) baik diisi manual atau dihitung otomatis
+      if (barangItems && barangItems.length > 0) {
+        let autoVolume = 0;
+        let autoPendapatan = 0;
+        barangItems.forEach(b => {
+          autoVolume += parseFloat(b.volume) || 0;
+          autoPendapatan += parseFloat(b.pendapatan) || 0;
+        });
+
+        const payload = { 
+          volume: autoVolume,
+          pendapatan: autoPendapatan,
+          ...(draft.barangTotal || {}), 
+          id_komoditi: 99, 
+          jml_ka: 0 
+        };
         Object.keys(payload).forEach(k => { if(payload[k] === '') payload[k] = 0; });
         if (payload.id_laporan_barang) {
           await laporanApi.updateBarang(idLaporanBaru, payload.id_laporan_barang, payload);

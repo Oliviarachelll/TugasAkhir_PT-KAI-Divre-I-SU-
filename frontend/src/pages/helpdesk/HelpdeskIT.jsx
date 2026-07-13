@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, X, MessageSquare, CheckCircle } from 'lucide-react';
+import { RefreshCw, X, MessageSquare, CheckCircle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import usePermintaanStore from '../../store/permintaan.store';
 import useAuthStore from '../../store/auth.store';
@@ -12,7 +12,7 @@ const HelpdeskIT = () => {
   
   const [activeTab, setActiveTab] = useState('Semua');
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [generatedToken, setGeneratedToken] = useState('XX - XXXXXX');
+  const [generatedToken, setGeneratedToken] = useState('XX-XXXXXX');
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
 
@@ -26,13 +26,13 @@ const HelpdeskIT = () => {
     for (let i = 0; i < 8; i++) {
       token += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    const formattedToken = `${token.substring(0, 2)} - ${token.substring(2)}`;
+    const formattedToken = `${token.substring(0, 2)}-${token.substring(2)}`;
     setGeneratedToken(formattedToken);
     setSendSuccess(false);
   };
 
   const handleKirimWA = () => {
-    if (generatedToken === 'XX - XXXXXX') return;
+    if (generatedToken === 'XX-XXXXXX') return;
     setIsSending(true);
     setTimeout(() => {
       setIsSending(false);
@@ -42,7 +42,11 @@ const HelpdeskIT = () => {
 
   const handleUpdateStatus = async (id, status) => {
     try {
-      await updateTanggapan(id, { status });
+      const payload = { status };
+      if (status === 'SELESAI' && generatedToken !== 'XX-XXXXXX') {
+        payload.token = generatedToken; // Send exact token as generated
+      }
+      await updateTanggapan(id, payload);
       toast.success(`Tiket ditandai ${status}`);
       if (status === 'SELESAI') {
         setSelectedTicket(null);
@@ -184,7 +188,7 @@ const HelpdeskIT = () => {
                               handleUpdateStatus(ticket.id, 'DIPROSES');
                             }
                             setSelectedTicket(ticket);
-                            setGeneratedToken('XX - XXXXXX');
+                            setGeneratedToken('XX-XXXXXX');
                             setSendSuccess(false);
                           }}
                         >
@@ -206,8 +210,9 @@ const HelpdeskIT = () => {
           </div>
           
           {!selectedTicket && (
-            <div style={{ padding: '16px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#64748b', fontSize: '14px', marginTop: '24px', textAlign: 'center' }}>
-              ℹ️ Klik tombol <strong>Tanggapi</strong> pada baris tiket untuk membuka panel penanganan dan mengubah status.
+            <div className="mt-4 p-3 bg-blue-50 text-blue-800 rounded text-sm flex items-center gap-2">
+              <Info className="w-4 h-4" />
+              <span>Klik tombol <strong>Tanggapi</strong> pada baris tiket untuk membuka panel penanganan dan mengubah status.</span>
             </div>
           )}
         </div>
@@ -258,7 +263,7 @@ const HelpdeskIT = () => {
                     disabled={isSending || generatedToken === 'XX - XXXXXX' || selectedTicket.status === 'SELESAI'}
                   >
                     <MessageSquare size={16} />
-                    {isSending ? 'Mengirim pesan...' : 'Kirim Token via WhatsApp / Email'}
+                    {isSending ? 'Mengirim pesan...' : sendSuccess ? 'Kirim Ulang Token' : 'Kirim Token via WhatsApp / Email'}
                   </button>
                 </div>
 
@@ -274,12 +279,12 @@ const HelpdeskIT = () => {
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px', display: 'flex', gap: '12px' }}>
               <button 
                 className="btn w-full flex justify-center items-center gap-2" 
-                style={{ background: '#10b981', color: 'white' }} 
+                style={{ background: (selectedTicket.status === 'SELESAI' || (generatedToken !== 'XX-XXXXXX' && !sendSuccess)) ? '#94a3b8' : '#10b981', color: 'white', cursor: (selectedTicket.status === 'SELESAI' || (generatedToken !== 'XX-XXXXXX' && !sendSuccess)) ? 'not-allowed' : 'pointer' }} 
                 onClick={() => handleUpdateStatus(selectedTicket.id, 'SELESAI')}
-                disabled={selectedTicket.status === 'SELESAI'}
+                disabled={selectedTicket.status === 'SELESAI' || (generatedToken !== 'XX-XXXXXX' && !sendSuccess)}
               >
                 <CheckCircle size={16} />
-                {selectedTicket.status === 'SELESAI' ? 'Sudah Selesai' : 'Selesai & Tutup Tiket'}
+                {selectedTicket.status === 'SELESAI' ? 'Sudah Selesai' : (generatedToken !== 'XX-XXXXXX' && !sendSuccess) ? 'Harus Kirim Token Dulu' : 'Selesai & Tutup Tiket'}
               </button>
             </div>
           </div>

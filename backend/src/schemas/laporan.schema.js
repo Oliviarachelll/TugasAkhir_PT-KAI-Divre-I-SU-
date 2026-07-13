@@ -54,8 +54,13 @@ const laporanBarangSchema = z.object({
 });
 
 const laporanKeuanganSchema = z.object({
+  target_rkad: z.number().nonnegative().optional().nullable(),
+  realisasi_rkad: z.number().nonnegative().optional().nullable(),
   pendapatan: z.number().nonnegative(),
   pengeluaran: z.number().nonnegative(),
+  rincian_transaksi: z.string().optional().nullable(),
+  rincian_spj: z.string().optional().nullable(),
+  rincian_invoice: z.string().optional().nullable(),
 });
 
 module.exports = {

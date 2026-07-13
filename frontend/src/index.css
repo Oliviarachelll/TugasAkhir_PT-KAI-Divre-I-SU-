@@ -5,102 +5,167 @@
 @tailwind utilities;
 
 :root {
-  /* Warna Utama */
-  --brand-500: #6A35FF;
-  --brand-600: #5524DF;
-  --brand-700: #4A22B8;
-  --brand-50: #EFE9FF;
-  --brand-25: #F6F1FF;
+  /* KAI Colors */
+  --kai-primary: #0F5EA8;
+  --kai-primary-hover: #0C4F8E;
+  --kai-primary-soft: #E7F2FD;
+  
+  --kai-orange: #FF7A00;
+  --kai-orange-hover: #E56D00;
+  --kai-orange-soft: #FFF2E8;
 
-  /* Aksen Dari Logo */
-  --accent-magenta: #FFE8F6;
-  --accent-magenta-border: #F0C6E6;
+  /* Backgrounds */
+  --bg-main: #E6EBF0D9;
+  --sidebar: rgba(15, 59, 111, 0.85);
+  --sidebar-hover: #154E90;
+  --sidebar-active: #FF7A00;
+  --bg-card: rgba(255, 255, 255, 0.55);
+  --bg-card-2: rgba(248, 250, 252, 0.65);
 
-  /* Warna Dasar UI */
-  --bg-main: #F5F7FC;
-  --bg-card: #FFFFFF;
-  --surface-soft: #EEF1FB;
-  --surface-strong: #E6E9F8;
-  --border: #D9DEF0;
-  --border-strong: #C7CEE8;
+  /* Borders */
+  --border: #DCE6F2;
+  --divider: #E8EEF5;
+  --border-focus: #CBD5E1;
 
-  /* Warna Teks */
-  --text-primary: #141B34;
-  --text-secondary: #5F6788;
+  /* Typography */
+  --text-primary: #132238;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-disabled: #94A3B8;
 
-  /* Warna Informasi dan Status */
-  --info: #5B8CFF;
-  --info-bg: #EDF3FF;
-  --success: #1F9D63;
-  --success-bg: #E9F8F0;
-  --warning: #D97706;
-  --warning-bg: #FFF4E8;
-  --danger: #C2410C;
-  --danger-bg: #FFF0EA;
-  --state-info: #2563EB;
-  --state-info-bg: #EEF4FF;
+  /* Sidebar Text (For Dark Sidebar in Light Mode) */
+  --sidebar-text: rgba(255, 255, 255, 0.75);
+  --sidebar-text-hover: #FFFFFF;
+  --sidebar-text-muted: rgba(255, 255, 255, 0.5);
+  --sidebar-active-text: #FFFFFF;
+
+  /* Status Colors */
+  --success: #0E7A3B;
+  --success-bg: #EAF8EF;
+  --success-border: #86D19E;
+
+  --warning: #B86900;
+  --warning-bg: #FFF6E8;
+  --warning-border: #F6C26B;
+
+  --danger: #C62828;
+  --danger-bg: #FDECEC;
+  --danger-border: #F19999;
+
+  --info: #1565C0;
+  --info-bg: #EAF4FF;
+  --info-border: #7CB8FF;
+
+  /* Charts Light */
+  --chart-card: #FFFFFF;
+  --chart-plot: #FBFCFE;
+  --chart-grid: #E5EDF6;
+  --chart-axis: #64748B;
+  --chart-line-blue: #1565C0;
+  --chart-line-orange: #FF7A00;
+  --chart-bar-primary: #0F5EA8;
+  --chart-bar-highlight: #FF7A00;
 
   /* System Mappings & Aliases */
   --bg: var(--bg-main);
   --card: var(--bg-card);
-  --bg-card-2: var(--surface-soft);
-  --text-muted: var(--text-secondary);
   --text-inverse: #FFFFFF;
-  --border-focus: var(--border-strong);
-  --divider: var(--border);
-
-  --sidebar: #FFFFFF;
   --bg-sidebar: var(--sidebar);
-  --sidebar-hover: var(--surface-soft);
-  --sidebar-active: var(--brand-50);
-  --sidebar-active-text: var(--brand-600);
+  
+  --brand-500: var(--kai-primary);
+  --brand-600: var(--kai-primary-hover);
+  --brand-50: var(--kai-primary-soft);
+  
+  --accent-blue: var(--kai-primary); /* Use KAI blue for main buttons instead of orange */
+  --accent-blue-hover: var(--kai-primary-hover);
   
   --error: var(--danger);
-  --accent-blue: var(--info);
+
+  --shadow-sm: 0 6px 18px rgba(15,94,168,.08);
 }
 
 [data-theme="dark"] {
-  /* KAI Standard Variables */
-  --kai-navy: #2B6CB0;
-  --kai-blue: #38BDF8;
-  --kai-orange: #FB923C;
+  /* KAI Colors Dark */
+  --kai-primary: #4DA3FF;
+  --kai-primary-hover: #69B4FF;
+  --kai-primary-soft: #193B63;
+  
+  --kai-orange: #FF8C32;
+  --kai-orange-hover: #FFA04D;
+  --kai-orange-soft: #4A2C12;
 
-  --bg: #0B1220;
-  --sidebar: #162032; /* Changed from #0F1B2D for higher contrast */
-  --card: #162032;
+  /* Backgrounds Dark */
+  --bg-main: #0F172A;
+  --sidebar: #081221;
+  --sidebar-hover: #11243F;
+  --sidebar-active: #FF7A00;
+  --bg-card: #1E293B;
+  --bg-card-2: #243246;
 
+  /* Borders Dark */
+  --border: #334155;
+  --divider: #29384A;
+  --border-focus: #475569;
+
+  /* Typography Dark */
   --text-primary: #F8FAFC;
   --text-secondary: #CBD5E1;
-
-  --success: #22C55E;
-  --warning: #FBBF24;
-  --danger: #EF4444;
-  --offline: #94A3B8;
-
-  /* System Mappings */
-  --bg-main: var(--bg);
-  --bg-card: var(--card);
-  --bg-card-2: #111827; /* Surface */
-  --bg-sidebar: var(--sidebar);
-  
   --text-muted: #94A3B8;
   --text-disabled: #64748B;
-  --text-inverse: #FFFFFF;
-  
-  --border: #243244;
-  --border-focus: #334155;
-  --divider: #1E293B;
 
-  --sidebar-hover: #1A2940;
-  --sidebar-active: #1D4ED8;
+  /* Sidebar Text Dark */
+  --sidebar-text: rgba(255, 255, 255, 0.75);
+  --sidebar-text-hover: #FFFFFF;
+  --sidebar-text-muted: rgba(255, 255, 255, 0.5);
   --sidebar-active-text: #FFFFFF;
+
+  /* Status Colors Dark */
+  --success: #5CE08F;
+  --success-bg: #183826;
+  --success-border: #2E6E4D;
+
+  --warning: #FFD166;
+  --warning-bg: #3D2C12;
+  --warning-border: #8E6A2D;
+
+  --danger: #FF8A8A;
+  --danger-bg: #4A1F25;
+  --danger-border: #8E3D4D;
+
+  --info: #6EC1FF;
+  --info-bg: #143553;
+  --info-border: #2D78B7;
+
+  /* Charts Dark */
+  --chart-card: #1E293B;
+  --chart-plot: #162333;
+  --chart-grid: rgba(255,255,255,0.08);
+  --chart-axis: #8FA2B7;
+  --chart-label: #E5E7EB;
   
-  --brand-500: var(--kai-navy);
-  --brand-400: var(--kai-blue);
-  --brand-600: #1E40AF;
-  --accent-blue: var(--kai-orange);
-  --accent-blue-hover: #EA580C;
-  --info: var(--kai-blue);
+  --chart-bar-primary: #3D8BFF;
+  --chart-bar-primary-bottom: #0F5EA8; 
+  --chart-bar-highlight: #FF8C32;
+
+  --chart-line-blue: #55B2FF;
+  --chart-line-orange: #FF983A;
+
+  /* System Mappings & Aliases */
+  --bg: var(--bg-main);
+  --card: var(--bg-card);
+  --text-inverse: #FFFFFF;
+  --bg-sidebar: var(--sidebar);
+  
+  --brand-500: var(--kai-primary);
+  --brand-600: var(--kai-primary-hover);
+  --brand-50: var(--kai-primary-soft);
+  
+  --accent-blue: var(--kai-primary); /* Primary KAI blue */
+  --accent-blue-hover: var(--kai-primary-hover);
+  
+  --error: var(--danger);
+
+  --shadow-sm: 0 10px 30px rgba(0,0,0,.45);
 }
 
 /* =============================================
@@ -135,37 +200,43 @@
 
 /* Sidebar subtitle (e.g. "Network Infrastructure") */
 .sidebar-subtitle-text {
-  color: var(--text-muted);
+  color: var(--sidebar-text-muted);
 }
 
 /* Sidebar border lines (header border-b, footer border-t) */
 .sidebar-border-line {
-  border-color: var(--border);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Sidebar collapse toggle button */
 .sidebar-toggle-btn {
-  background-color: var(--card);
+  background-color: var(--sidebar-hover);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Toggle icon inherits sidebar-active-text */
 .sidebar-toggle-icon {
-  color: var(--sidebar-active-text);
+  color: var(--sidebar-text);
 }
 
 /* Logout button */
 .sidebar-logout-btn {
-  color: var(--text-muted);
+  color: var(--sidebar-text);
 }
 .sidebar-logout-btn:hover {
-  color: var(--danger);
-  background-color: var(--sidebar-hover);
+  color: #FFFFFF;
+  background-color: var(--danger);
 }
 
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--bg-main);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(15, 59, 111, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(255, 122, 0, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(15, 59, 111, 0.05) 0px, transparent 50%);
+  background-attachment: fixed;
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -203,17 +274,16 @@ body {
 
 /* Reset sidebar link defaults — utility classes handle active/hover states */
 .sidebar a {
-  color: var(--text-muted);
+  color: var(--sidebar-text);
   text-decoration: none;
   transition: all 0.2s;
 }
 
 .sidebar a:hover {
-  color: var(--sidebar-active-text);
+  color: var(--sidebar-text-hover);
 }
 
 .sidebar a.active {
-  /* Handled by sidebar-bg-active + sidebar-text-active utility classes */
   color: var(--sidebar-active-text);
 }
 
@@ -274,10 +344,12 @@ body {
 /* Components */
 .card {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 8px;
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03); /* Subtle, premium shadow */
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
 }
 
 /* Forms */
@@ -413,7 +485,7 @@ td {
 }
 
 tbody tr:hover {
-  background-color: #F9FAFB;
+  background-color: var(--bg-card-2);
 }
 
 /* Split Login Layout */

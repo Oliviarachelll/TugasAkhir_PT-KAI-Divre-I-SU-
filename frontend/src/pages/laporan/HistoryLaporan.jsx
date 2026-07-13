@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Download, Filter, Eye } from 'lucide-react';
 import useAuthStore from '../../store/auth.store';
@@ -25,6 +25,17 @@ const HistoryLaporan = () => {
 
   const handleUserAction = (laporan) => {
     if (laporan.status === 'REVISI' || laporan.status === 'DRAFT') {
+      let barangTotal = (laporan.laporan_barang || []).find(b => b.id_komoditi === 99) || {};
+      if (Object.keys(barangTotal).length === 0 && laporan.laporan_barang && laporan.laporan_barang.length > 0) {
+        let autoVolume = 0;
+        let autoPendapatan = 0;
+        laporan.laporan_barang.forEach(b => {
+          autoVolume += parseFloat(b.volume) || 0;
+          autoPendapatan += parseFloat(b.pendapatan) || 0;
+        });
+        barangTotal = { volume: autoVolume, pendapatan: autoPendapatan };
+      }
+
       const mappedDraft = {
         id_laporan: laporan.id_laporan,
         jenis_laporan: 'Data Harian',
@@ -36,7 +47,7 @@ const HistoryLaporan = () => {
         keuangan: laporan.laporan_keuangan || null,
         penumpangItems: laporan.laporan_penumpang || [],
         barangItems: (laporan.laporan_barang || []).filter(b => b.id_komoditi !== 99),
-        barangTotal: (laporan.laporan_barang || []).find(b => b.id_komoditi === 99) || {},
+        barangTotal: barangTotal,
       };
       setDraft(mappedDraft);
       navigate('/laporan/input');
@@ -71,22 +82,96 @@ const HistoryLaporan = () => {
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
-    doc.text('Data History Laporan', 14, 15);
     
-    const tableData = filteredList.map(item => [
-      new Date(item.tanggal).toLocaleDateString('id-ID'),
-      isAdmin ? (item.unit?.nama_unit || '-') : (item.pengguna?.nama || '-'),
-      'Data Harian',
-      item.status
-    ]);
+    // Fungsi untuk menggambar kop surat KAI
+    const drawHeader = (doc) => {
+      // Simulate KAI Logo with text
+      doc.setFont("helvetica", "bolditalic");
+      doc.setFontSize(32);
+      doc.setTextColor(0, 58, 112); // KAI Navy
+      doc.text("K", 14, 22);
+      doc.text("A", 27, 22);
+      doc.setTextColor(243, 112, 33); // KAI Orange
+      doc.text("I", 40, 22);
 
-    doc.autoTable({
-      head: [['Tanggal', isAdmin ? 'Unit' : 'Disubmit Oleh', 'Jenis', 'Status']],
-      body: tableData,
-      startY: 20,
-      styles: { fontSize: 10 },
-      headStyles: { fillColor: [0, 58, 112] } // KAI Navy
+      // Company name
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(30, 136, 229); // Blue text
+      doc.text("PT KERETA API INDONESIA (PERSERO)", 50, 16);
+      
+      // Address
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0); // Black text
+      doc.text("DIVISI REGIONAL I SUMATERA UTARA", 50, 22);
+      
+      // Horizontal Line
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(0, 0, 0);
+      doc.line(14, 26, 196, 26);
+    };
+
+    // Grouping by Unit
+    const grouped = {};
+    filteredList.forEach(item => {
+      const unitName = isAdmin ? (item.unit?.nama_unit || 'Tanpa Unit') : (item.pengguna?.nama || 'Saya');
+      if (!grouped[unitName]) grouped[unitName] = [];
+      grouped[unitName].push(item);
     });
+
+    const unitNames = Object.keys(grouped);
+    
+    unitNames.forEach((unitName, index) => {
+      if (index > 0) doc.addPage();
+      
+      drawHeader(doc);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text(`Laporan: ${unitName}`, 14, 36);
+      
+      const tableData = grouped[unitName].map(item => [
+        new Date(item.tanggal).toLocaleDateString('id-ID'),
+        'Data Harian',
+        item.status,
+        isAdmin ? (item.pengguna?.nama || '-') : (item.kotak_detail || '—')
+      ]);
+
+      autoTable(doc, {
+        head: [['Tanggal', 'Jenis', 'Status', isAdmin ? 'Disubmit Oleh' : 'Catatan Revisi']],
+        body: tableData,
+        startY: 42,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [0, 58, 112] } // KAI Navy
+      });
+
+      // Add signature block at the end of each unit's report
+      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 60;
+      if (finalY > 250) {
+        doc.addPage();
+        drawHeader(doc);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text("Medan, " + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), 140, 48);
+        doc.text("Mengetahui,", 140, 56);
+        doc.text("Manager / Vice President", 140, 64);
+        doc.text("______________________", 140, 94);
+      } else {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text("Medan, " + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), 140, finalY);
+        doc.text("Mengetahui,", 140, finalY + 8);
+        doc.text("Manager / Vice President", 140, finalY + 16);
+        doc.text("______________________", 140, finalY + 46);
+      }
+    });
+
+    if (unitNames.length === 0) {
+       drawHeader(doc);
+       doc.setFont("helvetica", "normal");
+       doc.text("Tidak ada data laporan.", 14, 36);
+    }
 
     doc.save('History_Laporan_KAI.pdf');
   };

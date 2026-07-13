@@ -101,6 +101,7 @@ model Pengguna {
   kata_sandi       String        @db.VarChar(255)
   peran            PeranPengguna @default(USER_UNIT)
   no_hp            String?       @db.VarChar(20)
+  bsuid            String?       @db.VarChar(100)
   percobaan_login  Int           @default(0)
   terkunci         Boolean       @default(false)
 
@@ -189,6 +190,8 @@ model Laporan {
   status_internal StatusInternal @default(PENDING)
   status          StatusLaporan  @default(DRAFT)
   kotak_detail    String?        @db.Text // Catatan/keterangan tambahan
+  token_revisi    String?        @db.VarChar(100) // Token untuk unlock laporan
+  token_revisi_exp DateTime?     // Waktu kedaluwarsa token
 
   // Foreign Keys
   id_unit     Int
@@ -350,9 +353,16 @@ model LaporanBarang {
 
 model LaporanKeuangan {
   id_laporan_keuangan Int     @id @default(autoincrement())
+  target_rkad         Decimal? @db.Decimal(15, 2)
+  realisasi_rkad      Decimal? @db.Decimal(15, 2)
   pendapatan          Decimal @db.Decimal(15, 2)
   pengeluaran         Decimal @db.Decimal(15, 2)
-  laba_rugi           Decimal @db.Decimal(15, 2) // bisa computed: pendapatan - pengeluaran
+  laba_rugi           Decimal @db.Decimal(15, 2)
+
+  // Rincian Tambahan (JSON strings)
+  rincian_transaksi   String? @db.Text
+  rincian_spj         String? @db.Text
+  rincian_invoice     String? @db.Text
 
   // Foreign Key (1-to-1 dengan Laporan)
   id_laporan Int     @unique
@@ -362,4 +372,33 @@ model LaporanKeuangan {
   updated_at DateTime @updatedAt
 
   @@map("laporan_keuangan")
+}
+
+// ============================================================
+// TABEL: Konfigurasi Template Notifikasi
+// ============================================================
+
+model KonfigurasiTemplate {
+  id_konfig        Int      @id @default(autoincrement())
+  nama_template    String   @unique @db.VarChar(100)
+  isi_pesan        String?  @db.Text
+  trigger_waktu    String   @default("MANUAL")
+  unit_penerima    String   @default("SEMUA")
+  created_at       DateTime @default(now())
+
+  @@map("konfigurasi_template")
+}
+
+// ============================================================
+// TABEL: Log Pengiriman Notifikasi
+// ============================================================
+
+model LogNotifikasi {
+  id_log      Int      @id @default(autoincrement())
+  waktu       DateTime @default(now())
+  template    String   @db.VarChar(100)
+  penerima    String   @db.VarChar(150)
+  status      String   @db.VarChar(150)
+
+  @@map("log_notifikasi")
 }

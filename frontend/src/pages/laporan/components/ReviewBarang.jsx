@@ -2,7 +2,16 @@ import React from 'react';
 
 const ReviewBarang = ({ laporan_barang }) => {
   const rincianItems = laporan_barang.filter(item => item.id_komoditi !== 99);
-  const totalItem = laporan_barang.find(item => item.id_komoditi === 99);
+  let totalItem = laporan_barang.find(item => item.id_komoditi === 99);
+  if (!totalItem && rincianItems.length > 0) {
+    let autoVolume = 0;
+    let autoPendapatan = 0;
+    rincianItems.forEach(b => {
+      autoVolume += parseFloat(b.volume) || 0;
+      autoPendapatan += parseFloat(b.pendapatan) || 0;
+    });
+    totalItem = { volume: autoVolume, pendapatan: autoPendapatan };
+  }
 
   // Hitung total Jml KA dari rincian
   const totalJmlKa = rincianItems.reduce((acc, curr) => acc + (parseInt(curr.jml_ka) || 0), 0);

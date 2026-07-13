@@ -30,7 +30,7 @@ const dummyDataPie = [
   { name: 'DAOP 3', value: 300 },
   { name: 'DAOP 4', value: 200 },
 ];
-const COLORS = ['var(--brand-500)', 'var(--accent-cyan)', 'var(--accent-emerald)', 'var(--accent-rose)'];
+const COLORS = ['var(--chart-bar-primary)', 'var(--chart-bar-highlight)', 'var(--success)', 'var(--danger)'];
 
 const AnalitikPage = () => {
   return (
@@ -63,13 +63,15 @@ const AnalitikPage = () => {
           <div style={{ width: '100%', height: 350 }}>
             <ResponsiveContainer>
               <BarChart data={dummyDataBar}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: 'var(--chart-card)', borderColor: 'var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}
+                  itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }}
+                  cursor={{ fill: 'var(--chart-grid)' }}
                 />
-                <Bar dataKey="realisasi" name="Realisasi" fill="var(--brand-500)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="realisasi" name="Realisasi" fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="target" name="Target" fill="var(--bg-card-2)" stroke="var(--border)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -90,13 +92,14 @@ const AnalitikPage = () => {
           <div style={{ width: '100%', height: 350 }}>
             <ResponsiveContainer>
               <AreaChart data={dummyDataBar}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: 'var(--chart-card)', borderColor: 'var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}
+                  itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }}
                 />
-                <Area type="monotone" dataKey="realisasi" stroke="var(--accent-cyan)" fill="rgba(34,211,238,0.2)" strokeWidth={3} />
+                <Area type="monotone" dataKey="realisasi" stroke="var(--chart-line-blue)" fill="var(--chart-bar-primary)" fillOpacity={0.2} strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -124,7 +127,8 @@ const AnalitikPage = () => {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: 'var(--chart-card)', borderColor: 'var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}
+                    itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }}
                   />
                 </PieChart>
               </ResponsiveContainer>

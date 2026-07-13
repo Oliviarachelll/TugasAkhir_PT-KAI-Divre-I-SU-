@@ -225,6 +225,7 @@ async function main() {
   const userKna = await prisma.pengguna.findUnique({ where: { email: 'unit.kna@rache.id' } });
   const userBarang = await prisma.pengguna.findUnique({ where: { email: 'unit.barang@rache.id' } });
   const userPenumpang = await prisma.pengguna.findUnique({ where: { email: 'unit.penumpang@rache.id' } });
+  const userKeuangan = await prisma.pengguna.findUnique({ where: { email: 'unit.keuangan@rache.id' } });
   
   const semuaKomoditiBarang = await prisma.komoditiBarang.findMany({
     where: { 
@@ -240,6 +241,7 @@ async function main() {
   let countKNA = 0;
   let countBarang = 0;
   let countPenumpang = 0;
+  let countKeuangan = 0;
 
   for (let i = 0; i < 30; i++) {
     // Tanggal berurut dari hari ini mundur 30 hari
@@ -337,9 +339,57 @@ async function main() {
       });
       countPenumpang++;
     }
+    // 4. Seed Keuangan
+    if (userKeuangan) {
+      const p1 = Math.floor(Math.random() * 500000000);
+      const e1 = Math.floor(Math.random() * 100000000);
+      const e2 = Math.floor(Math.random() * 50000000);
+      const e3 = Math.floor(Math.random() * 20000000);
+
+      const rincianTransaksi = [
+        { id: '1', jenis: 'Penerimaan', uraian: 'Pendapatan Jasa', penerimaan: p1.toString(), pengeluaran: '0', unit_kerja: 'KNA' },
+        { id: '2', jenis: 'Pengeluaran', uraian: 'Biaya Operasional', penerimaan: '0', pengeluaran: e1.toString(), unit_kerja: 'Keuangan' }
+      ];
+      const rincianSPJ = [
+        { id: '1', no_spj: `SPJ-${i}`, tanggal_spj: pastDate.toISOString().split('T')[0], uraian: 'Biaya Dinas', nominal: e2.toString(), keterangan: '-' }
+      ];
+      const rincianInvoice = [
+        { id: '1', no_invoice: `INV-${i}`, tanggal_invoice: pastDate.toISOString().split('T')[0], vendor: 'Vendor A', nominal: e3.toString(), jatuh_tempo: pastDate.toISOString().split('T')[0], status: 'Belum Lunas', keterangan: '-' }
+      ];
+
+      const pendapatan = p1;
+      const pengeluaran = e1 + e2 + e3;
+      const labaRugi = pendapatan - pengeluaran;
+
+      const targetRKAD = 150000000000;
+      const realisasiRKAD = parseFloat((Math.random() * targetRKAD * 0.05).toFixed(2)); // add a bit each day
+
+      await prisma.laporan.create({
+        data: {
+          tanggal: pastDate,
+          status_internal: getRandomInternal(),
+          status: getRandomStatus(),
+          id_unit: unitKeuangan.id_unit,
+          id_pengguna: userKeuangan.id_pengguna,
+          laporan_keuangan: {
+            create: {
+              target_rkad: targetRKAD,
+              realisasi_rkad: realisasiRKAD,
+              rincian_transaksi: JSON.stringify(rincianTransaksi),
+              rincian_spj: JSON.stringify(rincianSPJ),
+              rincian_invoice: JSON.stringify(rincianInvoice),
+              pendapatan: pendapatan,
+              pengeluaran: pengeluaran,
+              laba_rugi: labaRugi
+            }
+          }
+        }
+      });
+      countKeuangan++;
+    }
   }
 
-  console.log(`  ✅ Berhasil generate ${countKNA} KNA, ${countBarang} Barang, ${countPenumpang} Penumpang bervariasi.`);
+  console.log(`  ✅ Berhasil generate ${countKNA} KNA, ${countBarang} Barang, ${countPenumpang} Penumpang, ${countKeuangan} Keuangan bervariasi.`);
 
   // ============================================================
   // RINGKASAN

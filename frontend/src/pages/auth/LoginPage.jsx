@@ -16,12 +16,18 @@ const LoginPage = () => {
   const [isLocked, setIsLocked] = useState(false);
 
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showRequestUnlockModal, setShowRequestUnlockModal] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetSuccess, setResetSuccess] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+
+  const [unlockEmail, setUnlockEmail] = useState('');
+  const [unlockError, setUnlockError] = useState('');
+  const [unlockSuccess, setUnlockSuccess] = useState('');
+  const [isRequestingUnlock, setIsRequestingUnlock] = useState(false);
 
   const navigate = useNavigate();
   const { login, isAuthenticated, user } = useAuthStore();
@@ -63,6 +69,14 @@ const LoginPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTokenChange = (e) => {
+    let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (val.length > 2) {
+      val = val.substring(0, 2) + '-' + val.substring(2, 8);
+    }
+    setResetToken(val);
   };
 
   const handleResetPassword = async (e) => {
@@ -156,7 +170,10 @@ const LoginPage = () => {
                     type="button"
                     className="btn btn-secondary btn-sm"
                     style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: '#111827', border: 'none' }}
-                    onClick={() => setShowResetModal(true)}
+                    onClick={() => {
+                      setUnlockEmail(email);
+                      setShowRequestUnlockModal(true);
+                    }}
                   >
                     Bantuan IT
                   </button>
@@ -182,10 +199,99 @@ const LoginPage = () => {
         </div>
       </div>
 
+      {/* Request Unlock Modal */}
+      {showRequestUnlockModal && (
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50 }}>
+          <div className="modal bg-white rounded-xl shadow-xl" style={{ width: '450px', maxWidth: '90%', padding: '32px' }}>
+            <button 
+              type="button"
+              className="text-gray-500 hover:text-gray-900 mb-6 flex items-center gap-1 text-sm bg-transparent border-none cursor-pointer p-0"
+              onClick={() => {
+                setShowRequestUnlockModal(false);
+                setUnlockError('');
+                setUnlockSuccess('');
+              }}
+            >
+              <ChevronLeft size={16} /> Batal
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-4 border border-dashed border-red-200">
+                <ShieldAlert size={24} className="text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold">Akun Terkunci</h3>
+              <p className="text-sm text-gray-500 mt-2">Kirim permintaan bantuan ke IT untuk mendapatkan token reset password via WhatsApp.</p>
+            </div>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setUnlockError('');
+              setUnlockSuccess('');
+              setIsRequestingUnlock(true);
+              try {
+                const res = await apiClient.post('/auth/request-unlock-ticket', { email: unlockEmail });
+                setUnlockSuccess(res.message || 'Permintaan terkirim ke IT.');
+              } catch (err) {
+                setUnlockError(err.response?.data?.message || 'Gagal mengirim permintaan');
+              } finally {
+                setIsRequestingUnlock(false);
+              }
+            }} className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label text-left w-full block font-medium">Email Anda</label>
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  placeholder="Email yang terdaftar"
+                  value={unlockEmail}
+                  onChange={(e) => setUnlockEmail(e.target.value)}
+                  required
+                />
+              </div>
+
+              {unlockError && (
+                <div className="p-3 bg-red-50 text-red-600 text-sm border border-red-200 rounded-md text-left">
+                  {unlockError}
+                </div>
+              )}
+
+              {unlockSuccess && (
+                <div className="p-3 bg-green-50 text-green-700 text-sm border border-green-200 rounded-md flex items-start gap-2 text-left">
+                  <CheckCircle2 size={16} className="mt-0.5 flex-shrink-0" />
+                  <span>{unlockSuccess}</span>
+                </div>
+              )}
+
+              <button 
+                type="submit" 
+                className="btn btn-primary w-full flex justify-center"
+                disabled={isRequestingUnlock || !!unlockSuccess}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                {isRequestingUnlock ? <Loader2 className="animate-spin" size={18} /> : 'Kirim Permintaan ke IT'}
+              </button>
+
+              <div className="text-center mt-4">
+                <button 
+                  type="button" 
+                  className="text-primary hover:underline text-sm bg-transparent border-none cursor-pointer font-medium"
+                  onClick={() => {
+                    setShowRequestUnlockModal(false);
+                    setShowResetModal(true);
+                  }}
+                >
+                  Saya sudah mendapatkan token dari IT
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Reset Password Modal (Popup) */}
       {showResetModal && (
-        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
-          <div className="modal" style={{ width: '450px', maxWidth: '90%', padding: '32px' }}>
+        <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50 }}>
+          <div className="modal bg-white rounded-xl shadow-xl" style={{ width: '450px', maxWidth: '90%', padding: '32px' }}>
             <button 
               type="button"
               className="text-gray-500 hover:text-gray-900 mb-6 flex items-center gap-1 text-sm bg-transparent border-none cursor-pointer p-0"
@@ -210,8 +316,9 @@ const LoginPage = () => {
                   className="form-control text-center tracking-widest font-mono font-bold" 
                   placeholder="XX-XXXXXX"
                   value={resetToken}
-                  onChange={(e) => setResetToken(e.target.value.toUpperCase())}
+                  onChange={handleTokenChange}
                   required
+                  maxLength={9}
                 />
               </div>
 
@@ -263,7 +370,7 @@ const LoginPage = () => {
                 disabled={isResetting || !!resetSuccess}
                 style={{ width: '100%', justifyContent: 'center' }}
               >
-                {isResetting ? <Loader2 className="animate-spin" size={18} /> : 'Tombol Submit'}
+                {isResetting ? <Loader2 className="animate-spin" size={18} /> : 'Reset Password'}
               </button>
             </form>
           </div>

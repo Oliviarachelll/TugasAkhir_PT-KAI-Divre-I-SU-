@@ -45,16 +45,23 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
     { name: 'Realisasi', value: realisasiRKAD },
     { name: 'Sisa Target', value: Math.max(0, targetRKAD - realisasiRKAD) }
   ];
-  const donutColors = ['var(--brand-500)', 'var(--border-strong)'];
+  const donutColors = ['var(--chart-bar-primary)', 'var(--chart-grid)'];
 
   const chartData = useMemo(() => {
     const data = [];
-    const today = new Date();
+    let today = new Date();
+    if (approvedLaporan.length > 0) {
+      const dates = approvedLaporan.map(l => new Date(l.tanggal).getTime());
+      today = new Date(Math.max(...dates));
+    }
     
     for (let i = chartDays - 1; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
       
       const laporanHariIni = approvedLaporan.filter(l => l.tanggal.startsWith(dateStr) && l.laporan_kna);
       
@@ -80,14 +87,12 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
     const max = dailyTotals.length ? Math.max(...dailyTotals) : 0;
     const min = nonZeroTotals.length ? Math.min(...nonZeroTotals) : 0;
     const avg = dailyTotals.length ? dailyTotals.reduce((a, b) => a + b, 0) / dailyTotals.length : 0;
-    const firstDay = dailyTotals[0] || 0;
-    const lastDay = dailyTotals[dailyTotals.length - 1] || 0;
+    const firstDay = nonZeroTotals.length > 1 ? nonZeroTotals[0] : 0;
+    const lastDay = nonZeroTotals.length > 1 ? nonZeroTotals[nonZeroTotals.length - 1] : 0;
     
     let growth = 0;
-    if (firstDay > 0) {
+    if (nonZeroTotals.length > 1) {
       growth = ((lastDay - firstDay) / firstDay) * 100;
-    } else if (lastDay > 0) {
-      growth = 100; 
     }
 
     return {
@@ -140,12 +145,12 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
           <div style={{ width: '100%', height: 320 }}>
             <ResponsiveContainer>
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => `Rp ${value.toLocaleString('id-ID')}`} cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }} />
-                <Bar dataKey="ROW" name="Nilai ROW" fill="var(--brand-500)" radius={[4, 4, 0, 0]} barSize={30} />
-                <Bar dataKey="NonROW" name="Nilai Non-ROW" fill="#6366F1" radius={[4, 4, 0, 0]} barSize={30} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value) => `Rp ${value.toLocaleString('id-ID')}`} cursor={{ fill: 'var(--chart-grid)' }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
+                <Bar dataKey="ROW" name="Nilai ROW" fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="NonROW" name="Nilai Non-ROW" fill="var(--chart-bar-highlight)" radius={[4, 4, 0, 0]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
           </div>

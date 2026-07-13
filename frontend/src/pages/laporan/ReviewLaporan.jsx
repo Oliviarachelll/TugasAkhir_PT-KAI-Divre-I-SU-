@@ -11,13 +11,17 @@ import ReviewKeuangan from './components/ReviewKeuangan';
 const ReviewLaporan = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { fetchLaporanById, laporanDetail, updateStatusLaporan, isLoading } = useLaporanStore();
+  const { fetchLaporanById, laporanDetail, updateStatusLaporan, unlockLaporan, isLoading } = useLaporanStore();
   const { user } = useAuthStore();
   const isAdmin = user?.peran === 'ADMIN_GLOBAL';
 
   const [showModal, setShowModal] = useState(false);
   const [modalAction, setModalAction] = useState(''); // 'acc' or 'revisi'
   const [catatan, setCatatan] = useState('');
+  
+  // Token state
+  const [tokenInput, setTokenInput] = useState('');
+  const [showTokenModal, setShowTokenModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -39,6 +43,16 @@ const ReviewLaporan = () => {
     }
   };
 
+  const submitToken = async () => {
+    if (!tokenInput.trim()) return;
+    const success = await unlockLaporan(id, tokenInput);
+    if (success) {
+      setShowTokenModal(false);
+      setTokenInput('');
+      fetchLaporanById(id); // Refresh to see REVISI status
+    }
+  };
+
   if (isLoading && !laporanDetail) {
     return <div className="p-8 text-center text-muted">Memuat data laporan...</div>;
   }
@@ -47,17 +61,19 @@ const ReviewLaporan = () => {
     return <div className="p-8 text-center text-danger">Laporan tidak ditemukan.</div>;
   }
 
+  const showRightPanel = (isAdmin && laporanDetail.status === 'DIAJUKAN') || (!isAdmin && laporanDetail.status === 'DISETUJUI');
+
   return (
     <div>
       
       <div className="page-header">
         <div>
           <button className="btn btn-secondary btn-sm mb-4" onClick={() => navigate(isAdmin ? '/dashboard/admin' : '/laporan/history')}><ArrowLeft size={16} /> Kembali</button>
-          <div className="text-sm text-muted font-medium mb-1">Laporan <span className="mx-1">&gt;</span> <span className="text-primary">Review Laporan</span></div>
+          <div className="text-sm text-muted font-medium mb-1">Laporan <span className="mx-1">&gt;</span> <span className="text-primary">Detail Laporan</span></div>
         </div>
       </div>
 
-      <div className={`grid grid-cols-1 ${isAdmin ? 'lg:grid-cols-3' : ''} gap-6`} style={{ display: 'grid', gridTemplateColumns: isAdmin ? '2fr 1fr' : '1fr', gap: '24px' }}>
+      <div className={`grid grid-cols-1 ${showRightPanel ? 'lg:grid-cols-3' : ''} gap-6`} style={{ display: 'grid', gridTemplateColumns: showRightPanel ? '2fr 1fr' : '1fr', gap: '24px' }}>
         
         {/* Kiri: Data Read Only */}
         <div>
@@ -104,7 +120,7 @@ const ReviewLaporan = () => {
         </div>
 
         {/* Kanan: Panel Tindakan */}
-        {isAdmin && (
+        {isAdmin && laporanDetail.status === 'DIAJUKAN' && (
         <div>
           <div className="card sticky top-24" style={{ position: 'sticky', top: '90px' }}>
             <h3 className="section-title">Tindakan Review</h3>
@@ -149,6 +165,24 @@ const ReviewLaporan = () => {
           </div>
         </div>
         )}
+
+        {!isAdmin && laporanDetail.status === 'DISETUJUI' && (
+        <div>
+          <div className="card sticky top-24" style={{ position: 'sticky', top: '90px' }}>
+            <h3 className="section-title">Revisi Terkunci</h3>
+            <p className="text-sm text-muted mb-4">
+              Laporan ini telah di-ACC. Jika Anda butuh merevisi, silakan masukkan <strong>Token Akses</strong> dari Helpdesk (Admin Global/IT).
+            </p>
+            
+            <button 
+              className="btn btn-primary w-full" 
+              onClick={() => setShowTokenModal(true)}
+            >
+              Masukkan Token Revisi
+            </button>
+          </div>
+        </div>
+        )}
       </div>
 
       {/* Modal Konfirmasi */}
@@ -181,6 +215,43 @@ const ReviewLaporan = () => {
                 disabled={isLoading}
               >
                 {isLoading ? 'Memproses...' : `Konfirmasi ${modalAction === 'acc' ? 'ACC' : 'Revisi'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Token Revisi */}
+      {showTokenModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3 className="modal-title">Masukkan Token Revisi</h3>
+              <button className="modal-close" onClick={() => setShowTokenModal(false)}><X size={18} /></button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-secondary mb-3">
+                Silakan masukkan token akses yang diberikan oleh Helpdesk untuk membuka kembali laporan ini agar dapat direvisi.
+              </p>
+              <input 
+                type="text" 
+                className="form-control font-mono text-center tracking-widest text-lg" 
+                placeholder="XX - XXXXXX"
+                value={tokenInput}
+                onChange={e => setTokenInput(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setShowTokenModal(false)}>Batal</button>
+              <button 
+                className="btn btn-primary"
+                onClick={submitToken}
+                disabled={isLoading || !tokenInput.trim()}
+              >
+                {isLoading ? 'Memproses...' : 'Unlock Laporan'}
               </button>
             </div>
           </div>

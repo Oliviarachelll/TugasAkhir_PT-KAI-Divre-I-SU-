@@ -289,13 +289,24 @@ const upsertLaporanKeuangan = async (req, res) => {
   const laporan = await prisma.laporan.findUnique({ where: { id_laporan } });
   if (!laporan) return sendError(res, 'Laporan tidak ditemukan', 404);
 
-  const { pendapatan, pengeluaran } = req.body;
+  const { target_rkad, realisasi_rkad, pendapatan, pengeluaran, rincian_transaksi, rincian_spj, rincian_invoice } = req.body;
   const laba_rugi = parseFloat(pendapatan) - parseFloat(pengeluaran);
+
+  const data = {
+    target_rkad,
+    realisasi_rkad,
+    pendapatan,
+    pengeluaran,
+    laba_rugi,
+    rincian_transaksi: rincian_transaksi || null,
+    rincian_spj: rincian_spj || null,
+    rincian_invoice: rincian_invoice || null
+  };
 
   const keuangan = await prisma.laporanKeuangan.upsert({
     where: { id_laporan },
-    create: { pendapatan, pengeluaran, laba_rugi, id_laporan },
-    update: { pendapatan, pengeluaran, laba_rugi },
+    create: { ...data, id_laporan },
+    update: data,
   });
 
   return sendSuccess(res, keuangan, 'Data keuangan berhasil disimpan');
@@ -318,3 +329,59 @@ module.exports = {
   deleteLaporanBarang,
   upsertLaporanKeuangan,
 };
+
+const unlockLaporan = async (req, res) => {
+  const { id } = req.params;
+  const { token } = req.body;
+  const idLaporan = parseInt(id);
+
+  if (!token) {
+    return sendError(res, 400, 'Token diperlukan');
+  }
+
+  const laporan = await prisma.laporan.findUnique({
+    where: { id_laporan: idLaporan }
+  });
+
+  if (!laporan) {
+    return sendError(res, 404, 'Laporan tidak ditemukan');
+  }
+
+  if (laporan.status !== 'DISETUJUI') {
+    return sendError(res, 400, 'Laporan tidak dalam status DISETUJUI');
+  }
+
+  if (laporan.token_revisi !== token) {
+    return sendError(res, 400, 'Token revisi tidak valid');
+  }
+
+  if (laporan.token_revisi_exp && new Date() > new Date(laporan.token_revisi_exp)) {
+    return sendError(res, 400, 'Token revisi sudah kedaluwarsa');
+  }
+
+  // Token valid, unlock laporan
+  const updated = await prisma.laporan.update({
+    where: { id_laporan: idLaporan },
+    data: {
+      status: 'REVISI',
+      token_revisi: null, // Clear token after use
+      token_revisi_exp: null, // Clear expiration after use
+      kotak_detail: 'Laporan dibuka kembali melalui token Helpdesk'
+    }
+  });
+
+  // Log audit
+  await prisma.logAudit.create({
+    data: {
+      id_pengguna: req.pengguna.id_pengguna,
+      aksi: 'UNLOCK_LAPORAN',
+      tabel_terkait: 'laporan',
+      id_record_terkait: idLaporan,
+      detail: `Laporan di-unlock dengan token revisi. Status diubah dari DISETUJUI ke REVISI.`,
+    }
+  });
+
+  return sendSuccess(res, updated, 'Laporan berhasil dibuka kembali (Revisi)');
+};
+
+module.exports.unlockLaporan = unlockLaporan;

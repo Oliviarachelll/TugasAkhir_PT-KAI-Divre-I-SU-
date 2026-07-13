@@ -39,4 +39,11 @@ const { getAllLogAudit } = require('../controllers/audit.controller');
 auditRouter.use(authenticate);
 auditRouter.get('/', authorize('IT'), getAllLogAudit);
 
-module.exports = { targetRouter, komoditiRouter, permintaanRouter, auditRouter };
+// === SYSTEM STATS ===
+const systemRouter = require('express').Router();
+const { getSystemStats } = require('../controllers/system.controller');
+
+systemRouter.use(authenticate);
+systemRouter.get('/stats', authorize('IT', 'ADMIN_GLOBAL'), getSystemStats);
+
+module.exports = { targetRouter, komoditiRouter, permintaanRouter, auditRouter, systemRouter };

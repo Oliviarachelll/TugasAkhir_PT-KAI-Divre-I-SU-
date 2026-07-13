@@ -1,15 +1,71 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, Search, Edit2, Trash2, Building2 } from 'lucide-react';
-
-const dummyUnits = [
-  { id: 'UNT001', nama: 'Unit DAOP 1', lokasi: 'Jakarta', totalUser: 12, status: 'Aktif' },
-  { id: 'UNT002', nama: 'Unit DAOP 2', lokasi: 'Bandung', totalUser: 8, status: 'Aktif' },
-  { id: 'UNT003', nama: 'Unit DAOP 3', lokasi: 'Cirebon', totalUser: 5, status: 'Aktif' },
-  { id: 'UNT004', nama: 'Unit DAOP 4', lokasi: 'Semarang', totalUser: 0, status: 'Nonaktif' },
-];
+import { unitApi } from '../../api/unit.api';
+import toast from 'react-hot-toast';
 
 const ManajemenUnit = () => {
   const [showModal, setShowModal] = useState(false);
+  const [units, setUnits] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({ nama_unit: '', jenis_unit: 'DAERAH' });
+  const [editingId, setEditingId] = useState(null);
+
+  const fetchUnits = async () => {
+    setIsLoading(true);
+    try {
+      const res = await unitApi.getAll({ limit: 100 });
+      setUnits(res.data);
+    } catch (error) {
+      toast.error('Gagal mengambil data unit');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnits();
+  }, []);
+
+  const handleEdit = (unit) => {
+    setEditingId(unit.id_unit);
+    setFormData({ nama_unit: unit.nama_unit, jenis_unit: unit.jenis_unit });
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Yakin ingin menghapus unit ini?')) return;
+    try {
+      await unitApi.delete(id);
+      toast.success('Unit berhasil dihapus');
+      fetchUnits();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || 'Gagal menghapus unit');
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (editingId) {
+        await unitApi.update(editingId, formData);
+        toast.success('Unit berhasil diperbarui');
+      } else {
+        await unitApi.create(formData);
+        toast.success('Unit berhasil ditambahkan');
+      }
+      setShowModal(false);
+      setFormData({ nama_unit: '', jenis_unit: 'DAERAH' });
+      setEditingId(null);
+      fetchUnits();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || 'Terjadi kesalahan');
+    }
+  };
+
+  const openAddModal = () => {
+    setEditingId(null);
+    setFormData({ nama_unit: '', jenis_unit: 'DAERAH' });
+    setShowModal(true);
+  };
 
   return (
     <div>
@@ -18,7 +74,7 @@ const ManajemenUnit = () => {
           <div className="text-sm text-muted font-medium mb-1">Manajemen <span className="mx-1">&gt;</span> <span className="text-primary">Manajemen Unit</span></div>
           <p className="page-subtitle">Kelola struktur unit operasional sistem.</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary" onClick={openAddModal}>
           <PlusCircle size={18} /> Tambah Unit
         </button>
       </div>
@@ -42,20 +98,20 @@ const ManajemenUnit = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-        {dummyUnits.map(unit => (
-          <div key={unit.id} className="card relative" style={{ padding: '24px' }}>
+        {isLoading ? <p className="text-muted">Memuat data unit...</p> : (units || []).map(unit => (
+          <div key={unit.id_unit} className="card relative" style={{ padding: '24px' }}>
             <div className="flex justify-between items-start mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center text-brand-400" style={{ width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--brand-400)' }}>
                   <Building2 size={20} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-primary">{unit.nama}</h3>
-                  <p className="text-xs text-muted mt-1">ID: {unit.id}</p>
+                  <h3 className="font-bold text-primary">{unit.nama_unit}</h3>
+                  <p className="text-xs text-muted mt-1">ID: {unit.id_unit}</p>
                 </div>
               </div>
-              <span className={`badge ${unit.status === 'Aktif' ? 'badge-disetujui' : 'badge-revisi'}`}>
-                {unit.status}
+              <span className={`badge badge-disetujui`}>
+                AKTIF
               </span>
             </div>
 
@@ -63,20 +119,20 @@ const ManajemenUnit = () => {
 
             <div className="flex justify-between items-center text-sm" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px' }}>
               <div>
-                <p className="text-muted mb-1">Lokasi</p>
-                <p className="font-medium text-primary">{unit.lokasi}</p>
+                <p className="text-muted mb-1">Jenis Unit</p>
+                <p className="font-medium text-primary">{unit.jenis_unit}</p>
               </div>
               <div className="text-right">
                 <p className="text-muted mb-1">Total User</p>
-                <p className="font-medium text-primary">{unit.totalUser} Akun</p>
+                <p className="font-medium text-primary">{unit._count?.pengguna || 0} Akun</p>
               </div>
             </div>
 
             <div className="mt-4 flex gap-2" style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
-              <button className="btn btn-secondary btn-sm w-full" style={{ flex: 1, justifyContent: 'center' }}>
+              <button className="btn btn-secondary btn-sm w-full" style={{ flex: 1, justifyContent: 'center' }} onClick={() => handleEdit(unit)}>
                 <Edit2 size={14} className="mr-1" /> Edit
               </button>
-              <button className="btn btn-secondary btn-sm" style={{ padding: '0 12px', color: 'var(--danger)', borderColor: 'var(--border)' }}>
+              <button className="btn btn-secondary btn-sm" style={{ padding: '0 12px', color: 'var(--danger)', borderColor: 'var(--border)' }} onClick={() => handleDelete(unit.id_unit)}>
                 <Trash2 size={14} />
               </button>
             </div>
@@ -94,23 +150,20 @@ const ManajemenUnit = () => {
             
             <div className="form-group">
               <label className="form-label">Nama Unit</label>
-              <input type="text" className="form-control" placeholder="Contoh: Unit DAOP 5" />
+              <input type="text" className="form-control" placeholder="Contoh: Unit DAOP 5" value={formData.nama_unit} onChange={(e) => setFormData({...formData, nama_unit: e.target.value})} />
             </div>
             <div className="form-group">
-              <label className="form-label">Lokasi / Wilayah</label>
-              <input type="text" className="form-control" placeholder="Contoh: Purwokerto" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Status</label>
-              <select className="form-control">
-                <option value="Aktif">Aktif</option>
-                <option value="Nonaktif">Nonaktif</option>
+              <label className="form-label">Jenis Unit</label>
+              <select className="form-control" value={formData.jenis_unit} onChange={(e) => setFormData({...formData, jenis_unit: e.target.value})}>
+                <option value="PUSAT">PUSAT</option>
+                <option value="DAERAH">DAERAH</option>
+                <option value="CABANG">CABANG</option>
               </select>
             </div>
 
             <div className="modal-footer mt-4">
               <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Batal</button>
-              <button className="btn btn-primary" onClick={() => setShowModal(false)}>Simpan Unit</button>
+              <button className="btn btn-primary" onClick={handleSubmit}>Simpan Unit</button>
             </div>
           </div>
         </div>

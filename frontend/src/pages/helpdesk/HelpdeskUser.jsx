@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PlusCircle, Search } from 'lucide-react';
 import useAuthStore from '../../store/auth.store';
 import usePermintaanStore from '../../store/permintaan.store';
+import useLaporanStore from '../../store/laporan.store';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 
@@ -10,6 +11,7 @@ const HelpdeskUser = () => {
   const { t } = useTranslation();
   
   const { permintaanList, fetchPermintaan, addPermintaan, isLoading } = usePermintaanStore();
+  const { laporanList, fetchLaporan } = useLaporanStore();
 
   const [showModal, setShowModal] = useState(false);
   const [statusFilter, setStatusFilter] = useState('Semua Status');
@@ -17,28 +19,41 @@ const HelpdeskUser = () => {
   
   const [formJenis, setFormJenis] = useState('');
   const [formDeskripsi, setFormDeskripsi] = useState('');
+  const [formIdLaporan, setFormIdLaporan] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     fetchPermintaan();
-  }, [fetchPermintaan]);
+    fetchLaporan();
+  }, [fetchPermintaan, fetchLaporan]);
 
   const handleSubmit = async () => {
     if (!formJenis || !formDeskripsi) {
       toast.error('Harap isi kategori dan deskripsi');
       return;
     }
+    
+    if (formJenis === 'KLARIFIKASI_DATA' && !formIdLaporan) {
+      toast.error('Harap pilih laporan yang akan direvisi');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await addPermintaan({
+      const payload = {
         jenis: formJenis,
         deskripsi: formDeskripsi
-      });
+      };
+      if (formIdLaporan) {
+        payload.id_laporan = parseInt(formIdLaporan);
+      }
+      
+      await addPermintaan(payload);
       toast.success('Tiket bantuan berhasil dibuat');
       setShowModal(false);
       setFormJenis('');
       setFormDeskripsi('');
+      setFormIdLaporan('');
     } catch (error) {
       toast.error('Gagal membuat tiket bantuan');
     } finally {
@@ -158,7 +173,10 @@ const HelpdeskUser = () => {
             
             <div className="form-group">
               <label className="form-label">Kategori Bantuan</label>
-              <select className="form-control" value={formJenis} onChange={e => setFormJenis(e.target.value)}>
+              <select className="form-control" value={formJenis} onChange={e => {
+                setFormJenis(e.target.value);
+                if (e.target.value !== 'KLARIFIKASI_DATA') setFormIdLaporan('');
+              }}>
                 <option value="">Pilih Kategori...</option>
                 <option value="PERMINTAAN_AKSES">Lupa Password / Akun Terkunci (Ke Tim IT)</option>
                 <option value="BANTUAN_TEKNIS">Kendala Sistem / Error (Ke Tim IT)</option>
@@ -166,6 +184,20 @@ const HelpdeskUser = () => {
                 <option value="LAINNYA">Lainnya</option>
               </select>
             </div>
+
+            {formJenis === 'KLARIFIKASI_DATA' && (
+              <div className="form-group">
+                <label className="form-label">Pilih Laporan yang akan Direvisi</label>
+                <select className="form-control" value={formIdLaporan} onChange={e => setFormIdLaporan(e.target.value)}>
+                  <option value="">-- Pilih Laporan --</option>
+                  {laporanList.filter(l => l.status === 'DISETUJUI').map(l => (
+                    <option key={l.id_laporan} value={l.id_laporan}>
+                      Tanggal: {new Date(l.tanggal).toLocaleDateString('id-ID')} - {l.unit?.nama_unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="form-group">
               <label className="form-label">Deskripsi Kendala</label>

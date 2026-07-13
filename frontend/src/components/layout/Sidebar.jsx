@@ -43,6 +43,7 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
     ],
     ADMIN_GLOBAL: [
       { path: '/dashboard/admin', label: t('menu.dashboard'), icon: LayoutDashboard },
+      // { path: '/analitik', label: 'Analitik', icon: Target },
       { path: '/laporan/review', label: 'Review Laporan', icon: FileText },
       { path: '/manajemen/unit', label: 'Manajemen Unit', icon: Building2 },
       { path: '/manajemen/user', label: 'Manajemen User', icon: Users },
@@ -54,7 +55,6 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
       { path: '/dashboard/it', label: t('menu.dashboard'), icon: LayoutDashboard },
       { path: '/monitoring', label: t('menu.monitoring'), icon: Activity },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
-      { path: '/notifikasi', label: 'Notifikasi', icon: Bell },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ]
   };
@@ -62,24 +62,24 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
   const currentNav = user?.peran ? navItems[user.peran] : [];
 
   return (
-    <aside className={`sidebar bg-[var(--sidebar)] ${className || ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ borderRight: '1px solid var(--border)' }}>
+    <aside className={`sidebar bg-[var(--sidebar)] backdrop-blur-md ${className || ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ borderRight: '1px solid var(--border)' }}>
       <div className="px-6 py-5 border-b relative flex flex-col items-start gap-4" style={{ height: '88px', justifyContent: 'center', borderColor: 'var(--border)' }}>
         <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : 'gap-4'}`}>
           <div className="flex items-center justify-center p-1.5 rounded-xl flex-shrink-0" style={{ backgroundColor: 'var(--bg-main)' }}>
             <img src={kaiLogo} alt="KAI Logo" className="h-7 w-auto object-contain" />
           </div>
           <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-[200px] opacity-100'}`}>
-            <span className="text-[15px] font-bold tracking-tight leading-none truncate" style={{ color: 'var(--text-primary)' }}>Access by KAI</span>
-            <span className="text-xs mt-1.5 font-medium truncate" style={{ color: 'var(--text-secondary)' }}>Divre 1 SUMUT</span>
+            <span className="text-[15px] font-bold tracking-tight leading-none truncate" style={{ color: 'var(--sidebar-active-text)' }}>Access by KAI</span>
+            <span className="text-xs mt-1.5 font-medium truncate" style={{ color: 'var(--sidebar-text-muted)' }}>Divre 1 SUMUT</span>
           </div>
         </div>
         
         <button 
           onClick={toggleCollapse}
           className="absolute -right-3.5 top-6 rounded-xl p-1.5 border hidden md:block transition-colors shadow-sm"
-          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--sidebar)', color: 'var(--text-secondary)' }}
-          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-main)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'var(--sidebar)', color: 'var(--sidebar-text)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'; e.currentTarget.style.color = 'var(--sidebar-active-text)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--sidebar)'; e.currentTarget.style.color = 'var(--sidebar-text)'; }}
         >
           {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
@@ -102,10 +102,10 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
                   }
                   style={({ isActive }) => ({
                     backgroundColor: isActive ? 'var(--sidebar-active)' : 'transparent',
-                    color: isActive ? 'var(--sidebar-active-text)' : 'var(--text-secondary)'
+                    color: isActive ? 'var(--sidebar-active-text)' : 'var(--sidebar-text)'
                   })}
-                  onMouseEnter={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'var(--bg-main)'; e.currentTarget.style.color = 'var(--sidebar-active-text)'; } }}
-                  onMouseLeave={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; } }}
+                  onMouseEnter={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'; e.currentTarget.style.color = 'var(--sidebar-active-text)'; } }}
+                  onMouseLeave={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-text)'; } }}
                   title={isCollapsed ? item.label : ""}
                 >
                   {({ isActive }) => (
@@ -131,9 +131,9 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
             <button 
               onClick={handleLogout}
               className={`flex items-center px-4 py-3 rounded-xl text-sm font-semibold w-full transition-all duration-200 ${isCollapsed ? 'justify-center' : 'text-left'}`}
-              style={{ color: 'var(--text-secondary)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger-bg)'; e.currentTarget.style.color = 'var(--danger)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              style={{ color: 'var(--sidebar-text)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger)'; e.currentTarget.style.color = '#FFFFFF'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-text)'; }}
               title={isCollapsed ? "Keluar" : ""}
             >
               <div className="flex-shrink-0">

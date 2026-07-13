@@ -60,8 +60,8 @@ const AppRouter = () => {
           <Route path="/target" element={<DummyPage title="Target Saya" />} />
         </Route>
 
-        {/* Shared Routes: Admin & IT */}
-        <Route element={<ProtectedRoute allowedRoles={['ADMIN_GLOBAL', 'IT']} />}>
+        {/* Shared Routes: Admin */}
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN_GLOBAL']} />}>
           <Route path="/notifikasi" element={<NotifikasiPage />} />
           <Route path="/analitik" element={<AnalitikPage />} />
         </Route>

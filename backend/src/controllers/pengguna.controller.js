@@ -115,9 +115,14 @@ const updatePengguna = async (req, res) => {
   const exists = await prisma.pengguna.findUnique({ where: { id_pengguna: parseInt(id) } });
   if (!exists) return sendError(res, 'Pengguna tidak ditemukan', 404);
 
+  const updateData = { ...req.body };
+  if (updateData.kata_sandi) {
+    updateData.kata_sandi = await bcrypt.hash(updateData.kata_sandi, parseInt(process.env.BCRYPT_ROUNDS) || 12);
+  }
+
   const pengguna = await prisma.pengguna.update({
     where: { id_pengguna: parseInt(id) },
-    data: req.body,
+    data: updateData,
     select: {
       id_pengguna: true,
       nama: true,

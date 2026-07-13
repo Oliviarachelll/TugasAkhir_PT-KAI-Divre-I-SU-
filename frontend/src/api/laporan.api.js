@@ -7,6 +7,7 @@ export const laporanApi = {
   create: (data) => apiClient.post('/laporan', data),
   update: (id, data) => apiClient.put(`/laporan/${id}`, data),
   delete: (id) => apiClient.delete(`/laporan/${id}`),
+  unlock: (id, token) => apiClient.post(`/laporan/${id}/unlock`, { token }),
 
   // Sub-Laporan: KNA
   upsertKNA: (idLaporan, data) => apiClient.put(`/laporan/${idLaporan}/kna`, data),
