@@ -125,7 +125,7 @@ const LoginPage = () => {
         <form onSubmit={handleLogin} className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label text-slate-300 font-medium">Email</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
             <input
               type="email"
               className="form-control text-slate-900 placeholder:text-slate-500 focus:border-purple-500 transition-colors"
@@ -137,7 +137,7 @@ const LoginPage = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label text-slate-300 font-medium">Password</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
             <input
               type="password"
               className="form-control text-slate-900 placeholder:text-slate-500 focus:border-purple-500 transition-colors"
