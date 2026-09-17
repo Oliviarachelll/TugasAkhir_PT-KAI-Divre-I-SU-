@@ -11,6 +11,7 @@ const {
   laporanPenumpangSchema,
   laporanBarangSchema,
   laporanKeuanganSchema,
+  resubmitLaporanSchema,
 } = require('../schemas/laporan.schema');
 const {
   getAllLaporan,
@@ -28,7 +29,8 @@ const {
   updateLaporanBarang,
   deleteLaporanBarang,
   upsertLaporanKeuangan,
-  unlockLaporan
+  unlockLaporan,
+  resubmitLaporan
 } = require('../controllers/laporan.controller');
 
 router.use(authenticate);
@@ -38,6 +40,7 @@ router.get('/', getAllLaporan);
 router.get('/:id', getLaporanById);
 router.post('/', validateBody(createLaporanSchema), createLaporan);
 router.put('/:id', validateBody(updateLaporanSchema), updateLaporan);
+router.post('/:id/resubmit', validateBody(resubmitLaporanSchema), resubmitLaporan);
 router.delete('/:id', authorize('IT', 'ADMIN_GLOBAL'), deleteLaporan);
 router.post('/:id/unlock', unlockLaporan);
 

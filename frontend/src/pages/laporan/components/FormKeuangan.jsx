@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import FormattedNumberInput from './FormattedNumberInput';
 import TableRincianTransaksi from './TableRincianTransaksi';
 import TableSPJ from './TableSPJ';
 import TableInvoice from './TableInvoice';
+import { formatNumber, currencyPrefix } from '../../../utils/format';
 
 const FormKeuangan = ({ draftLaporan, setDraft }) => {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
   const targetRkad = draftLaporan.keuangan?.target_rkad || '';
   const realisasiRkad = draftLaporan.keuangan?.realisasi_rkad || '';
   
@@ -48,16 +53,16 @@ const FormKeuangan = ({ draftLaporan, setDraft }) => {
 
   return (
     <div className="card mb-4" style={{ marginBottom: '24px' }}>
-      <h3 className="section-title">Laporan Keuangan</h3>
+      <h3 className="section-title">{t('laporan.form.keu_title')}</h3>
       
       <div className="form-grid-2 mb-6">
         <div className="form-group">
-          <label className="form-label">Target RKAD (Rp)</label>
-          <FormattedNumberInput className="form-control" placeholder="0" value={targetRkad} onChange={(val) => handleChangeKeuangan('target_rkad', val)} />
+          <label className="form-label">{t('laporan.form.keu_target')}</label>
+          <FormattedNumberInput className="form-control" placeholder="0" prefix={cur} value={targetRkad} onChange={(val) => handleChangeKeuangan('target_rkad', val)} />
         </div>
         <div className="form-group">
-          <label className="form-label">Realisasi RKAD (Rp)</label>
-          <FormattedNumberInput className="form-control" placeholder="0" value={realisasiRkad} onChange={(val) => handleChangeKeuangan('realisasi_rkad', val)} />
+          <label className="form-label">{t('laporan.form.keu_realization')}</label>
+          <FormattedNumberInput className="form-control" placeholder="0" prefix={cur} value={realisasiRkad} onChange={(val) => handleChangeKeuangan('realisasi_rkad', val)} />
         </div>
       </div>
 
@@ -78,36 +83,36 @@ const FormKeuangan = ({ draftLaporan, setDraft }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
         <div className="form-group p-4 rounded bg-gray-50 border border-gray-200">
-          <label className="form-label mb-1">Total Pendapatan (Otomatis)</label>
+          <label className="form-label mb-1">{t('laporan.form.keu_income_auto')}</label>
           <p className="text-xl font-bold text-green-700">
-            Rp {computedPendapatan.toLocaleString('id-ID')}
+            {cur} {formatNumber(computedPendapatan, lang)}
           </p>
         </div>
         <div className="form-group p-4 rounded bg-gray-50 border border-gray-200">
-          <label className="form-label mb-1">Total Pengeluaran (Otomatis)</label>
+          <label className="form-label mb-1">{t('laporan.form.keu_expense_auto')}</label>
           <p className="text-xl font-bold text-red-700">
-            Rp {computedPengeluaran.toLocaleString('id-ID')}
+            {cur} {formatNumber(computedPengeluaran, lang)}
           </p>
         </div>
       </div>
 
       <div className="form-group mt-6 p-6 rounded-lg bg-white border-2 border-orange-400 flex flex-col md:flex-row justify-between items-center shadow-sm">
         <div>
-          <h4 className="text-sm font-bold text-blue-900 mb-2 uppercase tracking-wide">HASIL (LABA / RUGI)</h4>
+          <h4 className="text-sm font-bold text-blue-900 mb-2 uppercase tracking-wide">{t('laporan.form.keu_result')}</h4>
           <p className={`text-md mb-1 font-medium ${labaRugi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {labaRugi >= 0 ? 'Untung (Laba)' : 'Rugi'}
+            {labaRugi >= 0 ? t('laporan.form.keu_profit') : t('laporan.form.keu_loss')}
           </p>
           <p className={`text-3xl font-bold ${labaRugi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            Rp {Math.abs(labaRugi).toLocaleString('id-ID')}
+            {cur} {formatNumber(Math.abs(labaRugi), lang)}
           </p>
         </div>
         <div className="mt-4 md:mt-0 text-left md:text-right">
-          <p className="text-sm text-blue-900 mb-1 font-medium">Penerimaan - Pengeluaran</p>
+          <p className="text-sm text-blue-900 mb-1 font-medium">{t('laporan.form.keu_formula')}</p>
           <p className="text-md text-blue-900 mb-1">
-            {computedPendapatan.toLocaleString('id-ID')} - {computedPengeluaran.toLocaleString('id-ID')}
+            {formatNumber(computedPendapatan, lang)} - {formatNumber(computedPengeluaran, lang)}
           </p>
           <p className={`text-lg font-bold ${labaRugi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            = {labaRugi >= 0 ? '' : '-'}{Math.abs(labaRugi).toLocaleString('id-ID')}
+            = {labaRugi >= 0 ? '' : '-'}{formatNumber(Math.abs(labaRugi), lang)}
           </p>
         </div>
       </div>

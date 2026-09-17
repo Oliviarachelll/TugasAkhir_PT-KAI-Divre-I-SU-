@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LineChart,
   Line,
@@ -13,6 +14,7 @@ import systemApi from '../../api/system.api';
 import toast from 'react-hot-toast';
 
 const MonitoringPage = () => {
+  const { t } = useTranslation();
   const [metricsData, setMetricsData] = useState([]);
   const [currentMetrics, setCurrentMetrics] = useState({ cpu: 0, ram: 0 });
   const [isBackendOnline, setIsBackendOnline] = useState(true);
@@ -51,7 +53,7 @@ const MonitoringPage = () => {
 
   const handleRefresh = () => {
     fetchMetrics();
-    toast.success('Data diperbarui');
+    toast.success(t('monitoring.updated'));
   };
 
   return (
@@ -59,9 +61,9 @@ const MonitoringPage = () => {
       
       {/* Tombol Refresh (di atas kanan) */}
       <div className="flex justify-between items-center mb-2">
-        <div className="text-gray-600 text-sm">Pantau beban kerja CPU & RAM server secara real-time.</div>
+        <div className="text-gray-600 text-sm">{t('monitoring.subtitle')}</div>
         <button onClick={handleRefresh} className="px-4 py-2 border border-gray-400 bg-white text-gray-800 text-sm font-medium hover:bg-gray-50">
-          Refresh Data
+          {t('monitoring.refresh')}
         </button>
       </div>
 
@@ -69,43 +71,43 @@ const MonitoringPage = () => {
       <div className="grid grid-cols-4 gap-4">
         {/* Card 1 */}
         <div className="card" style={{ padding: '16px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-          <div className="text-sm font-bold text-gray-800 mb-6">Backend API</div>
+          <div className="text-sm font-bold text-gray-800 mb-6">{t('monitoring.backend')}</div>
           <div className={`text-3xl font-bold mb-2 ${isBackendOnline ? 'text-green-600' : 'text-red-600'}`}>
-            {isBackendOnline ? 'Online' : 'Offline'}
+            {isBackendOnline ? t('monitoring.online') : t('monitoring.offline')}
           </div>
           <div className="flex justify-between text-xs text-gray-500 mt-auto">
-            <span>Server Node.js</span>
-            <span>Real-time</span>
+            <span>{t('monitoring.server_node')}</span>
+            <span>{t('monitoring.realtime')}</span>
           </div>
         </div>
 
         {/* Card 2 */}
         <div className="card" style={{ padding: '16px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-          <div className="text-sm font-bold text-gray-800 mb-6">CPU Load</div>
+          <div className="text-sm font-bold text-gray-800 mb-6">{t('monitoring.cpu')}</div>
           <div className="text-3xl font-bold text-gray-900 mb-2">{currentMetrics.cpu}%</div>
           <div className="flex justify-between text-xs text-gray-500 mt-auto">
-            <span>Beban Prosesor</span>
-            <span>OS Metrics</span>
+            <span>{t('monitoring.cpu_sub1')}</span>
+            <span>{t('monitoring.cpu_sub2')}</span>
           </div>
         </div>
 
         {/* Card 3 */}
         <div className="card" style={{ padding: '16px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-          <div className="text-sm font-bold text-gray-800 mb-6">RAM Usage</div>
+          <div className="text-sm font-bold text-gray-800 mb-6">{t('monitoring.ram')}</div>
           <div className="text-3xl font-bold text-gray-900 mb-2">{currentMetrics.ram}%</div>
           <div className="flex justify-between text-xs text-gray-500 mt-auto">
-            <span>Kapasitas Terpakai</span>
-            <span>OS Metrics</span>
+            <span>{t('monitoring.ram_sub1')}</span>
+            <span>{t('monitoring.cpu_sub2')}</span>
           </div>
         </div>
 
         {/* Card 4 */}
         <div className="card" style={{ padding: '16px', borderRadius: '4px', display: 'flex', flexDirection: 'column' }}>
-          <div className="text-sm font-bold text-gray-800 mb-6">Polling Interval</div>
-          <div className="text-3xl font-bold text-gray-900 mb-2">5 Detik</div>
+          <div className="text-sm font-bold text-gray-800 mb-6">{t('monitoring.polling')}</div>
+          <div className="text-3xl font-bold text-gray-900 mb-2">{t('monitoring.polling_value')}</div>
           <div className="flex justify-between text-xs text-gray-500 mt-auto">
-            <span>Auto Refresh</span>
-            <span>Aktif</span>
+            <span>{t('monitoring.polling_sub1')}</span>
+            <span>{t('monitoring.polling_sub2')}</span>
           </div>
         </div>
       </div>
@@ -115,7 +117,7 @@ const MonitoringPage = () => {
         
         {/* Kiri: Grafik */}
         <div className="card" style={{ padding: '16px', borderRadius: '4px' }}>
-          <h3 className="text-base font-bold text-gray-900 mb-6">Real-time CPU & RAM Usage (%)</h3>
+          <h3 className="text-base font-bold text-gray-900 mb-6">{t('monitoring.chart_title')}</h3>
           <div style={{ width: '100%', height: 300 }}>
             {metricsData.length > 0 ? (
               <ResponsiveContainer>
@@ -130,7 +132,7 @@ const MonitoringPage = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500 text-sm">Menunggu metrik server...</div>
+              <div className="flex items-center justify-center h-full text-gray-500 text-sm">{t('monitoring.waiting')}</div>
             )}
           </div>
         </div>
@@ -138,8 +140,8 @@ const MonitoringPage = () => {
         {/* Kanan: Logs */}
         <div className="card" style={{ padding: '16px', borderRadius: '4px' }}>
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-base font-bold text-gray-900">System Logs Terakhir</h3>
-            <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 border border-gray-200">24 Jam Terakhir</span>
+            <h3 className="text-base font-bold text-gray-900">{t('monitoring.logs_title')}</h3>
+            <span className="text-xs text-gray-500 px-2 py-1 bg-gray-100 border border-gray-200">{t('monitoring.logs_range')}</span>
           </div>
           
           <div className="flex flex-col gap-4">
@@ -150,7 +152,7 @@ const MonitoringPage = () => {
                   {i === 3 ? '[WARN]' : '[INFO]'}
                 </div>
                 <div className="text-gray-800">
-                  {i === 3 ? 'Koneksi ke database lambat (>500ms).' : 'Berhasil sinkronisasi data dari client.'}
+                  {i === 3 ? t('monitoring.log_warn') : t('monitoring.log_info')}
                 </div>
               </div>
             ))}

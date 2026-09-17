@@ -35,6 +35,10 @@ const laporanKNASchema = z.object({
 
 const laporanPenumpangSchema = z.object({
   nama_ka: z.string().min(1).max(150),
+  no_ka: z.string().max(50).optional().nullable(),
+  lintas: z.string().max(100).optional().nullable(),
+  berangkat: z.string().max(50).optional().nullable(),
+  kedatangan: z.string().max(50).optional().nullable(),
   jml_penumpang: z.number().int().nonnegative(),
   pendapatan: z.number().nonnegative(),
 });
@@ -63,6 +67,16 @@ const laporanKeuanganSchema = z.object({
   rincian_invoice: z.string().optional().nullable(),
 });
 
+const resubmitLaporanSchema = z.object({
+  tanggal: z.string().min(1),
+  kotak_detail: z.string().optional().nullable(),
+  status_internal: StatusInternalEnum.optional(),
+  kna: laporanKNASchema.optional().nullable(),
+  penumpangItems: z.array(laporanPenumpangSchema).optional(),
+  barangItems: z.array(laporanBarangSchema).optional(),
+  keuangan: laporanKeuanganSchema.optional().nullable(),
+});
+
 module.exports = {
   createLaporanSchema,
   updateLaporanSchema,
@@ -70,4 +84,5 @@ module.exports = {
   laporanPenumpangSchema,
   laporanBarangSchema,
   laporanKeuanganSchema,
+  resubmitLaporanSchema,
 };

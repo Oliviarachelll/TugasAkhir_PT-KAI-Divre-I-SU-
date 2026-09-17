@@ -1,10 +1,10 @@
-import React from 'react';
+
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   FileText, 
   History, 
-  Target, 
+
   Headset, 
   Settings, 
   LogOut,
@@ -12,8 +12,7 @@ import {
   Building2,
   Bell,
   Activity,
-  ChevronLeft,
-  ChevronRight,
+
   PanelLeftClose,
   PanelLeftOpen
 } from 'lucide-react';
@@ -29,14 +28,14 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
 
   const handleLogout = () => {
     setAuth(null, null);
-    toast.success('Berhasil keluar');
+    toast.success(t('toast.logout_success'));
     navigate('/login');
   };
 
   const navItems = {
     USER_UNIT: [
       { path: '/dashboard/unit', label: t('menu.dashboard'), icon: LayoutDashboard },
-      { path: '/laporan/input', label: 'Input Laporan', icon: FileText },
+      { path: '/laporan/input', label: t('menu.input_laporan'), icon: FileText },
       { path: '/laporan/history', label: t('menu.laporan'), icon: History },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
@@ -44,11 +43,11 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
     ADMIN_GLOBAL: [
       { path: '/dashboard/admin', label: t('menu.dashboard'), icon: LayoutDashboard },
       // { path: '/analitik', label: 'Analitik', icon: Target },
-      { path: '/laporan/review', label: 'Review Laporan', icon: FileText },
-      { path: '/manajemen/unit', label: 'Manajemen Unit', icon: Building2 },
-      { path: '/manajemen/user', label: 'Manajemen User', icon: Users },
+      { path: '/laporan/review', label: t('menu.review_laporan'), icon: FileText },
+      { path: '/manajemen/unit', label: t('menu.manajemen_unit'), icon: Building2 },
+      { path: '/manajemen/user', label: t('menu.manajemen_user'), icon: Users },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
-      { path: '/notifikasi', label: 'Notifikasi', icon: Bell },
+      { path: '/notifikasi', label: t('menu.notifikasi'), icon: Bell },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ],
     IT: [
@@ -62,7 +61,7 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
   const currentNav = user?.peran ? navItems[user.peran] : [];
 
   return (
-    <aside className={`sidebar bg-[var(--sidebar)] backdrop-blur-md ${className || ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ borderRight: '1px solid var(--border)' }}>
+    <aside className={`sidebar bg-[var(--sidebar)] backdrop-blur-md ${className || ''} ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ borderRight: '1px solid var(--border)' }}>
       <div className="px-6 py-5 border-b relative flex flex-col items-start gap-4" style={{ height: '88px', justifyContent: 'center', borderColor: 'var(--border)' }}>
         <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : 'gap-4'}`}>
           <div className="flex items-center justify-center p-1.5 rounded-xl flex-shrink-0" style={{ backgroundColor: 'var(--bg-main)' }}>
@@ -106,6 +105,7 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
                   })}
                   onMouseEnter={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'var(--sidebar-hover)'; e.currentTarget.style.color = 'var(--sidebar-active-text)'; } }}
                   onMouseLeave={(e) => { if (!e.currentTarget.className.includes('shadow-sm')) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-text)'; } }}
+                  onClick={onClose}
                   title={isCollapsed ? item.label : ""}
                 >
                   {({ isActive }) => (
@@ -134,7 +134,7 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
               style={{ color: 'var(--sidebar-text)' }}
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--danger)'; e.currentTarget.style.color = '#FFFFFF'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--sidebar-text)'; }}
-              title={isCollapsed ? "Keluar" : ""}
+              title={isCollapsed ? t('menu.logout') : ""}
             >
               <div className="flex-shrink-0">
                 <LogOut size={18} strokeWidth={2} />

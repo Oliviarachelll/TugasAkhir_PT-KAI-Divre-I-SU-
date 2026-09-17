@@ -5,8 +5,7 @@ npm-debug.log*
 # Environment
 .env
 
-# Prisma
-prisma/migrations/
+# Prisma migrations are versioned with the application schema.
 
 # WhatsApp session (jangan commit credentials)
 whatsapp-session/

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import useAuthStore from '../store/auth.store';
 import toast from 'react-hot-toast';
+import i18n from '../i18n';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -20,13 +21,13 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    const message = error.response?.data?.message || 'Terjadi kesalahan pada server';
+    const message = error.response?.data?.message || i18n.t('api.server_error');
     
     if (error.response?.status === 401) {
       useAuthStore.getState().logout();
-      toast.error('Sesi Anda telah habis. Silakan login kembali.');
+      toast.error(i18n.t('api.session_expired'));
     } else if (error.response?.status === 403) {
-      toast.error('Anda tidak memiliki akses ke halaman ini.');
+      toast.error(i18n.t('api.forbidden'));
     } else {
       toast.error(message);
     }

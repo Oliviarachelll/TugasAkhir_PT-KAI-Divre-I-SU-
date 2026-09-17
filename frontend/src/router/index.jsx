@@ -20,14 +20,19 @@ import SettingsPage from '../pages/settings/SettingsPage';
 import AnalitikPage from '../pages/analitik/AnalitikPage';
 
 import AppLayout from '../components/layout/AppLayout';
+import { useTranslation } from 'react-i18next';
 
 // Mock Component for Missing Pages
-const DummyPage = ({ title }) => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
-    <p className="text-gray-500 mt-2">Sedang dalam pengembangan...</p>
-  </div>
-);
+const DummyPage = ({ titleKey, fallback }) => {
+  const { t } = useTranslation();
+  const title = titleKey ? t(titleKey) : fallback;
+  return (
+    <div className="p-8">
+      <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
+      <p className="text-gray-500 mt-2">{t('router.wip')}</p>
+    </div>
+  );
+};
 
 const AppRouter = () => {
   return (
@@ -57,7 +62,7 @@ const AppRouter = () => {
         <Route element={<ProtectedRoute allowedRoles={['USER_UNIT']} />}>
           <Route path="/dashboard/unit" element={<DashboardUserUnit />} />
           <Route path="/laporan/input" element={<InputLaporan />} />
-          <Route path="/target" element={<DummyPage title="Target Saya" />} />
+          <Route path="/target" element={<DummyPage titleKey="router.my_target" />} />
         </Route>
 
         {/* Shared Routes: Admin */}

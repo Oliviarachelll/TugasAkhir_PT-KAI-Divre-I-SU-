@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import useAuthStore from '../../store/auth.store';
 import apiClient from '../../api/client';
 import kaiLogo from '../../assets/kai-logo.svg';
+import { useTranslation } from 'react-i18next';
 
 
 
@@ -31,6 +32,7 @@ const LoginPage = () => {
 
   const navigate = useNavigate();
   const { login, isAuthenticated, user } = useAuthStore();
+  const { t } = useTranslation();
 
   // Jika sudah login, redirect sesuai role
   if (isAuthenticated && user) {
@@ -45,7 +47,7 @@ const LoginPage = () => {
     setIsLocked(false);
     
     if (!email || !password) {
-      setErrorMsg('Email dan Password wajib diisi.');
+      setErrorMsg(t('auth.required'));
       return;
     }
 
@@ -53,10 +55,10 @@ const LoginPage = () => {
 
     try {
       await login(email, password);
-      toast.success('Login berhasil!');
+      toast.success(t('auth.login_success'));
     } catch (error) {
       const status = error.response?.status;
-      const message = error.response?.data?.message || 'Terjadi kesalahan pada server';
+      const message = error.response?.data?.message || t('auth.server_error');
       
       if (status === 403 || message.toLowerCase().includes('terkunci')) {
         setIsLocked(true);
@@ -65,7 +67,7 @@ const LoginPage = () => {
         setErrorMsg(message);
       }
       // Jangan tampilkan toast jika terkunci agar user fokus ke kotak kuning
-      if (status !== 403) toast.error('Gagal login');
+      if (status !== 403) toast.error(t('auth.login_fail'));
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +87,7 @@ const LoginPage = () => {
     setResetSuccess('');
 
     if (newPassword !== confirmPassword) {
-      setResetError('Konfirmasi password tidak cocok');
+      setResetError(t('auth.confirm_mismatch'));
       return;
     }
 
@@ -95,7 +97,7 @@ const LoginPage = () => {
         token: resetToken,
         kata_sandi_baru: newPassword
       });
-      setResetSuccess(res.message || 'Password berhasil diubah. Silakan kembali ke login.');
+      setResetSuccess(res.message || t('auth.reset_success_fallback'));
       setTimeout(() => {
         setShowResetModal(false);
         setResetToken('');
@@ -104,7 +106,7 @@ const LoginPage = () => {
         setResetSuccess('');
       }, 3000);
     } catch (error) {
-      setResetError(error.response?.data?.message || 'Gagal mereset password');
+      setResetError(error.response?.data?.message || t('auth.reset_fail'));
     } finally {
       setIsResetting(false);
     }
@@ -119,17 +121,17 @@ const LoginPage = () => {
           </div>
         </div>
         <div className="text-center mb-8">
-          <p className="text-slate-300 text-sm font-medium">Sistem Laporan Operasional RACHE<br/>PT KAI Divre 1 SUMUT</p>
+          <p className="text-slate-300 text-sm font-medium">{t('auth.subtitle')}<br/>{t('auth.company')}</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">{t('auth.email')}</label>
             <input
               type="email"
               className="form-control text-slate-900 placeholder:text-slate-500 focus:border-purple-500 transition-colors"
-              placeholder="Email..."
+              placeholder={t('auth.email_ph')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
@@ -137,18 +139,18 @@ const LoginPage = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">{t('auth.password')}</label>
             <input
               type="password"
               className="form-control text-slate-900 placeholder:text-slate-500 focus:border-purple-500 transition-colors"
-              placeholder="Password..."
+              placeholder={t('auth.password_ph')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
             />
           </div>
             
-          <p className="text-sm text-slate-400 mt-1">Gunakan email yang terdaftar untuk masuk.</p>
+          <p className="text-sm text-slate-400 mt-1">{t('auth.hint')}</p>
 
           {/* Error State */}
           {errorMsg && !isLocked && (
@@ -175,7 +177,7 @@ const LoginPage = () => {
                       setShowRequestUnlockModal(true);
                     }}
                   >
-                    Bantuan IT
+                    {t('auth.help_it')}
                   </button>
                 </div>
               </div>
@@ -188,14 +190,14 @@ const LoginPage = () => {
               className="btn w-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 hover:opacity-90 text-white border-none py-2.5 rounded-lg shadow-lg shadow-purple-500/30 transition-all font-semibold"
               disabled={isLoading}
             >
-              {isLoading ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Masuk'}
+              {isLoading ? <Loader2 className="animate-spin mx-auto" size={18} /> : t('auth.submit')}
             </button>
           </div>
           
         </form>
         
         <div className="mt-8 text-center text-xs font-medium text-slate-400">
-          © {new Date().getFullYear()} PT KAI Divre 1 SUMUT
+          © {new Date().getFullYear()} {t('auth.footer')}
         </div>
       </div>
 
@@ -212,15 +214,15 @@ const LoginPage = () => {
                 setUnlockSuccess('');
               }}
             >
-              <ChevronLeft size={16} /> Batal
+              <ChevronLeft size={16} /> {t('auth.cancel')}
             </button>
 
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-4 border border-dashed border-red-200">
                 <ShieldAlert size={24} className="text-red-500" />
               </div>
-              <h3 className="text-xl font-bold">Akun Terkunci</h3>
-              <p className="text-sm text-gray-500 mt-2">Kirim permintaan bantuan ke IT untuk mendapatkan token reset password via WhatsApp.</p>
+              <h3 className="text-xl font-bold">{t('auth.locked_title')}</h3>
+              <p className="text-sm text-gray-500 mt-2">{t('auth.locked_desc')}</p>
             </div>
 
             <form onSubmit={async (e) => {
@@ -230,19 +232,19 @@ const LoginPage = () => {
               setIsRequestingUnlock(true);
               try {
                 const res = await apiClient.post('/auth/request-unlock-ticket', { email: unlockEmail });
-                setUnlockSuccess(res.message || 'Permintaan terkirim ke IT.');
+                setUnlockSuccess(res.message || t('auth.request_sent_fallback'));
               } catch (err) {
-                setUnlockError(err.response?.data?.message || 'Gagal mengirim permintaan');
+                setUnlockError(err.response?.data?.message || t('auth.request_fail'));
               } finally {
                 setIsRequestingUnlock(false);
               }
             }} className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label text-left w-full block font-medium">Email Anda</label>
+                <label className="form-label text-left w-full block font-medium">{t('auth.your_email')}</label>
                 <input 
                   type="email" 
                   className="form-control" 
-                  placeholder="Email yang terdaftar"
+                  placeholder={t('auth.registered_email_ph')}
                   value={unlockEmail}
                   onChange={(e) => setUnlockEmail(e.target.value)}
                   required
@@ -268,7 +270,7 @@ const LoginPage = () => {
                 disabled={isRequestingUnlock || !!unlockSuccess}
                 style={{ width: '100%', justifyContent: 'center' }}
               >
-                {isRequestingUnlock ? <Loader2 className="animate-spin" size={18} /> : 'Kirim Permintaan ke IT'}
+                {isRequestingUnlock ? <Loader2 className="animate-spin" size={18} /> : t('auth.send_request')}
               </button>
 
               <div className="text-center mt-4">
@@ -280,7 +282,7 @@ const LoginPage = () => {
                     setShowResetModal(true);
                   }}
                 >
-                  Saya sudah mendapatkan token dari IT
+                  {t('auth.have_token')}
                 </button>
               </div>
             </form>
@@ -297,20 +299,20 @@ const LoginPage = () => {
               className="text-gray-500 hover:text-gray-900 mb-6 flex items-center gap-1 text-sm bg-transparent border-none cursor-pointer p-0"
               onClick={() => setShowResetModal(false)}
             >
-              <ChevronLeft size={16} /> Kembali ke Login
+              <ChevronLeft size={16} /> {t('auth.back_login')}
             </button>
 
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4 border border-dashed border-gray-400">
                 <KeyRound size={24} className="text-gray-400" />
               </div>
-              <h3 className="text-xl font-bold">Reset Password / Buka Kunci</h3>
-              <p className="text-sm text-gray-500 mt-2">Masukkan token yang Anda dapatkan dari Admin IT beserta password baru Anda.</p>
+              <h3 className="text-xl font-bold">{t('auth.reset_title')}</h3>
+              <p className="text-sm text-gray-500 mt-2">{t('auth.reset_desc')}</p>
             </div>
 
             <form onSubmit={handleResetPassword} className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label text-left w-full block">Token Bantuan</label>
+                <label className="form-label text-left w-full block">{t('auth.token_label')}</label>
                 <input 
                   type="text" 
                   className="form-control text-center tracking-widest font-mono font-bold" 
@@ -323,11 +325,11 @@ const LoginPage = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label text-left w-full block">Password Baru</label>
+                <label className="form-label text-left w-full block">{t('auth.new_password')}</label>
                 <input 
                   type="password" 
                   className="form-control" 
-                  placeholder="Password Baru..."
+                  placeholder={t('auth.new_password_ph')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
@@ -340,11 +342,11 @@ const LoginPage = () => {
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label text-left w-full block">Konfirmasi Password Baru</label>
+                <label className="form-label text-left w-full block">{t('auth.confirm_password')}</label>
                 <input 
                   type="password" 
                   className="form-control" 
-                  placeholder="Konfirmasi Password Baru..."
+                  placeholder={t('auth.confirm_password_ph')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -370,7 +372,7 @@ const LoginPage = () => {
                 disabled={isResetting || !!resetSuccess}
                 style={{ width: '100%', justifyContent: 'center' }}
               >
-                {isResetting ? <Loader2 className="animate-spin" size={18} /> : 'Reset Password'}
+                {isResetting ? <Loader2 className="animate-spin" size={18} /> : t('auth.reset_button')}
               </button>
             </form>
           </div>

@@ -6,6 +6,7 @@ export const laporanApi = {
   getById: (id) => apiClient.get(`/laporan/${id}`),
   create: (data) => apiClient.post('/laporan', data),
   update: (id, data) => apiClient.put(`/laporan/${id}`, data),
+  resubmit: (id, data) => apiClient.post(`/laporan/${id}/resubmit`, data),
   delete: (id) => apiClient.delete(`/laporan/${id}`),
   unlock: (id, token) => apiClient.post(`/laporan/${id}/unlock`, { token }),
 

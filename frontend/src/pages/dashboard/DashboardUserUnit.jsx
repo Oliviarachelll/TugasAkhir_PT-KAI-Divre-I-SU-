@@ -9,12 +9,13 @@ import DashboardKNA from './components/DashboardKNA';
 import DashboardBarang from './components/DashboardBarang';
 import DashboardPenumpang from './components/DashboardPenumpang';
 import DashboardKeuangan from './components/DashboardKeuangan';
+import { formatDate } from '../../utils/format';
 
 const DashboardUserUnit = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { laporanList, fetchLaporan, isLoading } = useLaporanStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     fetchLaporan({ limit: 50 });
@@ -55,13 +56,13 @@ const DashboardUserUnit = () => {
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diff % (1000 * 60)) / 1000);
 
-      setCountdownText(`${h} jam ${m} menit ${s} detik`);
+      setCountdownText(`${h} ${t('dashboard.hour')} ${m} ${t('dashboard.minute')} ${s} ${t('dashboard.second')}`);
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [t]);
 
   return (
     <div>
@@ -74,7 +75,7 @@ const DashboardUserUnit = () => {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-10">Memuat data dashboard...</div>
+        <div className="text-center py-10">{t('dashboard.loading')}</div>
       ) : (
         <>
           {/* Dashboard Komponen Unit Spesifik */}
@@ -89,7 +90,7 @@ const DashboardUserUnit = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
                 <div>
                   <h3 className="font-bold text-lg m-0 text-gray-800">{t('dashboard.history_laporan')}</h3>
-                  <p className="text-sm text-gray-500 m-0 mt-1">Tabel diperjelas dengan hierarki kolom yang lebih rapi.</p>
+                  <p className="text-sm text-gray-500 m-0 mt-1">{t('dashboard.table_subtitle')}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {['Semua', 'Disetujui', 'Review', 'Revisi'].map(filter => {
@@ -131,7 +132,7 @@ const DashboardUserUnit = () => {
               {/* Table Rows */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {laporanList.length === 0 ? (
-                  <div className="text-center py-8 text-muted border border-dashed rounded-lg">Belum ada history laporan.</div>
+                  <div className="text-center py-8 text-muted border border-dashed rounded-lg">{t('dashboard.empty_history')}</div>
                 ) : (
                   [...laporanList]
                     .filter(row => {
@@ -147,22 +148,22 @@ const DashboardUserUnit = () => {
                       return new Date(b.tanggal) - new Date(a.tanggal);
                     }).map(row => (
                     <div key={row.id_laporan} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 1fr 2fr 1fr', alignItems: 'center', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                      <span className="text-sm font-medium text-gray-800">{new Date(row.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-                      <span className="text-sm text-gray-600">Data {isKNA ? 'KNA' : isBarang ? 'Barang' : 'Penumpang'}</span>
+                      <span className="text-sm font-medium text-gray-800">{formatDate(row.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }, i18n.language)}</span>
+                      <span className="text-sm text-gray-600">{t('dashboard.data_prefix')} {isKNA ? 'KNA' : isBarang ? 'Barang' : isPenumpang ? 'Penumpang' : 'Keuangan'}</span>
                       <div>
                         <span className={`badge ${row.status === 'DISETUJUI' ? 'badge-disetujui' : row.status === 'REVISI' ? 'badge-revisi' : 'badge-diajukan'}`}>
                           {row.status}
                         </span>
                       </div>
                       <span className="text-sm text-gray-600 pr-4 truncate">
-                        {row.kotak_detail || (row.status === 'DISETUJUI' ? 'Laporan divalidasi dan disetujui.' : 'Menunggu review pihak terkait.')}
+                        {row.kotak_detail || (row.status === 'DISETUJUI' ? t('dashboard.validated') : t('dashboard.waiting_review'))}
                       </span>
                       <div className="text-center">
                         <button 
                           onClick={() => navigate('/laporan/history')}
                           style={{ padding: '6px 16px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border)', fontSize: '13px', fontWeight: '500', color: 'var(--text-main)', cursor: 'pointer' }}
                         >
-                          Lihat detail
+                          {t('dashboard.view_detail')}
                         </button>
                       </div>
                     </div>
@@ -177,15 +178,15 @@ const DashboardUserUnit = () => {
               {/* Card Progress Pengisian */}
               <div className="card" style={{ padding: '24px' }}>
                 <div style={{ marginBottom: '24px' }}>
-                  <h3 className="font-bold text-base m-0 text-gray-800">Progress Pengisian</h3>
+                  <h3 className="font-bold text-base m-0 text-gray-800">{t('dashboard.progress_title')}</h3>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {/* Disetujui */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span className="text-sm font-bold text-gray-700">Disetujui</span>
-                      <span className="text-sm font-bold text-[var(--success)]">{countDisetujui} laporan</span>
+                      <span className="text-sm font-bold text-gray-700">{t('dashboard.disetujui')}</span>
+                      <span className="text-sm font-bold text-[var(--success)]">{t('dashboard.report_count', { count: countDisetujui })}</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--surface-soft)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${(countDisetujui / totalStatus) * 100}%`, height: '100%', backgroundColor: 'var(--success)', borderRadius: '4px' }}></div>
@@ -195,8 +196,8 @@ const DashboardUserUnit = () => {
                   {/* Perlu review */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span className="text-sm font-bold text-gray-700">Perlu review</span>
-                      <span className="text-sm font-bold text-[var(--warning)]">{countReview} laporan</span>
+                      <span className="text-sm font-bold text-gray-700">{t('dashboard.need_review')}</span>
+                      <span className="text-sm font-bold text-[var(--warning)]">{t('dashboard.report_count', { count: countReview })}</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--surface-soft)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${(countReview / totalStatus) * 100}%`, height: '100%', backgroundColor: 'var(--warning)', borderRadius: '4px' }}></div>
@@ -206,8 +207,8 @@ const DashboardUserUnit = () => {
                   {/* Perlu revisi */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span className="text-sm font-bold text-gray-700">Perlu revisi</span>
-                      <span className="text-sm font-bold text-[var(--danger)]">{countRevisi} laporan</span>
+                      <span className="text-sm font-bold text-gray-700">{t('dashboard.need_revision')}</span>
+                      <span className="text-sm font-bold text-[var(--danger)]">{t('dashboard.report_count', { count: countRevisi })}</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--surface-soft)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${(countRevisi / totalStatus) * 100}%`, height: '100%', backgroundColor: 'var(--danger)', borderRadius: '4px' }}></div>

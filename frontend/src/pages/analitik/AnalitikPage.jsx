@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Download, Filter, TrendingUp } from 'lucide-react';
 import {
   BarChart,
@@ -33,19 +34,20 @@ const dummyDataPie = [
 const COLORS = ['var(--chart-bar-primary)', 'var(--chart-bar-highlight)', 'var(--success)', 'var(--danger)'];
 
 const AnalitikPage = () => {
+  const { t } = useTranslation();
   return (
     <div>
       <div className="page-header">
         <div>
-          <div className="text-sm text-muted font-medium mb-1">Analitik <span className="mx-1">&gt;</span> <span className="text-primary">Analitik & Grafik</span></div>
-          <p className="page-subtitle">Analisis mendalam data operasional dan tren.</p>
+          <div className="text-sm text-muted font-medium mb-1">{t('analitik.breadcrumb').split('&')[0].trim()} <span className="mx-1">&gt;</span> <span className="text-primary">{t('analitik.breadcrumb')}</span></div>
+          <p className="page-subtitle">{t('analitik.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <button className="btn btn-secondary">
-            <Filter size={18} /> Filter Lanjutan
+            <Filter size={18} /> {t('analitik.filter')}
           </button>
           <button className="btn btn-primary">
-            <Download size={18} /> Export Laporan Lengkap
+            <Download size={18} /> {t('analitik.export')}
           </button>
         </div>
       </div>
@@ -56,8 +58,8 @@ const AnalitikPage = () => {
         <div className="card">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="section-title" style={{ marginBottom: '4px' }}>Trend Realisasi vs Target (YTD)</h3>
-              <p className="text-sm text-muted">Perbandingan pencapaian kumulatif per bulan.</p>
+              <h3 className="section-title" style={{ marginBottom: '4px' }}>{t('analitik.trend_title')}</h3>
+              <p className="text-sm text-muted">{t('analitik.trend_sub')}</p>
             </div>
           </div>
           <div style={{ width: '100%', height: 350 }}>
@@ -71,8 +73,8 @@ const AnalitikPage = () => {
                   itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }}
                   cursor={{ fill: 'var(--chart-grid)' }}
                 />
-                <Bar dataKey="realisasi" name="Realisasi" fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="target" name="Target" fill="var(--bg-card-2)" stroke="var(--border)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="realisasi" name={t('analitik.realization')} fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="target" name={t('analitik.target')} fill="var(--bg-card-2)" stroke="var(--border)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -82,8 +84,8 @@ const AnalitikPage = () => {
         <div className="card">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="section-title" style={{ marginBottom: '4px' }}>Pertumbuhan Kinerja (YoY)</h3>
-              <p className="text-sm text-muted">Trend pertumbuhan dibandingkan tahun lalu.</p>
+              <h3 className="section-title" style={{ marginBottom: '4px' }}>{t('analitik.growth_title')}</h3>
+              <p className="text-sm text-muted">{t('analitik.growth_sub')}</p>
             </div>
             <div className="flex items-center gap-1 text-success bg-success/10 px-2 py-1 rounded-md text-sm font-bold" style={{ background: 'rgba(52,211,153,0.1)', color: 'var(--success)' }}>
               <TrendingUp size={16} /> +12.5%
@@ -107,7 +109,7 @@ const AnalitikPage = () => {
 
         {/* Pie Chart Kontribusi */}
         <div className="card">
-          <h3 className="section-title mb-6">Kontribusi per Unit DAOP</h3>
+          <h3 className="section-title mb-6">{t('analitik.contrib_title')}</h3>
           <div className="flex items-center" style={{ display: 'flex', alignItems: 'center' }}>
             <div style={{ width: '50%', height: 300 }}>
               <ResponsiveContainer>
@@ -151,19 +153,19 @@ const AnalitikPage = () => {
         
         {/* Ringkasan Insight */}
         <div className="card">
-          <h3 className="section-title mb-6">Ringkasan Insight</h3>
+          <h3 className="section-title mb-6">{t('analitik.insight_title')}</h3>
           <div className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="p-4 rounded-lg bg-card-2 border border-border" style={{ padding: '16px', borderRadius: '8px', background: 'var(--bg-card-2)', border: '1px solid var(--border)' }}>
-              <h4 className="font-bold text-success mb-1">Pencapaian Tertinggi</h4>
-              <p className="text-sm text-secondary">Unit DAOP 1 mencatat peningkatan realisasi sebesar 15% pada bulan ini, melebihi target yang ditetapkan.</p>
+              <h4 className="font-bold text-success mb-1">{t('analitik.insight_top')}</h4>
+              <p className="text-sm text-secondary">{t('analitik.insight_top_desc')}</p>
             </div>
             <div className="p-4 rounded-lg bg-card-2 border border-border" style={{ padding: '16px', borderRadius: '8px', background: 'var(--bg-card-2)', border: '1px solid var(--border)' }}>
-              <h4 className="font-bold text-warning mb-1">Perhatian Khusus</h4>
-              <p className="text-sm text-secondary">Volume laporan dari DAOP 4 mengalami penurunan tren dalam 2 bulan terakhir.</p>
+              <h4 className="font-bold text-warning mb-1">{t('analitik.insight_warn')}</h4>
+              <p className="text-sm text-secondary">{t('analitik.insight_warn_desc')}</p>
             </div>
             <div className="p-4 rounded-lg bg-card-2 border border-border" style={{ padding: '16px', borderRadius: '8px', background: 'var(--bg-card-2)', border: '1px solid var(--border)' }}>
-              <h4 className="font-bold text-info mb-1">Rekomendasi Tindakan</h4>
-              <p className="text-sm text-secondary">Lakukan verifikasi silang pada data penumpang kuartal 2 untuk DAOP 2 dan 3.</p>
+              <h4 className="font-bold text-info mb-1">{t('analitik.insight_rec')}</h4>
+              <p className="text-sm text-secondary">{t('analitik.insight_rec_desc')}</p>
             </div>
           </div>
         </div>

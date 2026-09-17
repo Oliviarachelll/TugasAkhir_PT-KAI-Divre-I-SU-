@@ -4,10 +4,13 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, formatCompact, currencyPrefix } from '../../../utils/format';
 
 const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
   const [chartDays, setChartDays] = useState(7);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
 
   // 1. Get Target RKAD from the latest LaporanKeuangan in the DB
   const latestLaporan = useMemo(() => {
@@ -63,8 +66,8 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
   const persentaseKeuangan = targetRKAD > 0 ? ((totalRealisasiKeuangan / targetRKAD) * 100).toFixed(1) : 0;
 
   const donutDataKeuangan = [
-    { name: 'Realisasi', value: totalRealisasiKeuangan },
-    { name: 'Sisa Target', value: Math.max(0, targetRKAD - totalRealisasiKeuangan) }
+    { name: t('unit.realization'), value: totalRealisasiKeuangan },
+    { name: t('unit.remaining_target'), value: Math.max(0, targetRKAD - totalRealisasiKeuangan) }
   ];
   const donutColors = ['var(--chart-bar-primary)', 'var(--chart-grid)'];
 
@@ -95,13 +98,13 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
         }
       });
       data.push({
-        name: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        name: formatDate(d, { day: 'numeric', month: 'short' }, lang),
         Pendapatan: p,
         Pengeluaran: e
       });
     }
     return data;
-  }, [approvedLaporan, chartDays]);
+  }, [approvedLaporan, chartDays, lang]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '24px' }}>
@@ -111,16 +114,16 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
           <div style={{ borderRight: '1px solid var(--border)' }}>
             <p className="text-sm font-medium text-blue-900 mb-2">{t('keuangan.total_income')}</p>
-            <h3 className="text-3xl font-bold text-green-600">Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalPendapatanKeuangan)}</h3>
+            <h3 className="text-3xl font-bold text-green-600">{cur} {formatCompact(totalPendapatanKeuangan, lang, 2)}</h3>
           </div>
           <div style={{ borderRight: '1px solid var(--border)' }}>
             <p className="text-sm font-medium text-blue-900 mb-2">{t('keuangan.total_expense')}</p>
-            <h3 className="text-3xl font-bold text-red-600">Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalPengeluaranKeuangan)}</h3>
+            <h3 className="text-3xl font-bold text-red-600">{cur} {formatCompact(totalPengeluaranKeuangan, lang, 2)}</h3>
           </div>
           <div>
             <p className="text-sm font-medium text-blue-900 mb-2">{t('keuangan.total_profit')}</p>
             <h3 className={`text-3xl font-bold ${totalLabaRugiKeuangan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(Math.abs(totalLabaRugiKeuangan))}
+              {cur} {formatCompact(Math.abs(totalLabaRugiKeuangan), lang, 2)}
             </h3>
           </div>
         </div>
@@ -130,19 +133,19 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
       <div className="card shadow-sm" style={{ padding: '24px', border: '2px solid #6366f1', borderRadius: '12px', backgroundColor: '#fff' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
           <div style={{ borderRight: '1px solid var(--border)' }}>
-            <p className="text-sm font-medium text-blue-900 mb-1">Total Transaksi</p>
-            <p className="text-xs text-gray-400 mb-2">{countTransaksi} Data</p>
-            <h3 className="text-3xl font-bold text-blue-600">Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalPendapatanKeuangan + totalPengeluaranKeuangan)}</h3>
+            <p className="text-sm font-medium text-blue-900 mb-1">{t('unit.trx_total')}</p>
+            <p className="text-xs text-gray-400 mb-2">{t('unit.data_count', { count: countTransaksi })}</p>
+            <h3 className="text-3xl font-bold text-blue-600">{cur} {formatCompact(totalPendapatanKeuangan + totalPengeluaranKeuangan, lang, 2)}</h3>
           </div>
           <div style={{ borderRight: '1px solid var(--border)' }}>
-            <p className="text-sm font-medium text-blue-900 mb-1">Total SPJ</p>
-            <p className="text-xs text-gray-400 mb-2">{countSPJ} Data</p>
-            <h3 className="text-3xl font-bold text-purple-600">Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalSPJ)}</h3>
+            <p className="text-sm font-medium text-blue-900 mb-1">{t('unit.spj_total')}</p>
+            <p className="text-xs text-gray-400 mb-2">{t('unit.data_count', { count: countSPJ })}</p>
+            <h3 className="text-3xl font-bold text-purple-600">{cur} {formatCompact(totalSPJ, lang, 2)}</h3>
           </div>
           <div>
-            <p className="text-sm font-medium text-blue-900 mb-1">Total Invoice</p>
-            <p className="text-xs text-gray-400 mb-2">{countInvoiceBelumLunas > 0 ? <span className="text-red-500 font-bold">{countInvoiceBelumLunas} Blm Lunas</span> : <span className="text-green-500">Semua Lunas</span>}</p>
-            <h3 className="text-3xl font-bold text-orange-600">Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalInvoice)}</h3>
+            <p className="text-sm font-medium text-blue-900 mb-1">{t('unit.invoice_total')}</p>
+            <p className="text-xs text-gray-400 mb-2">{countInvoiceBelumLunas > 0 ? <span className="text-red-500 font-bold">{countInvoiceBelumLunas} {t('unit.unpaid')}</span> : <span className="text-green-500">{t('unit.all_paid')}</span>}</p>
+            <h3 className="text-3xl font-bold text-orange-600">{cur} {formatCompact(totalInvoice, lang, 2)}</h3>
           </div>
         </div>
       </div>
@@ -165,11 +168,11 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
               <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
                 <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => `Rp ${value.toLocaleString('id-ID')}`} cursor={{ stroke: 'var(--chart-grid)', strokeWidth: 1 }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
+                <YAxis tickFormatter={(val) => `${cur} ${formatCompact(val, lang)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value) => `${cur} ${formatNumber(value, lang)}`} cursor={{ stroke: 'var(--chart-grid)', strokeWidth: 1 }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
                 <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', color: 'var(--text-secondary)' }} />
-                <Line type="monotone" dataKey="Pendapatan" name="Pendapatan" stroke="var(--chart-line-blue)" strokeWidth={3} activeDot={{ r: 6, fill: 'var(--chart-line-blue)', stroke: '#fff', strokeWidth: 2 }} dot={{ r: 4, fill: 'var(--chart-line-blue)', strokeWidth: 0 }} />
-                <Line type="monotone" dataKey="Pengeluaran" name="Pengeluaran" stroke="var(--chart-line-orange)" strokeWidth={3} activeDot={{ r: 6, fill: 'var(--chart-line-orange)', stroke: '#fff', strokeWidth: 2 }} dot={{ r: 4, fill: 'var(--chart-line-orange)', strokeWidth: 0 }} />
+                <Line type="monotone" dataKey="Pendapatan" name={t('unit.income')} stroke="var(--chart-line-blue)" strokeWidth={3} activeDot={{ r: 6, fill: 'var(--chart-line-blue)', stroke: '#fff', strokeWidth: 2 }} dot={{ r: 4, fill: 'var(--chart-line-blue)', strokeWidth: 0 }} />
+                <Line type="monotone" dataKey="Pengeluaran" name={t('keuangan.total_expense')} stroke="var(--chart-line-orange)" strokeWidth={3} activeDot={{ r: 6, fill: 'var(--chart-line-orange)', stroke: '#fff', strokeWidth: 2 }} dot={{ r: 4, fill: 'var(--chart-line-orange)', strokeWidth: 0 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -177,7 +180,7 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
 
         {/* Right: Donut Chart for RKAD */}
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-          <h3 className="font-semibold text-lg m-0 text-gray-800 mb-4">Pencapaian RKAD</h3>
+          <h3 className="font-semibold text-lg m-0 text-gray-800 mb-4">{t('unit.rkad_title')}</h3>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
             <div style={{ width: '100%', height: 220 }}>
               <ResponsiveContainer>
@@ -192,17 +195,17 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
             </div>
             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
               <h2 className="text-3xl font-bold" style={{ color: 'var(--brand-500)' }}>{persentaseKeuangan}%</h2>
-              <p className="text-xs text-muted">Realisasi</p>
+              <p className="text-xs text-muted">{t('unit.realization')}</p>
             </div>
           </div>
           <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
             <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
-              <p className="text-xs text-muted mb-1">Total Realisasi</p>
-              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalRealisasiKeuangan)}</p>
+              <p className="text-xs text-muted mb-1">{t('unit.total_realization')}</p>
+              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(totalRealisasiKeuangan, lang, 2)}</p>
             </div>
             <div style={{ textAlign: 'center', flex: 1 }}>
-              <p className="text-xs text-muted mb-1">Target RKAD</p>
-              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(targetRKAD)}</p>
+              <p className="text-xs text-muted mb-1">{t('unit.rkad_target')}</p>
+              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(targetRKAD, lang, 2)}</p>
             </div>
           </div>
         </div>

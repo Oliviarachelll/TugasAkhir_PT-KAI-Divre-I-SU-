@@ -3,10 +3,13 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { formatNumber, formatCompact, currencyPrefix } from '../../../utils/format';
 
 const DashboardPenumpang = ({ approvedLaporan }) => {
   const [chartDays, setChartDays] = useState(7);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
 
   const { totalJmlPenumpang, totalPendapatanPenumpang, perKaData } = useMemo(() => {
     let totalJml = 0;
@@ -56,11 +59,11 @@ const DashboardPenumpang = ({ approvedLaporan }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-sm mb-4 font-medium text-center">{t('penumpang.total_passengers')} ({chartDays} {t('dashboard.days')})</p>
-          <h3 className="text-4xl font-bold text-gray-800 text-center">{totalJmlPenumpang.toLocaleString('id-ID')} <span className="text-xl font-normal">{t('dashboard.people')}</span></h3>
+          <h3 className="text-4xl font-bold text-gray-800 text-center">{formatNumber(totalJmlPenumpang, lang)} <span className="text-xl font-normal">{t('dashboard.people')}</span></h3>
         </div>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-sm mb-4 font-medium text-center">{t('penumpang.total_income')} ({chartDays} {t('dashboard.days')})</p>
-          <h3 className="text-4xl font-bold text-gray-800 text-center">Rp {totalPendapatanPenumpang.toLocaleString('id-ID')}</h3>
+          <h3 className="text-4xl font-bold text-gray-800 text-center">{cur} {formatNumber(totalPendapatanPenumpang, lang)}</h3>
         </div>
       </div>
 
@@ -83,9 +86,9 @@ const DashboardPenumpang = ({ approvedLaporan }) => {
               <BarChart data={perKaData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
                 <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="left" tickFormatter={(val) => Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)} width={60} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value, name) => [name.includes('Pendapatan') ? `Rp ${value.toLocaleString('id-ID')}` : value.toLocaleString('id-ID'), name]} cursor={{ fill: 'var(--chart-grid)' }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
+                <YAxis yAxisId="left" tickFormatter={(val) => formatCompact(val, lang)} width={60} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `${cur} ${formatCompact(val, lang)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value, name) => [name.includes('Pendapatan') ? `${cur} ${formatNumber(value, lang)}` : formatNumber(value, lang), name]} cursor={{ fill: 'var(--chart-grid)' }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
                 <Bar yAxisId="left" dataKey="Penumpang" name={t('penumpang.total_passengers')} fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} barSize={40} />
                 <Bar yAxisId="right" dataKey="Pendapatan" name={t('penumpang.total_income')} fill="var(--chart-bar-highlight)" radius={[4, 4, 0, 0]} barSize={40} />
               </BarChart>
@@ -108,8 +111,8 @@ const DashboardPenumpang = ({ approvedLaporan }) => {
               {perKaData.map((ka) => (
                 <tr key={ka.name}>
                   <td className="font-medium text-gray-800">{ka.name}</td>
-                  <td style={{ textAlign: 'right' }}>{ka.Penumpang.toLocaleString('id-ID')} {t('dashboard.people')}</td>
-                  <td style={{ textAlign: 'right', fontWeight: '500', color: '#16a34a' }}>Rp {ka.Pendapatan.toLocaleString('id-ID')}</td>
+                  <td style={{ textAlign: 'right' }}>{formatNumber(ka.Penumpang, lang)} {t('dashboard.people')}</td>
+                  <td style={{ textAlign: 'right', fontWeight: '500', color: '#16a34a' }}>{cur} {formatNumber(ka.Pendapatan, lang)}</td>
                 </tr>
               ))}
               {perKaData.length === 0 && (

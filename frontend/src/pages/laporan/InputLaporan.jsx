@@ -10,17 +10,17 @@ import FormBarang from './components/FormBarang';
 import FormPenumpang from './components/FormPenumpang';
 import FormKeuangan from './components/FormKeuangan';
 
-const steps = [
-  { id: 1, name: 'DRAFT', status: 'current' },
-  { id: 2, name: 'READY TO SUBMIT', status: 'upcoming' },
-  { id: 3, name: 'WAITING', status: 'upcoming' },
-];
-
 const InputLaporan = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const { draftLaporan, setDraft, submitDraft, isLoading } = useLaporanStore();
   const { user } = useAuthStore();
   const { t } = useTranslation();
+
+  const steps = [
+    { id: 1, name: t('laporan.step_draft'), status: 'current' },
+    { id: 2, name: t('laporan.step_ready'), status: 'upcoming' },
+    { id: 3, name: t('laporan.step_waiting'), status: 'upcoming' },
+  ];
 
   const unitName = user?.unit?.nama_unit || '';
 
@@ -63,7 +63,7 @@ const InputLaporan = () => {
 
   const handleSimpanDraft = () => {
     setCurrentStep(1);
-    toast.success('Draft berhasil disimpan secara lokal!', { icon: <Save size={18} color="var(--brand-500)" /> });
+    toast.success(t('laporan.draft_saved'), { icon: <Save size={18} color="var(--brand-500)" /> });
   };
 
   const handleValidasi = () => {
@@ -82,13 +82,13 @@ const InputLaporan = () => {
     }
 
     if (!hasData) {
-      toast.error('Gagal validasi: Data laporan masih kosong!');
+      toast.error(t('laporan.validate_fail'));
       return;
     }
 
     setDraft({ status_internal: 'SELESAI' });
     setCurrentStep(2);
-    toast.success('Validasi sukses! Data siap untuk disubmit.', { icon: <ShieldCheck size={18} color="var(--brand-500)" /> });
+    toast.success(t('laporan.validate_success'), { icon: <ShieldCheck size={18} color="var(--brand-500)" /> });
   };
 
   const handleChangeKNA = (field, value) => {
@@ -136,20 +136,20 @@ const InputLaporan = () => {
 
       {/* Header Laporan */}
       <div className="card mb-4" style={{ marginBottom: '24px', padding: '16px 24px' }}>
-        <h4 className="font-bold mb-3 text-sm text-primary">Header Laporan</h4>
+        <h4 className="font-bold mb-3 text-sm text-primary">{t('laporan.header_title')}</h4>
         <div className="grid grid-cols-3 gap-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
           <input 
             type="text" 
             className="form-control bg-card-2 text-muted" 
             style={{ padding: '8px 12px' }}
-            value={unitName || 'Loading...'} 
+            value={unitName || t('laporan.loading_unit')} 
             disabled 
           />
           <input 
             type="text" 
             className="form-control bg-card-2 text-muted" 
             style={{ padding: '8px 12px' }}
-            value="Data Harian" 
+            value={t('laporan.daily_data')} 
             disabled 
           />
           <input 
@@ -170,11 +170,11 @@ const InputLaporan = () => {
 
       {/* Catatan */}
       <div className="card mb-6" style={{ marginBottom: '24px' }}>
-        <h3 className="section-title">Catatan Tambahan / Kotak Detail (opsional)</h3>
+        <h3 className="section-title">{t('laporan.notes_title')}</h3>
         <textarea 
           className="form-control" 
           rows="3" 
-          placeholder="Tambahkan catatan untuk Admin Global..."
+          placeholder={t('laporan.notes_ph')}
           value={draftLaporan.kotak_detail || ''}
           onChange={(e) => setDraft({ kotak_detail: e.target.value })}
         ></textarea>
@@ -183,14 +183,14 @@ const InputLaporan = () => {
       {/* Actions */}
       <div className="flex gap-3 mt-6 pt-4 border-t border-border" style={{ display: 'flex', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
         <button className="btn btn-secondary" onClick={handleSimpanDraft}>
-          <Save size={18} /> Simpan Draft
+          <Save size={18} /> {t('laporan.save_draft')}
         </button>
         <button className="btn btn-secondary" onClick={handleValidasi}>
-          <ShieldCheck size={18} /> Validasi Internal
+          <ShieldCheck size={18} /> {t('laporan.validate')}
         </button>
         {currentStep >= 2 && (
           <button className="btn btn-primary" onClick={handleSubmit} disabled={isLoading}>
-            <Send size={18} /> {isLoading ? 'Menyimpan...' : t('laporan.submit')}
+            <Send size={18} /> {isLoading ? t('laporan.saving') : t('laporan.submit')}
           </button>
         )}
       </div>

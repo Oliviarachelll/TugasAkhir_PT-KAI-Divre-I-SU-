@@ -1,22 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { Download, Filter, Eye } from 'lucide-react';
+
 import useAuthStore from '../../store/auth.store';
 import useLaporanStore from '../../store/laporan.store';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../utils/format';
 
 const HistoryLaporan = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.peran === 'ADMIN_GLOBAL';
   const navigate = useNavigate();
   const { laporanList, fetchLaporan, isLoading, setDraft } = useLaporanStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
 
-  const [filterUnit, setFilterUnit] = useState('Semua Unit');
-  const [filterStatus, setFilterStatus] = useState('Semua Status');
+  const [filterUnit, setFilterUnit] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL_STATUS');
   const [filterBulan, setFilterBulan] = useState('');
 
   useEffect(() => {
@@ -36,6 +38,11 @@ const HistoryLaporan = () => {
         barangTotal = { volume: autoVolume, pendapatan: autoPendapatan };
       }
 
+      const pendapatanKa = (laporan.laporan_penumpang || []).reduce((result, item) => {
+        result[item.nama_ka] = (result[item.nama_ka] || 0) + (Number(item.pendapatan) || 0);
+        return result;
+      }, {});
+
       const mappedDraft = {
         id_laporan: laporan.id_laporan,
         jenis_laporan: 'Data Harian',
@@ -46,6 +53,7 @@ const HistoryLaporan = () => {
         kna: laporan.laporan_kna || null,
         keuangan: laporan.laporan_keuangan || null,
         penumpangItems: laporan.laporan_penumpang || [],
+        pendapatanKa,
         barangItems: (laporan.laporan_barang || []).filter(b => b.id_komoditi !== 99),
         barangTotal: barangTotal,
       };
@@ -59,11 +67,11 @@ const HistoryLaporan = () => {
   // Compute filtered list
   const filteredList = laporanList.filter((item) => {
     // Filter Unit
-    if (filterUnit !== 'Semua Unit' && item.unit?.nama_unit !== filterUnit) {
+    if (filterUnit !== 'ALL' && item.unit?.nama_unit !== filterUnit) {
       return false;
     }
     // Filter Status
-    if (filterStatus !== 'Semua Status' && item.status !== filterStatus) {
+    if (filterStatus !== 'ALL_STATUS' && item.status !== filterStatus) {
       return false;
     }
     // Filter Bulan
@@ -81,6 +89,7 @@ const HistoryLaporan = () => {
   });
 
   const handleExportPDF = () => {
+    // Official document: content inside the exported PDF stays in Indonesian (id-ID) by design.
     const doc = new jsPDF();
     
     // Fungsi untuk menggambar kop surat KAI
@@ -177,6 +186,7 @@ const HistoryLaporan = () => {
   };
 
   const handleExportExcel = () => {
+    // Official document: content inside the exported Excel stays in Indonesian (id-ID) by design.
     const excelData = filteredList.map(item => ({
       'Tanggal': new Date(item.tanggal).toLocaleDateString('id-ID'),
       'Unit / Pengguna': isAdmin ? (item.unit?.nama_unit || '-') : (item.pengguna?.nama || '-'),
@@ -210,11 +220,11 @@ const HistoryLaporan = () => {
                 value={filterUnit}
                 onChange={(e) => setFilterUnit(e.target.value)}
               >
-                <option>Semua Unit</option>
-                <option>Unit KNA</option>
-                <option>Unit Angkutan Penumpang</option>
-                <option>Unit Angkutan Barang</option>
-                <option>Unit Keuangan</option>
+                <option value="ALL">{t('laporan.filter_unit')}</option>
+                <option value="Unit KNA">Unit KNA</option>
+                <option value="Unit Angkutan Penumpang">Unit Angkutan Penumpang</option>
+                <option value="Unit Angkutan Barang">Unit Angkutan Barang</option>
+                <option value="Unit Keuangan">Unit Keuangan</option>
               </select>
             )}
             <select 
@@ -223,11 +233,11 @@ const HistoryLaporan = () => {
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
-              <option>Semua Status</option>
-              <option>DIAJUKAN</option>
-              <option>DISETUJUI</option>
-              <option>REVISI</option>
-              <option>DITOLAK</option>
+              <option value="ALL_STATUS">{t('laporan.filter_status')}</option>
+              <option value="DIAJUKAN">DIAJUKAN</option>
+              <option value="DISETUJUI">DISETUJUI</option>
+              <option value="REVISI">REVISI</option>
+              <option value="DITOLAK">DITOLAK</option>
             </select>
             <input 
               type="month" 
@@ -238,8 +248,8 @@ const HistoryLaporan = () => {
             />
           </div>
           <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
-            {isAdmin && <button className="btn btn-secondary btn-sm" onClick={handleExportExcel}>Export Excel</button>}
-            <button className="btn btn-secondary btn-sm" onClick={handleExportPDF}>Export PDF</button>
+            {isAdmin && <button className="btn btn-secondary btn-sm" onClick={handleExportExcel}>{t('laporan.export_excel')}</button>}
+            <button className="btn btn-secondary btn-sm" onClick={handleExportPDF}>{t('laporan.export_pdf')}</button>
           </div>
         </div>
       </div>
@@ -270,28 +280,28 @@ const HistoryLaporan = () => {
           <table>
             <thead>
               <tr>
-                <th>Tgl Laporan</th>
-                {isAdmin && <th>Unit</th>}
-                <th>Jenis</th>
-                {isAdmin && <th>Disubmit Oleh</th>}
-                <th>Status</th>
-                {!isAdmin && <th>Catatan Revisi</th>}
-                {isAdmin && <th>Reviewer</th>}
-                <th>Aksi</th>
+                <th>{t('laporan.th_date')}</th>
+                {isAdmin && <th>{t('laporan.th_unit')}</th>}
+                <th>{t('laporan.th_type')}</th>
+                {isAdmin && <th>{t('laporan.th_submitter')}</th>}
+                <th>{t('laporan.th_status')}</th>
+                {!isAdmin && <th>{t('laporan.th_notes')}</th>}
+                {isAdmin && <th>{t('laporan.th_reviewer')}</th>}
+                <th>{t('laporan.th_action')}</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 6} className="text-center p-4">Memuat data...</td>
+                  <td colSpan={isAdmin ? 7 : 6} className="text-center p-4">{t('laporan.loading')}</td>
                 </tr>
               ) : filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 6} className="text-center p-4 text-muted">Belum ada laporan yang cocok dengan filter.</td>
+                  <td colSpan={isAdmin ? 7 : 6} className="text-center p-4 text-muted">{t('laporan.empty_filter')}</td>
                 </tr>
               ) : (
                 filteredList.map((laporan) => {
-                  const tgl = new Date(laporan.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                  const tgl = formatDate(laporan.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }, lang);
                   let badgeClass = 'badge-diajukan';
                   if (laporan.status === 'DISETUJUI') badgeClass = 'badge-disetujui';
                   if (laporan.status === 'DITOLAK' || laporan.status === 'REVISI') badgeClass = 'badge-revisi';
@@ -300,7 +310,7 @@ const HistoryLaporan = () => {
                     <tr key={laporan.id_laporan}>
                       <td>{tgl}</td>
                       {isAdmin && <td>{laporan.unit?.nama_unit || '-'}</td>}
-                      <td>Data Harian</td>
+                      <td>{t('dashboard.daily_data')}</td>
                       {isAdmin && <td>{laporan.pengguna?.nama || '-'}</td>}
                       <td><span className={`badge ${badgeClass}`}>{laporan.status}</span></td>
                       {!isAdmin && <td className="text-muted">{laporan.kotak_detail || '—'}</td>}
@@ -316,7 +326,7 @@ const HistoryLaporan = () => {
                             }
                           }}
                         >
-                          {isAdmin ? (laporan.status === 'DIAJUKAN' ? 'Review' : 'Lihat') : ((laporan.status === 'REVISI' || laporan.status === 'DRAFT') ? 'Edit' : 'Lihat')}
+                          {isAdmin ? (laporan.status === 'DIAJUKAN' ? t('laporan.review') : t('laporan.view')) : ((laporan.status === 'REVISI' || laporan.status === 'DRAFT') ? t('laporan.edit') : t('laporan.view'))}
                         </button>
                       </td>
                     </tr>

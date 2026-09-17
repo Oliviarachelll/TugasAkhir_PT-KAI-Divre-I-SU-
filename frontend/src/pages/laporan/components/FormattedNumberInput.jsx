@@ -1,7 +1,10 @@
-import React from 'react';
+
+import { useTranslation } from 'react-i18next';
+import { getLocale } from '../../../utils/format';
 
 const FormattedNumberInput = ({ value, onChange, placeholder = "0", className = "form-control", prefix, suffix, name }) => {
-  const displayValue = value !== '' && value != null ? Number(value).toLocaleString('id-ID') : '';
+  const { i18n } = useTranslation();
+  const displayValue = value !== '' && value != null ? Number(value).toLocaleString(getLocale(i18n.language)) : '';
 
   const handleChange = (e) => {
     const rawValue = e.target.value.replace(/\D/g, '');
@@ -16,6 +19,8 @@ const FormattedNumberInput = ({ value, onChange, placeholder = "0", className = 
     return (
       <input
         type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
         name={name}
         className={className}
         placeholder={placeholder}
@@ -30,6 +35,8 @@ const FormattedNumberInput = ({ value, onChange, placeholder = "0", className = 
       {prefix && <span style={{ position: 'absolute', left: '12px', color: '#9CA3AF', fontSize: '0.875rem', pointerEvents: 'none' }}>{prefix}</span>}
       <input
         type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
         name={name}
         className={className}
         placeholder={placeholder}

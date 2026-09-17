@@ -23,14 +23,15 @@ import DashboardKNA from './components/DashboardKNA';
 import DashboardBarang from './components/DashboardBarang';
 import DashboardPenumpang from './components/DashboardPenumpang';
 import DashboardKeuangan from './components/DashboardKeuangan';
+import { formatDate } from '../../utils/format';
 
 const DashboardAdmin = () => {
   const navigate = useNavigate();
   const { laporanList, fetchLaporan, isLoading } = useLaporanStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   
   const [activeTab, setActiveTab] = useState('global');
-  const [filterUnit, setFilterUnit] = useState('Semua Unit');
+  const [filterUnit, setFilterUnit] = useState('ALL');
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
 
@@ -49,7 +50,7 @@ const DashboardAdmin = () => {
   const laporanToExport = useMemo(() => {
     return approvedLaporan.filter(l => {
       let match = true;
-      if (filterUnit !== 'Semua Unit') {
+      if (filterUnit !== 'ALL') {
         if (l.unit?.nama_unit !== filterUnit) match = false;
       }
       if (exportStartDate) {
@@ -249,7 +250,7 @@ const DashboardAdmin = () => {
 
       doc.save('Laporan_Metrik_Angka_Admin.pdf');
     } catch (err) {
-      alert("Gagal mengekspor PDF: " + err.message);
+      alert(t('admin.export_pdf_fail') + err.message);
       console.error(err);
     }
   };
@@ -259,7 +260,7 @@ const DashboardAdmin = () => {
       // 1. Fetch template.xlsx from the public folder
       const response = await fetch('/template.xlsx');
       if (!response.ok) {
-        throw new Error('Gagal memuat template Excel');
+        throw new Error(t('admin.template_fail'));
       }
       const arrayBuffer = await response.arrayBuffer();
       
@@ -385,7 +386,7 @@ const DashboardAdmin = () => {
       saveAs(blob, "Laporan_Metrik_Angka_Admin_Keren.xlsx");
       
     } catch (err) {
-      alert("Gagal mengekspor Excel: " + err.message);
+      alert(t('admin.export_excel_fail') + err.message);
       console.error(err);
     }
   };
@@ -419,7 +420,7 @@ const DashboardAdmin = () => {
             </div>
 
             <div className="card mb-6" style={{ padding: '24px' }}>
-              <h3 className="section-title mb-4">Volume Laporan per Unit</h3>
+              <h3 className="section-title mb-4">{t('admin.volume_per_unit')}</h3>
               <div style={{ width: '100%', height: 320 }}>
                 <ResponsiveContainer>
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 30 }}>
@@ -431,7 +432,7 @@ const DashboardAdmin = () => {
                       contentStyle={{ backgroundColor: 'var(--chart-card)', borderColor: 'var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}
                       itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }}
                     />
-                    <Bar dataKey="value" name="Jml Laporan" fill="var(--chart-bar-primary)" radius={[6, 6, 0, 0]} barSize={40} />
+                    <Bar dataKey="value" name={t('admin.chart_legend')} fill="var(--chart-bar-primary)" radius={[6, 6, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -439,36 +440,36 @@ const DashboardAdmin = () => {
 
             <div className="card p-0" style={{ padding: 0 }}>
               <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
-                <h3 className="font-bold text-lg m-0">Log Riwayat Laporan Terbaru</h3>
+                <h3 className="font-bold text-lg m-0">{t('admin.log_title')}</h3>
               </div>
               
               <div className="table-wrapper" style={{ border: 'none' }}>
                 <table>
                   <thead>
                     <tr>
-                      <th>ID LAPORAN</th>
-                      <th>NAMA UNIT</th>
-                      <th>WAKTU LAPOR</th>
-                      <th>JENIS</th>
-                      <th>STATUS</th>
-                      <th>AKSI</th>
+                      <th>{t('admin.th_id')}</th>
+                      <th>{t('admin.th_unit')}</th>
+                      <th>{t('admin.th_time')}</th>
+                      <th>{t('admin.th_type')}</th>
+                      <th>{t('admin.th_status')}</th>
+                      <th>{t('admin.th_action')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoading ? (
                       <tr>
-                        <td colSpan="6" className="text-center text-muted p-4">Memuat data...</td>
+                        <td colSpan="6" className="text-center text-muted p-4">{t('admin.loading')}</td>
                       </tr>
                     ) : filteredLaporan.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="text-center text-muted p-4">Tidak ada data laporan.</td>
+                        <td colSpan="6" className="text-center text-muted p-4">{t('admin.empty')}</td>
                       </tr>
                     ) : filteredLaporan.slice(0, 10).map((item) => (
                       <tr key={item.id_laporan}>
                         <td className="font-medium text-primary">LPR-{item.id_laporan}</td>
                         <td>{item.unit?.nama_unit || `Unit ID: ${item.id_unit}`}</td>
-                        <td>{new Date(item.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                        <td>Data Harian</td>
+                        <td>{formatDate(item.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }, i18n.language)}</td>
+                        <td>{t('dashboard.daily_data')}</td>
                         <td>
                           <span className={`badge ${item.status === 'DISETUJUI' ? 'badge-disetujui' : item.status === 'DITOLAK' || item.status === 'REVISI' ? 'badge-revisi' : 'badge-diajukan'}`}>
                             {item.status}
@@ -479,7 +480,7 @@ const DashboardAdmin = () => {
                             className={`btn btn-sm ${item.status === 'DIAJUKAN' ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => navigate(`/laporan/review/${item.id_laporan}`)}
                           >
-                            {item.status === 'DIAJUKAN' ? 'Review' : 'Lihat'}
+                            {item.status === 'DIAJUKAN' ? t('admin.review') : t('admin.view')}
                           </button>
                         </td>
                       </tr>
@@ -494,7 +495,7 @@ const DashboardAdmin = () => {
   };
 
   const tabs = [
-    { id: 'global', label: 'Ringkasan Global', icon: LayoutDashboard },
+    { id: 'global', label: t('admin.global_summary'), icon: LayoutDashboard },
     { id: 'kna', label: t('unit.kna_title'), icon: Building2 },
     { id: 'barang', label: t('unit.barang_title'), icon: Truck },
     { id: 'penumpang', label: t('unit.penumpang_title'), icon: Users },
@@ -508,7 +509,7 @@ const DashboardAdmin = () => {
           <p className="page-subtitle">{t('admin.subtitle')}</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
-          <span className="text-xs font-semibold text-slate-500 mr-1 uppercase tracking-wider">Export Filter:</span>
+          <span className="text-xs font-semibold text-slate-500 mr-1 uppercase tracking-wider">{t('admin.export_filter')}</span>
           
           <input 
             type="date" 
@@ -516,7 +517,7 @@ const DashboardAdmin = () => {
             style={{ width: 'auto', padding: '0.375rem 0.5rem' }} 
             value={exportStartDate} 
             onChange={(e) => setExportStartDate(e.target.value)}
-            title="Tanggal Mulai"
+            title={t('admin.start_date')}
           />
           <span className="text-slate-400">-</span>
           <input 
@@ -525,16 +526,16 @@ const DashboardAdmin = () => {
             style={{ width: 'auto', padding: '0.375rem 0.5rem' }} 
             value={exportEndDate} 
             onChange={(e) => setExportEndDate(e.target.value)}
-            title="Tanggal Selesai"
+            title={t('admin.end_date')}
           />
 
           <select className="form-control text-sm" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
-            <option>Semua Unit</option>
-            <option>Unit Pusat</option>
-            <option>Unit Angkutan Penumpang</option>
-            <option>Unit Angkutan Barang</option>
-            <option>Unit Keuangan</option>
-            <option>Unit KNA</option>
+            <option value="ALL">{t('admin.semua_unit')}</option>
+            <option value="Unit Pusat">{t('admin.unit_pusat')}</option>
+            <option value="Unit Angkutan Penumpang">{t('admin.unit_penumpang')}</option>
+            <option value="Unit Angkutan Barang">{t('admin.unit_barang')}</option>
+            <option value="Unit Keuangan">{t('admin.unit_keuangan')}</option>
+            <option value="Unit KNA">{t('admin.unit_kna')}</option>
           </select>
           <div className="h-6 w-px bg-slate-300 mx-1"></div>
           <button className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" onClick={handleExportExcel} style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669' }}>

@@ -4,12 +4,16 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, formatCompact, currencyPrefix } from '../../../utils/format';
 
 const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#14b8a6', '#6366f1', '#ec4899'];
 
 const DashboardBarang = ({ approvedLaporan }) => {
   const [chartDays, setChartDays] = useState(7);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
+  const tonUnit = t('dashboard.ton');
 
   // Kalkulasi Akumulasi Barang
   let totalVolumeBarang = 0;
@@ -60,13 +64,13 @@ const DashboardBarang = ({ approvedLaporan }) => {
         }
       });
       data.push({
-        name: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        name: formatDate(d, { day: 'numeric', month: 'short' }, lang),
         Volume: vol,
         Pendapatan: pend
       });
     }
     return data;
-  }, [approvedLaporan, chartDays]);
+  }, [approvedLaporan, chartDays, lang]);
 
   const commodityData = useMemo(() => {
     const commMap = {};
@@ -76,7 +80,7 @@ const DashboardBarang = ({ approvedLaporan }) => {
         l.laporan_barang.forEach(b => {
           if (b.id_komoditi === 99) return;
           
-          const name = b.komoditi?.nama_komoditi || b.nama_kustom || 'Lainnya';
+          const name = b.komoditi?.nama_komoditi || b.nama_kustom || t('unit.other');
           if (!commMap[name]) {
             commMap[name] = { name, Volume: 0, Pendapatan: 0 };
           }
@@ -120,15 +124,15 @@ const DashboardBarang = ({ approvedLaporan }) => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-sm mb-4 font-medium text-center">{t('barang.total_volume')}</p>
-          <h3 className="text-3xl font-bold text-gray-800 text-center">{Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(totalVolumeBarang)}</h3>
+          <h3 className="text-3xl font-bold text-gray-800 text-center">{formatCompact(totalVolumeBarang, lang)}</h3>
         </div>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-sm mb-4 font-medium text-center">{t('barang.total_income')}</p>
-          <h3 className="text-3xl font-bold text-gray-800 text-center" style={{ color: '#16a34a' }}>Rp {Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(totalPendapatanBarang)}</h3>
+          <h3 className="text-3xl font-bold text-gray-800 text-center" style={{ color: '#16a34a' }}>{cur} {formatCompact(totalPendapatanBarang, lang, 2)}</h3>
         </div>
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-sm mb-4 font-medium text-center">{t('barang.total_trips')}</p>
-          <h3 className="text-3xl font-bold text-gray-800 text-center">{totalJmlKA.toLocaleString('id-ID')}</h3>
+          <h3 className="text-3xl font-bold text-gray-800 text-center">{formatNumber(totalJmlKA, lang)}</h3>
         </div>
       </div>
 
@@ -156,7 +160,7 @@ const DashboardBarang = ({ approvedLaporan }) => {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value) => [`${value.toLocaleString('id-ID')} Ton (${((value / totalCommVolume) * 100).toFixed(1)}%)`, 'Volume']}
+                  formatter={(value) => [`${formatNumber(value, lang)} ${tonUnit} (${((value / totalCommVolume) * 100).toFixed(1)}%)`, t('unit.volume')]}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   wrapperStyle={{ zIndex: 10 }}
                 />
@@ -168,7 +172,7 @@ const DashboardBarang = ({ approvedLaporan }) => {
 
         {/* Distribusi Pendapatan */}
         <div className="card" style={{ padding: '20px' }}>
-          <h3 className="font-semibold text-sm m-0 mb-4 text-slate-700">Distribusi Pendapatan Harian per Komoditi</h3>
+          <h3 className="font-semibold text-sm m-0 mb-4 text-slate-700">{t('unit.income_dist')}</h3>
           <div style={{ width: '100%', height: 260, overflow: 'hidden' }}>
             <ResponsiveContainer>
               <PieChart>
@@ -187,7 +191,7 @@ const DashboardBarang = ({ approvedLaporan }) => {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value) => [`Rp ${value.toLocaleString('id-ID')} (${((value / totalCommPendapatan) * 100).toFixed(1)}%)`, 'Pendapatan']}
+                  formatter={(value) => [`${cur} ${formatNumber(value, lang)} (${((value / totalCommPendapatan) * 100).toFixed(1)}%)`, t('unit.income')]}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
@@ -199,24 +203,24 @@ const DashboardBarang = ({ approvedLaporan }) => {
 
       {/* Target vs Kumulatif (Latest Report Kumulatif) */}
       <div className="card mb-6" style={{ padding: '20px' }}>
-        <h3 className="font-semibold text-lg m-0 mb-6 text-gray-800">Kumulatif vs Program per Komoditi (Tahun Ini)</h3>
+        <h3 className="font-semibold text-lg m-0 mb-6 text-gray-800">{t('unit.cumulative_title')}</h3>
         <div style={{ width: '100%', height: 350 }}>
           <ResponsiveContainer>
             <BarChart data={latestCommodityData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
               
-              <YAxis yAxisId="left" tickFormatter={(val) => `${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)} Ton`} width={80} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="left" tickFormatter={(val) => `${formatCompact(val, lang)} ${tonUnit}`} width={80} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
               
               <Tooltip 
-                formatter={(value, name) => [`${value.toLocaleString('id-ID')} Ton`, name]} 
+                formatter={(value, name) => [`${formatNumber(value, lang)} ${tonUnit}`, name]} 
                 cursor={{ fill: 'var(--bg-main)' }} 
                 contentStyle={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }} 
               />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               
-              <Bar yAxisId="left" dataKey="RealisasiVol" name="Kumulatif Volume (Ton)" fill="var(--brand-500)" radius={[4, 4, 0, 0]} barSize={20} />
-              <Bar yAxisId="left" dataKey="TargetVol" name="Program Volume (Ton)" fill="var(--text-muted)" opacity={0.3} radius={[4, 4, 0, 0]} barSize={20} />
+              <Bar yAxisId="left" dataKey="RealisasiVol" name={t('unit.cum_vol')} fill="var(--brand-500)" radius={[4, 4, 0, 0]} barSize={20} />
+              <Bar yAxisId="left" dataKey="TargetVol" name={t('unit.prog_vol')} fill="var(--text-muted)" opacity={0.3} radius={[4, 4, 0, 0]} barSize={20} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -237,12 +241,12 @@ const DashboardBarang = ({ approvedLaporan }) => {
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
               <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="left" tickFormatter={(val) => `${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)} Ton`} width={80} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={100} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
-              <Tooltip formatter={(value, name) => [name.includes('Pendapatan') ? `Rp ${value.toLocaleString('id-ID')}` : `${value.toLocaleString('id-ID')} Ton`, name]} cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }} />
+              <YAxis yAxisId="left" tickFormatter={(val) => `${formatCompact(val, lang)} ${tonUnit}`} width={80} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="right" orientation="right" tickFormatter={(val) => `${cur} ${formatCompact(val, lang)}`} width={100} stroke="var(--text-muted)" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip formatter={(value, name) => [name.includes('Pendapatan') ? `${cur} ${formatNumber(value, lang)}` : `${formatNumber(value, lang)} ${tonUnit}`, name]} cursor={{ fill: 'var(--bg-main)' }} contentStyle={{ backgroundColor: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)' }} />
               <Legend wrapperStyle={{ paddingTop: '10px' }} />
-              <Bar yAxisId="left" dataKey="Volume" name="Volume Total (Ton)" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={25} />
-              <Bar yAxisId="right" dataKey="Pendapatan" name="Pendapatan Total (Rp)" fill="#10b981" radius={[4, 4, 0, 0]} barSize={25} />
+              <Bar yAxisId="left" dataKey="Volume" name={t('unit.vol_total')} fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={25} />
+              <Bar yAxisId="right" dataKey="Pendapatan" name={t('unit.income_total')} fill="#10b981" radius={[4, 4, 0, 0]} barSize={25} />
             </BarChart>
           </ResponsiveContainer>
         </div>

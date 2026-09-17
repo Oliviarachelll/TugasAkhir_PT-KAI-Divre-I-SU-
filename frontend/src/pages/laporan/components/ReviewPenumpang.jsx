@@ -1,16 +1,21 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatNumber, currencyPrefix } from '../../../utils/format';
 
 const ReviewPenumpang = ({ laporan_penumpang }) => {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
   return (
     <div className="card mb-4">
-      <h3 className="section-title">Data Harian Penumpang</h3>
+      <h3 className="section-title">{t('laporan.review.pnp_title')}</h3>
       <div className="table-wrapper">
         <table>
           <thead>
             <tr>
-              <th>Nama KA</th>
-              <th>Jumlah Penumpang</th>
-              <th>Pendapatan (Rp)</th>
+              <th>{t('laporan.review.pnp_name')}</th>
+              <th>{t('laporan.review.pnp_count')}</th>
+              <th>{t('laporan.review.pnp_income')}</th>
             </tr>
           </thead>
           <tbody>
@@ -24,8 +29,8 @@ const ReviewPenumpang = ({ laporan_penumpang }) => {
             ).map((item, i) => (
               <tr key={i}>
                 <td className="font-medium">{item.nama_ka || '-'}</td>
-                <td>{item.jml_penumpang ? item.jml_penumpang.toLocaleString('id-ID') : 0}</td>
-                <td className="text-success font-bold">Rp {item.pendapatan ? item.pendapatan.toLocaleString('id-ID') : 0}</td>
+                <td>{item.jml_penumpang ? formatNumber(item.jml_penumpang, lang) : 0}</td>
+                <td className="text-success font-bold">{cur} {item.pendapatan ? formatNumber(item.pendapatan, lang) : 0}</td>
               </tr>
             ))}
           </tbody>

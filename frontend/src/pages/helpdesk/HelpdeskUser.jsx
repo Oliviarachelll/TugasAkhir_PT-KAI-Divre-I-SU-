@@ -4,17 +4,19 @@ import useAuthStore from '../../store/auth.store';
 import usePermintaanStore from '../../store/permintaan.store';
 import useLaporanStore from '../../store/laporan.store';
 import { useTranslation } from 'react-i18next';
+import { formatDate } from '../../utils/format';
 import toast from 'react-hot-toast';
 
 const HelpdeskUser = () => {
   const { user } = useAuthStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
   
   const { permintaanList, fetchPermintaan, addPermintaan, isLoading } = usePermintaanStore();
   const { laporanList, fetchLaporan } = useLaporanStore();
 
   const [showModal, setShowModal] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('Semua Status');
+  const [statusFilter, setStatusFilter] = useState('ALL_STATUS');
   const [searchQuery, setSearchQuery] = useState('');
   
   const [formJenis, setFormJenis] = useState('');
@@ -29,12 +31,12 @@ const HelpdeskUser = () => {
 
   const handleSubmit = async () => {
     if (!formJenis || !formDeskripsi) {
-      toast.error('Harap isi kategori dan deskripsi');
+      toast.error(t('helpdesk.need_category'));
       return;
     }
     
     if (formJenis === 'KLARIFIKASI_DATA' && !formIdLaporan) {
-      toast.error('Harap pilih laporan yang akan direvisi');
+      toast.error(t('helpdesk.need_report'));
       return;
     }
 
@@ -49,20 +51,20 @@ const HelpdeskUser = () => {
       }
       
       await addPermintaan(payload);
-      toast.success('Tiket bantuan berhasil dibuat');
+      toast.success(t('helpdesk.create_success'));
       setShowModal(false);
       setFormJenis('');
       setFormDeskripsi('');
       setFormIdLaporan('');
     } catch (error) {
-      toast.error('Gagal membuat tiket bantuan');
+      toast.error(t('helpdesk.create_fail'));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const filteredTickets = permintaanList.filter(ticket => {
-    const matchStatus = statusFilter === 'Semua Status' || ticket.status === statusFilter;
+    const matchStatus = statusFilter === 'ALL_STATUS' || ticket.status === statusFilter;
     const matchSearch = String(ticket.id_permintaan).includes(searchQuery) || 
                         ticket.jenis.toLowerCase().includes(searchQuery.toLowerCase()) ||
                         ticket.deskripsi.toLowerCase().includes(searchQuery.toLowerCase());
@@ -96,11 +98,11 @@ const HelpdeskUser = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option>{t('helpdesk.status.all')}</option>
-              <option>MENUNGGU</option>
-              <option>DIPROSES</option>
-              <option>SELESAI</option>
-              <option>DITOLAK</option>
+              <option value="ALL_STATUS">{t('helpdesk.status.all')}</option>
+              <option value="MENUNGGU">MENUNGGU</option>
+              <option value="DIPROSES">DIPROSES</option>
+              <option value="SELESAI">SELESAI</option>
+              <option value="DITOLAK">DITOLAK</option>
             </select>
           </div>
           <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
@@ -132,17 +134,17 @@ const HelpdeskUser = () => {
                 <th>{t('helpdesk.table.category')}</th>
                 <th>{t('helpdesk.table.desc')}</th>
                 <th>{t('helpdesk.table.status')}</th>
-                <th>Penanggung</th>
+                <th>{t('helpdesk.table.handler')}</th>
               </tr>
             </thead>
             <tbody>
               {isLoading && permintaanList.length === 0 ? (
-                <tr><td colSpan="6" className="text-center py-4 text-muted">Memuat data...</td></tr>
+                <tr><td colSpan="6" className="text-center py-4 text-muted">{t('helpdesk.loading')}</td></tr>
               ) : filteredTickets.length > 0 ? (
                 filteredTickets.map(ticket => (
                   <tr key={ticket.id_permintaan}>
                     <td className="font-medium text-primary">TKT-{String(ticket.id_permintaan).padStart(3, '0')}</td>
-                    <td>{new Date(ticket.created_at).toLocaleDateString('id-ID')}</td>
+                    <td>{formatDate(ticket.created_at, undefined, lang)}</td>
                     <td>{ticket.jenis.replace('_', ' ')}</td>
                     <td>{ticket.deskripsi}</td>
                     <td>
@@ -155,7 +157,7 @@ const HelpdeskUser = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center py-4 text-muted">Tidak ada tiket yang ditemukan.</td>
+                  <td colSpan="6" className="text-center py-4 text-muted">{t('helpdesk.empty')}</td>
                 </tr>
               )}
             </tbody>
@@ -167,32 +169,32 @@ const HelpdeskUser = () => {
         <div className="modal-overlay">
           <div className="modal" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h3 className="modal-title">Buat Tiket Bantuan</h3>
+              <h3 className="modal-title">{t('helpdesk.modal_title')}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
             </div>
             
             <div className="form-group">
-              <label className="form-label">Kategori Bantuan</label>
+              <label className="form-label">{t('helpdesk.category')}</label>
               <select className="form-control" value={formJenis} onChange={e => {
                 setFormJenis(e.target.value);
                 if (e.target.value !== 'KLARIFIKASI_DATA') setFormIdLaporan('');
               }}>
-                <option value="">Pilih Kategori...</option>
-                <option value="PERMINTAAN_AKSES">Lupa Password / Akun Terkunci (Ke Tim IT)</option>
-                <option value="BANTUAN_TEKNIS">Kendala Sistem / Error (Ke Tim IT)</option>
-                <option value="KLARIFIKASI_DATA">Permintaan Revisi Laporan ACC (Ke Admin Global)</option>
-                <option value="LAINNYA">Lainnya</option>
+                <option value="">{t('helpdesk.category_ph')}</option>
+                <option value="PERMINTAAN_AKSES">{t('helpdesk.cat_access')}</option>
+                <option value="BANTUAN_TEKNIS">{t('helpdesk.cat_technical')}</option>
+                <option value="KLARIFIKASI_DATA">{t('helpdesk.cat_revision')}</option>
+                <option value="LAINNYA">{t('helpdesk.cat_other')}</option>
               </select>
             </div>
 
             {formJenis === 'KLARIFIKASI_DATA' && (
               <div className="form-group">
-                <label className="form-label">Pilih Laporan yang akan Direvisi</label>
+                <label className="form-label">{t('helpdesk.choose_report')}</label>
                 <select className="form-control" value={formIdLaporan} onChange={e => setFormIdLaporan(e.target.value)}>
-                  <option value="">-- Pilih Laporan --</option>
+                  <option value="">{t('helpdesk.choose_report_ph')}</option>
                   {laporanList.filter(l => l.status === 'DISETUJUI').map(l => (
                     <option key={l.id_laporan} value={l.id_laporan}>
-                      Tanggal: {new Date(l.tanggal).toLocaleDateString('id-ID')} - {l.unit?.nama_unit}
+                      {t('helpdesk.report_option', { date: formatDate(l.tanggal, undefined, lang), unit: l.unit?.nama_unit })}
                     </option>
                   ))}
                 </select>
@@ -200,20 +202,20 @@ const HelpdeskUser = () => {
             )}
 
             <div className="form-group">
-              <label className="form-label">Deskripsi Kendala</label>
+              <label className="form-label">{t('helpdesk.desc_label')}</label>
               <textarea 
                 className="form-control" 
                 rows="4" 
-                placeholder="Jelaskan secara detail kendala yang Anda alami..."
+                placeholder={t('helpdesk.desc_ph')}
                 value={formDeskripsi}
                 onChange={e => setFormDeskripsi(e.target.value)}
               ></textarea>
             </div>
 
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={isSubmitting}>Batal</button>
+              <button className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={isSubmitting}>{t('helpdesk.cancel')}</button>
               <button className="btn btn-primary" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? 'Mengirim...' : 'Kirim Tiket'}
+                {isSubmitting ? t('helpdesk.sending') : t('helpdesk.send')}
               </button>
             </div>
           </div>

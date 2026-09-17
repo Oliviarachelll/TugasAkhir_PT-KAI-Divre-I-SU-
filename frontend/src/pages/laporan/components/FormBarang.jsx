@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import FormattedNumberInput from './FormattedNumberInput';
+import { currencyPrefix } from '../../../utils/format';
 
 const FormBarang = ({ draftLaporan, setDraft }) => {
+  const { t, i18n } = useTranslation();
+  const cur = currencyPrefix(i18n.language);
+  const tonUnit = t('dashboard.ton');
   const [activeBarangTab, setActiveBarangTab] = useState(0);
 
   const items = draftLaporan.barangItems || [];
@@ -58,12 +63,12 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
     <div className="mb-6">
       {/* Bagian Atas: TOTAL */}
       <div className="card mb-4" style={{ marginBottom: '24px' }}>
-        <h3 className="section-title">Total KA, VOL, & PENDAPATAN ANGKUTAN BARANG</h3>
+        <h3 className="section-title">{t('laporan.form.barang_total_title')}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
           
           {/* Kiri: Input KA */}
           <div style={{ borderRight: '1px solid var(--border)', paddingRight: '24px' }}>
-            <h4 className="font-semibold mb-3 text-sm">Jumlah KA per Komoditi</h4>
+            <h4 className="font-semibold mb-3 text-sm">{t('laporan.form.barang_ka_per_commodity')}</h4>
             {items.map((item, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
                 <label style={{ width: '120px', fontSize: '13px' }}>
@@ -94,42 +99,42 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             {/* Volume Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h4 className="font-semibold text-sm">Volume</h4>
+              <h4 className="font-semibold text-sm">{t('laporan.form.barang_volume')}</h4>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Harian Volume <span className="text-danger">*</span></label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume} onChange={(val) => handleChangeBarangTotal('volume', val)} suffix="Ton" />
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_daily_volume')} <span className="text-danger">*</span></label>
+                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume} onChange={(val) => handleChangeBarangTotal('volume', val)} suffix={tonUnit} />
               </div>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Kumulatif {currentYear}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_kumulatif} onChange={(val) => handleChangeBarangTotal('volume_kumulatif', val)} suffix="Ton" />
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_cumulative', { year: currentYear })}</label>
+                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_kumulatif} onChange={(val) => handleChangeBarangTotal('volume_kumulatif', val)} suffix={tonUnit} />
               </div>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Program {currentYear}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_program} onChange={(val) => handleChangeBarangTotal('volume_program', val)} suffix="Ton" />
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_program', { year: currentYear })}</label>
+                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_program} onChange={(val) => handleChangeBarangTotal('volume_program', val)} suffix={tonUnit} />
               </div>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Pencapaian</label>
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_achievement')}</label>
                 <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_pencapaian} onChange={(val) => handleChangeBarangTotal('volume_pencapaian', val)} suffix="%" />
               </div>
             </div>
 
             {/* Pendapatan Column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h4 className="font-semibold text-sm">Pendapatan</h4>
+              <h4 className="font-semibold text-sm">{t('laporan.form.barang_income')}</h4>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Harian Pendapatan <span className="text-danger">*</span></label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan} onChange={(val) => handleChangeBarangTotal('pendapatan', val)} prefix="Rp" />
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_daily_income')} <span className="text-danger">*</span></label>
+                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan} onChange={(val) => handleChangeBarangTotal('pendapatan', val)} prefix={cur} />
               </div>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Kumulatif {currentYear}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_kumulatif} onChange={(val) => handleChangeBarangTotal('pendapatan_kumulatif', val)} prefix="Rp" />
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_cumulative', { year: currentYear })}</label>
+                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_kumulatif} onChange={(val) => handleChangeBarangTotal('pendapatan_kumulatif', val)} prefix={cur} />
               </div>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Program {currentYear}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_program} onChange={(val) => handleChangeBarangTotal('pendapatan_program', val)} prefix="Rp" />
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_program', { year: currentYear })}</label>
+                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_program} onChange={(val) => handleChangeBarangTotal('pendapatan_program', val)} prefix={cur} />
               </div>
               <div className="form-group">
-                <label className="text-xs text-muted mb-1 block">Pencapaian</label>
+                <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_achievement')}</label>
                 <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_pencapaian} onChange={(val) => handleChangeBarangTotal('pendapatan_pencapaian', val)} suffix="%" />
               </div>
             </div>
@@ -139,7 +144,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
 
       {/* Bagian Bawah: RINCIAN BARANG */}
       <div className="card">
-        <h3 className="section-title">Rincian Barang</h3>
+        <h3 className="section-title">{t('laporan.form.barang_detail_title')}</h3>
         
         {/* Tabs Menu */}
         <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '2px solid var(--border)', marginBottom: '20px', gap: '8px' }}>
@@ -165,7 +170,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
             );
           })}
           <button className="btn btn-sm text-primary" onClick={handleAddBarang} style={{ border: '1px dashed var(--primary)', borderRadius: '8px 8px 0 0' }}>
-            + ADD OPTIONAL
+            {t('laporan.form.barang_add')}
           </button>
         </div>
 
@@ -176,22 +181,22 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
             {activeBarangTab > 5 && (
                <div className="mb-4 flex items-end gap-3">
                  <div style={{ flex: 1 }}>
-                   <label className="form-label">Nama Komoditi Kustom</label>
+                   <label className="form-label">{t('laporan.form.barang_custom_name')}</label>
                    <input 
                      type="text" 
                      className="form-control" 
                      value={activeItem.nama_kustom || ''} 
                      onChange={(e) => handleChangeBarang(activeBarangTab, 'nama_kustom', e.target.value)}
-                     placeholder="Contoh: Batu Bara, Semen, dll"
+                     placeholder={t('laporan.form.barang_custom_ph')}
                    />
                  </div>
                  <button 
                    className="btn btn-outline-danger" 
                    onClick={() => handleRemoveBarang(activeBarangTab)}
-                   title="Hapus komoditi ini"
+                   title={t('laporan.form.barang_delete_title')}
                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.5rem 1rem' }}
                  >
-                   <Trash2 size={16} /> Hapus
+                   <Trash2 size={16} /> {t('laporan.form.barang_delete')}
                  </button>
                </div>
             )}
@@ -199,22 +204,22 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
               {/* Volume Details */}
               <div>
-                <h4 className="font-semibold mb-3">Volume</h4>
+                <h4 className="font-semibold mb-3">{t('laporan.form.barang_volume')}</h4>
                 <div className="row">
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Harian Volume <span className="text-danger">*</span></label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume', val)} suffix="Ton" />
+                    <label className="form-label">{t('laporan.form.barang_vol_daily')} <span className="text-danger">*</span></label>
+                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume', val)} suffix={tonUnit} />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Kumulatif Volume ({currentYear})</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_kumulatif} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_kumulatif', val)} suffix="Ton" />
+                    <label className="form-label">{t('laporan.form.barang_vol_cum', { year: currentYear })}</label>
+                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_kumulatif} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_kumulatif', val)} suffix={tonUnit} />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Program Volume ({currentYear})</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_program', val)} suffix="Ton" />
+                    <label className="form-label">{t('laporan.form.barang_vol_prog', { year: currentYear })}</label>
+                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_program', val)} suffix={tonUnit} />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Pencapaian Volume</label>
+                    <label className="form-label">{t('laporan.form.barang_vol_ach')}</label>
                     <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_pencapaian} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_pencapaian', val)} suffix="%" />
                   </div>
                 </div>
@@ -222,22 +227,22 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
 
               {/* Pendapatan Details */}
               <div>
-                <h4 className="font-semibold mb-3">Pendapatan</h4>
+                <h4 className="font-semibold mb-3">{t('laporan.form.barang_income')}</h4>
                 <div className="row">
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Harian Pendapatan <span className="text-danger">*</span></label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan', val)} prefix="Rp" />
+                    <label className="form-label">{t('laporan.form.barang_inc_daily')} <span className="text-danger">*</span></label>
+                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan', val)} prefix={cur} />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Kumulatif Pendapatan ({currentYear})</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_kumulatif} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_kumulatif', val)} prefix="Rp" />
+                    <label className="form-label">{t('laporan.form.barang_inc_cum', { year: currentYear })}</label>
+                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_kumulatif} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_kumulatif', val)} prefix={cur} />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Program Pendapatan ({currentYear})</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_program', val)} prefix="Rp" />
+                    <label className="form-label">{t('laporan.form.barang_inc_prog', { year: currentYear })}</label>
+                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_program', val)} prefix={cur} />
                   </div>
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Pencapaian Pendapatan</label>
+                    <label className="form-label">{t('laporan.form.barang_inc_ach')}</label>
                     <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_pencapaian} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_pencapaian', val)} suffix="%" />
                   </div>
                 </div>

@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import FormattedNumberInput from './FormattedNumberInput';
 import { KA_PENUMPANG_LIST } from '../../../data/kaPenumpang';
+import { formatNumber, currencyPrefix } from '../../../utils/format';
 
 const FormPenumpang = ({ draftLaporan, setDraft }) => {
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
   const [filterKa, setFilterKa] = useState('SRILELAWANGSA');
 
   // Initialize Penumpang Items
@@ -25,7 +30,7 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
   const items = draftLaporan.penumpangItems || [];
 
   const handleAddKeretaBaru = () => {
-    const newName = window.prompt("Masukkan Nama Kereta Api Baru:");
+    const newName = window.prompt(t('validation.enter_train'));
     if (!newName) return;
     setDraft({
       penumpangItems: [
@@ -71,12 +76,12 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
 
   return (
     <div className="card mb-4" style={{ marginBottom: '24px' }}>
-      <h3 className="section-title">Data Harian Penumpang</h3>
+      <h3 className="section-title">{t('laporan.form.pnp_title')}</h3>
 
       {/* Filter & Action */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', alignItems: 'center' }}>
         <div style={{ flex: 1 }}>
-          <label className="form-label">Pilih Kereta Api:</label>
+          <label className="form-label">{t('laporan.form.pnp_choose')}</label>
           <select className="form-control" value={filterKa} onChange={(e) => setFilterKa(e.target.value)}>
             {KA_NAMES_FILTER.map(name => (
               <option key={name} value={name}>{name}</option>
@@ -85,7 +90,7 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
         </div>
         <div style={{ marginTop: '24px' }}>
           <button className="btn btn-primary" onClick={handleAddKeretaBaru}>
-            + Add Kereta Baru
+            {t('laporan.form.pnp_add_train')}
           </button>
         </div>
       </div>
@@ -95,11 +100,11 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
         <table>
           <thead>
             <tr>
-              <th>No KA</th>
-              <th>Lintas</th>
-              <th>Berangkat</th>
-              <th>Kedatangan</th>
-              <th style={{ width: '150px' }}>Jumlah Penumpang <span className="text-danger">*</span></th>
+              <th>{t('laporan.form.pnp_th_no')}</th>
+              <th>{t('laporan.form.pnp_th_route')}</th>
+              <th>{t('laporan.form.pnp_th_depart')}</th>
+              <th>{t('laporan.form.pnp_th_arrive')}</th>
+              <th style={{ width: '150px' }}>{t('laporan.form.pnp_th_total')} <span className="text-danger">*</span></th>
             </tr>
           </thead>
           <tbody>
@@ -107,14 +112,14 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
               <tr key={item.originalIndex}>
                 <td>
                   {item.isCustom ? (
-                    <input type="text" className="form-control form-control-sm" placeholder="No KA" value={item.no_ka || ''} onChange={(e) => handleChangePenumpang(item.originalIndex, 'no_ka', e.target.value)} />
+                    <input type="text" className="form-control form-control-sm" placeholder={t('laporan.form.pnp_no_ph')} value={item.no_ka || ''} onChange={(e) => handleChangePenumpang(item.originalIndex, 'no_ka', e.target.value)} />
                   ) : (
                     <span className="font-medium">{item.no_ka}</span>
                   )}
                 </td>
                 <td>
                   {item.isCustom ? (
-                    <input type="text" className="form-control form-control-sm" placeholder="Lintas" value={item.lintas || ''} onChange={(e) => handleChangePenumpang(item.originalIndex, 'lintas', e.target.value)} />
+                    <input type="text" className="form-control form-control-sm" placeholder={t('laporan.form.pnp_route_ph')} value={item.lintas || ''} onChange={(e) => handleChangePenumpang(item.originalIndex, 'lintas', e.target.value)} />
                   ) : (
                     <span className="text-muted">{item.lintas}</span>
                   )}
@@ -140,7 +145,7 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
             ))}
             {filteredItems.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center text-muted py-4">Belum ada data untuk KA ini.</td>
+                <td colSpan={5} className="text-center text-muted py-4">{t('laporan.form.pnp_empty')}</td>
               </tr>
             )}
           </tbody>
@@ -149,7 +154,7 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
         {/* Add Jadwal Button below table */}
         <div style={{ marginTop: '12px', padding: '0 16px' }}>
           <button className="btn btn-outline-primary btn-sm" onClick={handleAddJadwal}>
-            + Add Jadwal {filterKa}
+            {t('laporan.form.pnp_add_schedule', { ka: filterKa })}
           </button>
         </div>
       </div>
@@ -157,15 +162,15 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
       {/* SUMMARY BAWAH */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '32px' }}>
         <div className="p-4 bg-input border border-border rounded">
-          <label className="form-label text-muted mb-1">TOTAL PENUMPANG ({filterKa})</label>
-          <div className="text-2xl font-bold text-gray-800">{totalPenumpangFilter.toLocaleString('id-ID')} <span className="text-sm font-normal">Orang</span></div>
+          <label className="form-label text-muted mb-1">{t('laporan.form.pnp_total_pax', { ka: filterKa })}</label>
+          <div className="text-2xl font-bold text-gray-800">{formatNumber(totalPenumpangFilter, lang)} <span className="text-sm font-normal">{t('dashboard.people')}</span></div>
         </div>
         <div className="p-4 bg-input border border-border rounded">
-          <label className="form-label text-muted mb-1">TOTAL PENDAPATAN ({filterKa})</label>
+          <label className="form-label text-muted mb-1">{t('laporan.form.pnp_total_income', { ka: filterKa })}</label>
           <FormattedNumberInput 
             className="form-control font-bold text-success" 
             placeholder="0" 
-            prefix="Rp"
+            prefix={cur}
             value={draftLaporan.pendapatanKa?.[filterKa] || ''} 
             onChange={(val) => {
               setDraft({

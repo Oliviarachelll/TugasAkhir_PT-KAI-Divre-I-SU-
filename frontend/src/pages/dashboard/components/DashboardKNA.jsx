@@ -4,10 +4,13 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
+import { formatDate, formatNumber, formatCompact, formatCurrency, currencyPrefix } from '../../../utils/format';
 
 const DashboardKNA = ({ laporanList, approvedLaporan }) => {
   const [chartDays, setChartDays] = useState(7);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
 
   // Target RKAD (Khusus KNA)
   const latestLaporanKNA = useMemo(() => {
@@ -42,8 +45,8 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
   const persentaseKNA = targetRKAD > 0 ? ((realisasiRKAD / targetRKAD) * 100).toFixed(1) : 0;
 
   const donutDataKNA = [
-    { name: 'Realisasi', value: realisasiRKAD },
-    { name: 'Sisa Target', value: Math.max(0, targetRKAD - realisasiRKAD) }
+    { name: t('unit.realization'), value: realisasiRKAD },
+    { name: t('unit.remaining_target'), value: Math.max(0, targetRKAD - realisasiRKAD) }
   ];
   const donutColors = ['var(--chart-bar-primary)', 'var(--chart-grid)'];
 
@@ -72,16 +75,16 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
         sumNonROW += l.laporan_kna.nilai_non_row ? parseFloat(l.laporan_kna.nilai_non_row) : 0;
       });
       data.push({
-        name: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        name: formatDate(d, { day: 'numeric', month: 'short' }, lang),
         ROW: sumROW,
         NonROW: sumNonROW
       });
     }
     return data;
-  }, [approvedLaporan, chartDays]);
+  }, [approvedLaporan, chartDays, lang]);
 
   const knaSummary = useMemo(() => {
-    if (chartData.length === 0) return { max: 'Rp 0', min: 'Rp 0', avg: 'Rp 0', growth: '0%' };
+    if (chartData.length === 0) return { max: `${cur} 0`, min: `${cur} 0`, avg: `${cur} 0`, growth: '0%' };
     const dailyTotals = chartData.map(d => (d.ROW || 0) + (d.NonROW || 0));
     const nonZeroTotals = dailyTotals.filter(t => t > 0);
     const max = dailyTotals.length ? Math.max(...dailyTotals) : 0;
@@ -96,39 +99,39 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
     }
 
     return {
-      max: `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(max)}`,
-      min: `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(min)}`,
-      avg: `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(avg)}`,
+      max: `${cur} ${formatCompact(max, lang)}`,
+      min: `${cur} ${formatCompact(min, lang)}`,
+      avg: `${cur} ${formatCompact(avg, lang)}`,
       growth: `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`
     };
-  }, [chartData]);
+  }, [chartData, lang, cur]);
 
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '16px', marginBottom: '24px' }}>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.land_row')}</p>
-          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasTanahRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{formatNumber(totalLuasTanahRow, lang)} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.building_row')}</p>
-          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasBangunanRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{formatNumber(totalLuasBangunanRow, lang)} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.land_non_row')}</p>
-          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasTanahNonRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{formatNumber(totalLuasTanahNonRow, lang)} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.building_non_row')}</p>
-          <h3 className="text-lg font-bold text-gray-800 text-center">{totalLuasBangunanNonRow.toLocaleString('id-ID')} <span className="text-xs font-normal">m²</span></h3>
+          <h3 className="text-lg font-bold text-gray-800 text-center">{formatNumber(totalLuasBangunanNonRow, lang)} <span className="text-xs font-normal">m²</span></h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.contract_row')}</p>
-          <h3 className="text-xl font-bold text-gray-800 text-center">{totalKontrakRow.toLocaleString('id-ID')}</h3>
+          <h3 className="text-xl font-bold text-gray-800 text-center">{formatNumber(totalKontrakRow, lang)}</h3>
         </div>
         <div className="card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <p className="text-muted text-xs mb-1 font-medium text-center">{t('kna.contract_non_row')}</p>
-          <h3 className="text-xl font-bold text-gray-800 text-center">{totalKontrakNonRow.toLocaleString('id-ID')}</h3>
+          <h3 className="text-xl font-bold text-gray-800 text-center">{formatNumber(totalKontrakNonRow, lang)}</h3>
         </div>
       </div>
 
@@ -147,10 +150,10 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
                 <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(val) => `Rp ${Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(val)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip formatter={(value) => `Rp ${value.toLocaleString('id-ID')}`} cursor={{ fill: 'var(--chart-grid)' }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
-                <Bar dataKey="ROW" name="Nilai ROW" fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} barSize={30} />
-                <Bar dataKey="NonROW" name="Nilai Non-ROW" fill="var(--chart-bar-highlight)" radius={[4, 4, 0, 0]} barSize={30} />
+                <YAxis tickFormatter={(val) => `${cur} ${formatCompact(val, lang)}`} width={80} stroke="var(--chart-axis)" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip formatter={(value) => `${cur} ${formatNumber(value, lang)}`} cursor={{ fill: 'var(--chart-grid)' }} contentStyle={{ backgroundColor: 'var(--chart-card)', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }} itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }} />
+                <Bar dataKey="ROW" name={t('unit.row_value')} fill="var(--chart-bar-primary)" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="NonROW" name={t('unit.non_row_value')} fill="var(--chart-bar-highlight)" radius={[4, 4, 0, 0]} barSize={30} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -179,7 +182,7 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div className="card" style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <h3 className="font-semibold text-lg m-0 text-gray-800 mb-4">Pencapaian RKAD</h3>
+            <h3 className="font-semibold text-lg m-0 text-gray-800 mb-4">{t('unit.rkad_title')}</h3>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
               <div style={{ width: '100%', height: 180 }}>
                 <ResponsiveContainer>
@@ -194,17 +197,17 @@ const DashboardKNA = ({ laporanList, approvedLaporan }) => {
               </div>
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
                 <h2 className="text-3xl font-bold" style={{ color: 'var(--brand-500)' }}>{persentaseKNA}%</h2>
-                <p className="text-xs text-muted">Realisasi</p>
+                <p className="text-xs text-muted">{t('unit.realization')}</p>
               </div>
             </div>
             <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
               <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
-                <p className="text-xs text-muted mb-1">Total Realisasi</p>
-                <p className="font-semibold text-gray-800">Rp {realisasiRKAD.toLocaleString('id-ID')}</p>
+                <p className="text-xs text-muted mb-1">{t('unit.total_realization')}</p>
+                <p className="font-semibold text-gray-800">{cur} {formatNumber(realisasiRKAD, lang)}</p>
               </div>
               <div style={{ textAlign: 'center', flex: 1 }}>
-                <p className="text-xs text-muted mb-1">Target RKAD</p>
-                <p className="font-semibold text-gray-800">Rp {targetRKAD.toLocaleString('id-ID')}</p>
+                <p className="text-xs text-muted mb-1">{t('unit.rkad_target')}</p>
+                <p className="font-semibold text-gray-800">{cur} {formatNumber(targetRKAD, lang)}</p>
               </div>
             </div>
           </div>

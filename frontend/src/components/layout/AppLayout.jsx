@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
 const AppLayout = () => {
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -14,6 +16,19 @@ const AppLayout = () => {
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
+
+  useEffect(() => {
+    const closeSidebar = () => {
+      if (window.innerWidth >= 768) setSidebarOpen(false);
+    };
+    window.addEventListener('resize', closeSidebar);
+    return () => window.removeEventListener('resize', closeSidebar);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen && window.innerWidth < 768 ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [sidebarOpen]);
 
   return (
     <div className={`app-container ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -34,9 +49,10 @@ const AppLayout = () => {
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div 
-          className="modal-overlay" 
-          style={{ zIndex: 99, background: 'rgba(0,0,0,0.5)' }}
+        <button
+          type="button"
+          className="sidebar-overlay"
+          aria-label={t('header.close_menu')}
           onClick={() => setSidebarOpen(false)}
         />
       )}

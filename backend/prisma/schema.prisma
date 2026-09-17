@@ -113,6 +113,7 @@ model Pengguna {
   laporan_dibuat     Laporan[]          @relation("PembuatLaporan")
   token_reset        TokenReset[]
   log_audit          LogAudit[]
+  revisi_laporan     RevisiLaporan[]
   permintaan_diajukan PermintaanBantuan[] @relation("PengajuPermintaan")
   permintaan_ditangani PermintaanBantuan[] @relation("PenanggungPermintaan")
 
@@ -151,8 +152,10 @@ model LogAudit {
   detail       String @db.Text
 
   // Foreign Key
-  id_pengguna Int
-  pengguna    Pengguna @relation(fields: [id_pengguna], references: [id_pengguna])
+  id_pengguna       Int
+  pengguna          Pengguna @relation(fields: [id_pengguna], references: [id_pengguna])
+  tabel_terkait     String?   @db.VarChar(100)
+  id_record_terkait Int?
 
   created_at DateTime @default(now())
 
@@ -204,6 +207,7 @@ model Laporan {
   laporan_penumpang  LaporanPenumpang[]
   laporan_barang     LaporanBarang[]
   laporan_keuangan   LaporanKeuangan?
+  revisi_laporan     RevisiLaporan[]
 
   // Relasi ke Permintaan Bantuan
   permintaan_bantuan PermintaanBantuan[]
@@ -212,6 +216,29 @@ model Laporan {
   updated_at DateTime @updatedAt
 
   @@map("laporan")
+}
+
+// ============================================================
+// TABEL: Riwayat revisi laporan
+// Snapshot dipisahkan agar versi sebelum dan sesudah dapat diaudit.
+// ============================================================
+
+model RevisiLaporan {
+  id_revisi     Int      @id @default(autoincrement())
+  versi         Int
+  data_sebelum  Json
+  data_sesudah  Json
+  field_berubah Json
+
+  id_laporan  Int
+  id_pengguna Int
+  laporan     Laporan   @relation(fields: [id_laporan], references: [id_laporan])
+  pengguna    Pengguna  @relation(fields: [id_pengguna], references: [id_pengguna])
+
+  created_at DateTime @default(now())
+
+  @@unique([id_laporan, versi])
+  @@map("revisi_laporan")
 }
 
 // ============================================================
