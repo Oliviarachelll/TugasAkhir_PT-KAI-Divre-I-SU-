@@ -18,4 +18,20 @@ export default defineConfig({
       },
     },
   },
+  // Preview server (demo via port forwarding): mirror dev proxy agar
+  // path relatif /api tetap tersambung ke backend tanpa perubahan kode.
+  preview: {
+    port: 4173,
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        ws: true,
+      },
+    },
+  },
 })
