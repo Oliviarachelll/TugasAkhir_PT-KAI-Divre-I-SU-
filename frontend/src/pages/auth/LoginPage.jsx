@@ -3,7 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { ShieldAlert, Loader2, KeyRound, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/auth.store';
-import apiClient from '../../api/client';
+import apiClient, { API_ERROR_TOAST_ID } from '../../api/client';
 import kaiLogo from '../../assets/kai-logo.svg';
 import { useTranslation } from 'react-i18next';
 
@@ -67,7 +67,7 @@ const LoginPage = () => {
         setErrorMsg(message);
       }
       // Jangan tampilkan toast jika terkunci agar user fokus ke kotak kuning
-      if (status !== 403) toast.error(t('auth.login_fail'));
+      if (status !== 403) toast.error(t('auth.login_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       setIsLoading(false);
     }

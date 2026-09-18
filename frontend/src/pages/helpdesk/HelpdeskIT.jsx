@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import usePermintaanStore from '../../store/permintaan.store';
 import useAuthStore from '../../store/auth.store';
 import { formatDateTime } from '../../utils/format';
+import { API_ERROR_TOAST_ID } from '../../api/client';
 
 const HelpdeskIT = () => {
   const { t, i18n } = useTranslation();
@@ -64,7 +65,7 @@ const HelpdeskIT = () => {
         setSelectedTicket(prev => prev ? { ...prev, status } : null);
       }
     } catch (error) {
-      toast.error(t('helpdesk_it.update_fail'));
+      toast.error(t('helpdesk_it.update_fail'), { id: API_ERROR_TOAST_ID });
     }
   };
 

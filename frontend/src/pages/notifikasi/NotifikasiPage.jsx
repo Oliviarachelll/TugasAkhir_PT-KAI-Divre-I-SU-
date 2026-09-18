@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Edit2, PowerOff, Power, Send, AlertCircle, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { waCloudApi } from '../../api/waCloud.api';
+import { API_ERROR_TOAST_ID } from '../../api/client';
 import { formatDateTime } from '../../utils/format';
 
 
@@ -34,7 +35,7 @@ const NotifikasiPage = () => {
       setTemplates(response.data || []);
     } catch (error) {
       console.error('Error fetching templates:', error);
-      toast.error(t('notifikasi.fetch_fail'));
+      toast.error(t('notifikasi.fetch_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       setIsLoadingTemplates(false);
     }
@@ -98,7 +99,7 @@ const NotifikasiPage = () => {
       setTemplateName('');
       fetchLogs(); // Reload logs after sending
     } catch (error) {
-      toast.error(error?.response?.data?.error || t('notifikasi.send_fail'));
+      toast.error(error?.response?.data?.error || t('notifikasi.send_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       setIsSubmitting(false);
     }
@@ -142,7 +143,7 @@ const NotifikasiPage = () => {
       // Tetap fetch di-background untuk sinkronisasi, meski mungkin butuh 30dtk dari Meta
       fetchTemplates();
     } catch (error) {
-      toast.error(error?.response?.data?.error || t('notifikasi.create_fail'));
+      toast.error(error?.response?.data?.error || t('notifikasi.create_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       setIsCreatingTemplate(false);
     }

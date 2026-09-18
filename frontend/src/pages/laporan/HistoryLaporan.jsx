@@ -326,7 +326,7 @@ const HistoryLaporan = () => {
                             }
                           }}
                         >
-                          {isAdmin ? (laporan.status === 'DIAJUKAN' ? t('laporan.review') : t('laporan.view')) : ((laporan.status === 'REVISI' || laporan.status === 'DRAFT') ? t('laporan.edit') : t('laporan.view'))}
+                          {isAdmin ? (laporan.status === 'DIAJUKAN' ? t('laporan.review_action') : t('laporan.view')) : ((laporan.status === 'REVISI' || laporan.status === 'DRAFT') ? t('laporan.edit') : t('laporan.view'))}
                         </button>
                       </td>
                     </tr>

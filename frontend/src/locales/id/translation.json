@@ -445,7 +445,7 @@
     "th_action": "Aksi",
     "loading": "Memuat data...",
     "empty_filter": "Belum ada laporan yang cocok dengan filter.",
-    "review": "Review",
+    "review_action": "Review",
     "view": "Lihat",
     "edit": "Edit",
     "form": {

@@ -3,6 +3,7 @@
  * CRUD laporan induk + sub-laporan
  */
 const prisma = require('../config/database');
+const { Prisma } = require('@prisma/client');
 const { sendSuccess, sendCreated, sendError, sendPaginated } = require('../utils/response');
 const { parsePagination, buildPaginationMeta } = require('../utils/pagination');
 const whatsappService = require('../whatsapp/baileys.service');
@@ -20,8 +21,14 @@ const pick = (value, fields) => fields.reduce((result, field) => {
 const normalizeValue = (value) => {
   if (value === null || value === undefined || value === '') return null;
   if (Array.isArray(value)) return value.map(normalizeValue);
+  // Decimal Prisma harus dikonversi eksplisit: instansinya memiliki own
+  // property `constructor` (function) yang ikut tersalin oleh Object.keys
+  // dan membuat kolom JSON gagal terserialisasi.
+  if (value instanceof Prisma.Decimal) return value.toNumber();
+  if (value instanceof Date) return value.toISOString();
   if (typeof value === 'object') {
     return Object.keys(value).sort().reduce((result, key) => {
+      if (key === 'constructor' || key === '__proto__' || key === 'prototype') return result;
       result[key] = normalizeValue(value[key]);
       return result;
     }, {});

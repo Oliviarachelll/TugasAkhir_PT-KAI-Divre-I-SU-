@@ -5,6 +5,7 @@ import usePermintaanStore from '../../store/permintaan.store';
 import useLaporanStore from '../../store/laporan.store';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../../utils/format';
+import { API_ERROR_TOAST_ID } from '../../api/client';
 import toast from 'react-hot-toast';
 
 const HelpdeskUser = () => {
@@ -57,7 +58,7 @@ const HelpdeskUser = () => {
       setFormDeskripsi('');
       setFormIdLaporan('');
     } catch (error) {
-      toast.error(t('helpdesk.create_fail'));
+      toast.error(t('helpdesk.create_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       setIsSubmitting(false);
     }

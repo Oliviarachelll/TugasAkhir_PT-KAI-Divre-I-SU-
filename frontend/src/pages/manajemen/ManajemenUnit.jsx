@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { API_ERROR_TOAST_ID } from '../../api/client';
 import { PlusCircle, Search, Edit2, Trash2, Building2 } from 'lucide-react';
 import { unitApi } from '../../api/unit.api';
 import toast from 'react-hot-toast';
@@ -18,7 +19,7 @@ const ManajemenUnit = () => {
       const res = await unitApi.getAll({ limit: 100 });
       setUnits(res.data);
     } catch (error) {
-      toast.error(t('manajemen.unit.fetch_fail'));
+      toast.error(t('manajemen.unit.fetch_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       setIsLoading(false);
     }
@@ -41,7 +42,7 @@ const ManajemenUnit = () => {
       toast.success(t('manajemen.unit.delete_success'));
       fetchUnits();
     } catch (error) {
-      toast.error(error?.response?.data?.error || t('manajemen.unit.delete_fail'));
+      toast.error(error?.response?.data?.error || t('manajemen.unit.delete_fail'), { id: API_ERROR_TOAST_ID });
     }
   };
 
@@ -59,7 +60,7 @@ const ManajemenUnit = () => {
       setEditingId(null);
       fetchUnits();
     } catch (error) {
-      toast.error(error?.response?.data?.error || t('manajemen.unit.generic_error'));
+      toast.error(error?.response?.data?.error || t('manajemen.unit.generic_error'), { id: API_ERROR_TOAST_ID });
     }
   };
 

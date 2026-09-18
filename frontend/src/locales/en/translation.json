@@ -445,7 +445,7 @@
     "th_action": "Action",
     "loading": "Loading data...",
     "empty_filter": "No reports match the filter.",
-    "review": "Review",
+    "review_action": "Review",
     "view": "View",
     "edit": "Edit",
     "form": {

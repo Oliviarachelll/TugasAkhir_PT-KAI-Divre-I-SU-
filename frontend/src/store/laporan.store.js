@@ -2,7 +2,19 @@ import { create } from 'zustand';
 import { laporanApi } from '../api/laporan.api';
 import toast from 'react-hot-toast';
 import i18n from '../i18n';
+import { apiErrorMessage, API_ERROR_TOAST_ID } from '../api/client';
 import useAuthStore from './auth.store';
+
+// Koersi angka untuk payload resubmit: nilai dari DB tiba sebagai string
+// (kolom Decimal Prisma terserialisasi jadi string, mis. "123.00") atau
+// null, sementara validasi backend menuntut z.number(). Helper ini
+// menormalkan '', null, undefined, dan string numerik menjadi angka.
+const toNum = (v, fallback = 0) => {
+  if (v === '' || v === null || v === undefined) return fallback;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+const toInt = (v, fallback = 0) => Math.trunc(toNum(v, fallback));
 
 const useLaporanStore = create((set, get) => ({
   laporanList: [],
@@ -48,7 +60,7 @@ const useLaporanStore = create((set, get) => ({
       set({ laporanList: res.data || [] });
     } catch (error) {
       set({ error: error.message });
-      toast.error(i18n.t('store.fetch_fail'));
+      toast.error(i18n.t('store.fetch_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       set({ isLoading: false });
     }
@@ -62,7 +74,7 @@ const useLaporanStore = create((set, get) => ({
       return res.data;
     } catch (error) {
       set({ error: error.message });
-      toast.error(i18n.t('store.detail_fail'));
+      toast.error(i18n.t('store.detail_fail'), { id: API_ERROR_TOAST_ID });
       return null;
     } finally {
       set({ isLoading: false });
@@ -77,7 +89,7 @@ const useLaporanStore = create((set, get) => ({
       return true;
     } catch (error) {
       set({ error: error.message });
-      toast.error(i18n.t('store.status_fail'));
+      toast.error(i18n.t('store.status_fail'), { id: API_ERROR_TOAST_ID });
       return false;
     } finally {
       set({ isLoading: false });
@@ -93,7 +105,7 @@ const useLaporanStore = create((set, get) => ({
     } catch (error) {
       const msg = error.response?.data?.message || i18n.t('store.unlock_fail');
       set({ error: msg });
-      toast.error(msg);
+      toast.error(msg, { id: API_ERROR_TOAST_ID });
       return false;
     } finally {
       set({ isLoading: false });
@@ -132,33 +144,39 @@ const useLaporanStore = create((set, get) => ({
         const appliedKa = new Set();
         const revisionPenumpang = (penumpangItems || []).map(item => {
           const payload = { ...item };
-          payload.pendapatan = appliedKa.has(payload.nama_ka) ? 0 : (pendapatanKaObj[payload.nama_ka] || payload.pendapatan || 0);
+          payload.pendapatan = appliedKa.has(payload.nama_ka) ? 0 : toNum(pendapatanKaObj[payload.nama_ka] ?? payload.pendapatan);
           appliedKa.add(payload.nama_ka);
-          if (payload.jml_penumpang === '') payload.jml_penumpang = 0;
+          payload.jml_penumpang = toInt(payload.jml_penumpang);
           return payload;
         });
+        const BARANG_NUM_FIELDS = ['volume', 'volume_kumulatif', 'volume_program', 'volume_pencapaian', 'pendapatan', 'pendapatan_kumulatif', 'pendapatan_program', 'pendapatan_pencapaian'];
         const revisionBarang = (barangItems || []).map(item => {
           const payload = { ...item };
-          ['jml_ka', 'volume', 'volume_kumulatif', 'volume_program', 'volume_pencapaian', 'pendapatan', 'pendapatan_kumulatif', 'pendapatan_program', 'pendapatan_pencapaian']
-            .forEach(key => { if (payload[key] === '') payload[key] = 0; });
+          BARANG_NUM_FIELDS.forEach(key => { payload[key] = toNum(payload[key]); });
+          payload.jml_ka = toInt(payload.jml_ka);
+          if (payload.id_komoditi !== undefined && payload.id_komoditi !== null) payload.id_komoditi = toInt(payload.id_komoditi);
           return payload;
         });
         if (revisionBarang.length > 0) {
           const autoVolume = revisionBarang.reduce((sum, item) => sum + (Number(item.volume) || 0), 0);
           const autoPendapatan = revisionBarang.reduce((sum, item) => sum + (Number(item.pendapatan) || 0), 0);
           const total = { volume: autoVolume, pendapatan: autoPendapatan, ...(draft.barangTotal || {}), id_komoditi: 99, jml_ka: 0 };
-          Object.keys(total).forEach(key => { if (total[key] === '') total[key] = 0; });
+          BARANG_NUM_FIELDS.forEach(key => { total[key] = toNum(total[key]); });
+          total.jml_ka = 0;
+          total.id_komoditi = 99;
           revisionBarang.push(total);
         }
-        const normalizeNumericEmpty = (value, numericFields) => value ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, item === '' && numericFields.includes(key) ? 0 : item])) : null;
+        const KNA_NUM_FIELDS = ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'target_rkad', 'realisasi_rkad', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row'];
+        const KEU_NUM_FIELDS = ['target_rkad', 'realisasi_rkad', 'pendapatan', 'pengeluaran'];
+        const normalizeNumerics = (value, numericFields, intFields = []) => value ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, numericFields.includes(key) ? (intFields.includes(key) ? toInt(item) : toNum(item)) : item])) : null;
         await laporanApi.resubmit(draft.id_laporan, {
           tanggal: new Date(draft.tanggal).toISOString(),
           kotak_detail: draft.kotak_detail || null,
           status_internal: draft.status_internal || 'PENDING',
-          kna: normalizeNumericEmpty(kna, ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'target_rkad', 'realisasi_rkad', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row']),
+          kna: normalizeNumerics(kna, KNA_NUM_FIELDS, ['jml_kontrak_row', 'jml_kontrak_non_row']),
           penumpangItems: revisionPenumpang,
           barangItems: revisionBarang,
-          keuangan: normalizeNumericEmpty(keuangan, ['target_rkad', 'realisasi_rkad', 'pendapatan', 'pengeluaran']),
+          keuangan: normalizeNumerics(keuangan, KEU_NUM_FIELDS),
         });
         toast.success(i18n.t('store.resubmit_success'));
         get().resetDraft();
@@ -250,9 +268,9 @@ const useLaporanStore = create((set, get) => ({
       get().resetDraft();
       return true;
     } catch (error) {
-      const message = error.response?.data?.message || i18n.t('store.submit_fail');
+      const message = apiErrorMessage(error, i18n.t('store.submit_fail'));
       set({ error: message });
-      toast.error(message);
+      toast.error(message, { id: API_ERROR_TOAST_ID });
       return false;
     } finally {
       set({ isLoading: false });

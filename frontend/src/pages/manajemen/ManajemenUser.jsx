@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { API_ERROR_TOAST_ID } from '../../api/client';
 import { penggunaApi } from '../../api/pengguna.api';
 import { unitApi } from '../../api/unit.api';
 import toast from 'react-hot-toast';
@@ -32,7 +33,7 @@ const ManajemenUser = () => {
       setUsers(userRes.data);
       setUnits(unitRes.data);
     } catch (error) {
-      toast.error(t('manajemen.user.fetch_fail'));
+      toast.error(t('manajemen.user.fetch_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +63,7 @@ const ManajemenUser = () => {
       toast.success(t('manajemen.user.delete_success'));
       fetchData();
     } catch (error) {
-      toast.error(error?.response?.data?.error || t('manajemen.user.delete_fail'));
+      toast.error(error?.response?.data?.error || t('manajemen.user.delete_fail'), { id: API_ERROR_TOAST_ID });
     }
   };
 
@@ -72,7 +73,7 @@ const ManajemenUser = () => {
       toast.success(isLocked ? t('manajemen.user.unlock_success') : t('manajemen.user.lock_success'));
       fetchData();
     } catch (error) {
-      toast.error(error?.response?.data?.error || t('manajemen.user.status_fail'));
+      toast.error(error?.response?.data?.error || t('manajemen.user.status_fail'), { id: API_ERROR_TOAST_ID });
     }
   };
 
@@ -105,7 +106,7 @@ const ManajemenUser = () => {
       setEditingId(null);
       fetchData();
     } catch (error) {
-      toast.error(error?.response?.data?.error || t('manajemen.user.generic_error'));
+      toast.error(error?.response?.data?.error || t('manajemen.user.generic_error'), { id: API_ERROR_TOAST_ID });
     }
   };
 
