@@ -24,6 +24,7 @@ import DashboardBarang from './components/DashboardBarang';
 import DashboardPenumpang from './components/DashboardPenumpang';
 import DashboardKeuangan from './components/DashboardKeuangan';
 import { formatDate } from '../../utils/format';
+import { targetApi } from '../../api/target.api';
 
 const DashboardAdmin = () => {
   const navigate = useNavigate();
@@ -34,10 +35,29 @@ const DashboardAdmin = () => {
   const [filterUnit, setFilterUnit] = useState('ALL');
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+  // Target tahunan master per kategori (denominator % dashboard).
+  const [masterTargets, setMasterTargets] = useState([]);
 
   useEffect(() => {
     fetchLaporan({ limit: 500 }); // Ambil lebih banyak untuk dashboard admin global
   }, [fetchLaporan]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await targetApi.getAll({ tahun: new Date().getFullYear() });
+        setMasterTargets(res.data || []);
+      } catch {
+        setMasterTargets([]);
+      }
+    })();
+  }, []);
+
+  const sumTargetKategori = (kategori) => {
+    const rows = masterTargets.filter((item) => item.kategori === kategori);
+    if (rows.length === 0) return null;
+    return rows.reduce((sum, item) => sum + (Number(item.nilai) || 0), 0);
+  };
 
   const filteredLaporan = useMemo(() => {
     return laporanList;
@@ -393,10 +413,10 @@ const DashboardAdmin = () => {
 
   const renderTabContent = () => {
     switch(activeTab) {
-      case 'kna': return <DashboardKNA laporanList={filteredLaporan} approvedLaporan={approvedLaporan} />;
+      case 'kna': return <DashboardKNA laporanList={filteredLaporan} approvedLaporan={approvedLaporan} targetTahunan={sumTargetKategori('KNA')} />;
       case 'barang': return <DashboardBarang approvedLaporan={approvedLaporan} />;
       case 'penumpang': return <DashboardPenumpang approvedLaporan={approvedLaporan} />;
-      case 'keuangan': return <DashboardKeuangan laporanList={filteredLaporan} approvedLaporan={approvedLaporan} />;
+      case 'keuangan': return <DashboardKeuangan laporanList={filteredLaporan} approvedLaporan={approvedLaporan} targetTahunan={sumTargetKategori('KEUANGAN')} />;
       default:
         return (
           <>

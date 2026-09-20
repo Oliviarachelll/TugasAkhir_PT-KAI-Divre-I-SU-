@@ -9,8 +9,8 @@ const { getAllTarget, createTarget, updateTarget, deleteTarget } = require('../c
 
 targetRouter.use(authenticate);
 targetRouter.get('/', getAllTarget);
-targetRouter.post('/', authorize('IT', 'ADMIN_GLOBAL'), createTarget);
-targetRouter.put('/:id', authorize('IT', 'ADMIN_GLOBAL'), updateTarget);
+targetRouter.post('/', authorize('IT', 'ADMIN_GLOBAL', 'USER_UNIT'), createTarget);
+targetRouter.put('/:id', authorize('IT', 'ADMIN_GLOBAL', 'USER_UNIT'), updateTarget);
 targetRouter.delete('/:id', authorize('IT'), deleteTarget);
 
 // === KOMODITI ===

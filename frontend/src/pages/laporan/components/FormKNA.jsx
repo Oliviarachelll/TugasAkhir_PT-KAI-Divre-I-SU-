@@ -1,12 +1,23 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormattedNumberInput from './FormattedNumberInput';
-import { currencyPrefix } from '../../../utils/format';
+import { currencyPrefix, formatNumber } from '../../../utils/format';
 
-const FormKNA = ({ draftLaporan, handleChangeKNA }) => {
+const FormKNA = ({ draftLaporan, handleChangeKNA, targetTahunan = null }) => {
   const { t, i18n } = useTranslation();
-  const cur = currencyPrefix(i18n.language);
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
   const kna = draftLaporan.kna || {};
+  const hasMasterTarget = targetTahunan !== null && targetTahunan !== undefined;
+
+  // Target tahunan master otomatis mengisi field (hanya bila masih kosong,
+  // agar nilai historis laporan lama tidak tertimpa).
+  useEffect(() => {
+    if (hasMasterTarget && (kna.target_rkad === '' || kna.target_rkad === null || kna.target_rkad === undefined)) {
+      handleChangeKNA('target_rkad', Number(targetTahunan));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMasterTarget]);
 
   return (
     <>
@@ -68,10 +79,15 @@ const FormKNA = ({ draftLaporan, handleChangeKNA }) => {
 
       <div className="card mb-4" style={{ marginBottom: '24px' }}>
         <h3 className="section-title">{t('laporan.form.kna_target_title')} <span className="text-danger">*</span></h3>
+        {!hasMasterTarget && (
+          <p className="text-xs mb-4" style={{ color: 'var(--warning)' }}>{t('dashboard.target_missing')}</p>
+        )}
         <div className="form-grid-2">
           <div className="form-group mb-0">
             <label className="form-label">{t('laporan.form.kna_target')}</label>
-            <FormattedNumberInput className="form-control" placeholder="0" prefix={cur} value={kna.target_rkad ?? ''} onChange={(val) => handleChangeKNA('target_rkad', val)} />
+            <div className="form-control bg-card-2 text-muted" style={{ padding: '8px 12px' }}>
+              {cur} {formatNumber(kna.target_rkad ?? 0, lang)}
+            </div>
           </div>
           <div className="form-group mb-0">
             <label className="form-label">{t('laporan.form.kna_realization')}</label>

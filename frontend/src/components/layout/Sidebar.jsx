@@ -11,7 +11,7 @@ import {
   Users,
   Building2,
   Bell,
-  Activity,
+  Target,
 
   PanelLeftClose,
   PanelLeftOpen
@@ -37,6 +37,7 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
       { path: '/dashboard/unit', label: t('menu.dashboard'), icon: LayoutDashboard },
       { path: '/laporan/input', label: t('menu.input_laporan'), icon: FileText },
       { path: '/laporan/history', label: t('menu.laporan'), icon: History },
+      { path: '/target', label: t('router.my_target'), icon: Target },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ],
@@ -48,11 +49,13 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
       { path: '/manajemen/user', label: t('menu.manajemen_user'), icon: Users },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/notifikasi', label: t('menu.notifikasi'), icon: Bell },
+      { path: '/target', label: t('router.my_target'), icon: Target },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ],
     IT: [
       { path: '/dashboard/it', label: t('menu.dashboard'), icon: LayoutDashboard },
-      { path: '/monitoring', label: t('menu.monitoring'), icon: Activity },
+      { path: '/monitoring', label: t('menu.manajemen'), icon: Building2 },
+      { path: '/target', label: t('router.my_target'), icon: Target },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ]

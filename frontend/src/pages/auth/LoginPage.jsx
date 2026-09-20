@@ -204,7 +204,7 @@ const LoginPage = () => {
       {/* Request Unlock Modal */}
       {showRequestUnlockModal && (
         <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50 }}>
-          <div className="modal bg-white rounded-xl shadow-xl" style={{ width: '450px', maxWidth: '90%', padding: '32px' }}>
+          <div className="modal bg-white rounded-xl shadow-xl" style={{ width: '450px', maxWidth: '90%', padding: '32px', backgroundColor: 'var(--bg-modal)' }}>
             <button 
               type="button"
               className="text-gray-500 hover:text-gray-900 mb-6 flex items-center gap-1 text-sm bg-transparent border-none cursor-pointer p-0"
@@ -293,7 +293,7 @@ const LoginPage = () => {
       {/* Reset Password Modal (Popup) */}
       {showResetModal && (
         <div className="modal-overlay" style={{ display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center', position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 50 }}>
-          <div className="modal bg-white rounded-xl shadow-xl" style={{ width: '450px', maxWidth: '90%', padding: '32px' }}>
+          <div className="modal bg-white rounded-xl shadow-xl" style={{ width: '450px', maxWidth: '90%', padding: '32px', backgroundColor: 'var(--bg-modal)' }}>
             <button 
               type="button"
               className="text-gray-500 hover:text-gray-900 mb-6 flex items-center gap-1 text-sm bg-transparent border-none cursor-pointer p-0"

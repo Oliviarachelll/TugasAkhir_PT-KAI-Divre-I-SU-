@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormattedNumberInput from './FormattedNumberInput';
 import TableRincianTransaksi from './TableRincianTransaksi';
@@ -6,10 +6,11 @@ import TableSPJ from './TableSPJ';
 import TableInvoice from './TableInvoice';
 import { formatNumber, currencyPrefix } from '../../../utils/format';
 
-const FormKeuangan = ({ draftLaporan, setDraft }) => {
+const FormKeuangan = ({ draftLaporan, setDraft, targetTahunan = null }) => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const cur = currencyPrefix(lang);
+  const hasMasterTarget = targetTahunan !== null && targetTahunan !== undefined;
   const targetRkad = draftLaporan.keuangan?.target_rkad || '';
   const realisasiRkad = draftLaporan.keuangan?.realisasi_rkad || '';
   
@@ -51,6 +52,15 @@ const FormKeuangan = ({ draftLaporan, setDraft }) => {
     });
   };
 
+  // Target tahunan master otomatis mengisi field (hanya bila masih kosong,
+  // agar nilai historis laporan lama tidak tertimpa).
+  useEffect(() => {
+    if (hasMasterTarget && (targetRkad === '' || targetRkad === null || targetRkad === undefined)) {
+      handleChangeKeuangan('target_rkad', Number(targetTahunan));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMasterTarget, targetRkad]);
+
   return (
     <div className="card mb-4" style={{ marginBottom: '24px' }}>
       <h3 className="section-title">{t('laporan.form.keu_title')}</h3>
@@ -58,7 +68,12 @@ const FormKeuangan = ({ draftLaporan, setDraft }) => {
       <div className="form-grid-2 mb-6">
         <div className="form-group">
           <label className="form-label">{t('laporan.form.keu_target')}</label>
-          <FormattedNumberInput className="form-control" placeholder="0" prefix={cur} value={targetRkad} onChange={(val) => handleChangeKeuangan('target_rkad', val)} />
+          <div className="form-control bg-card-2 text-muted" style={{ padding: '8px 12px' }}>
+            {cur} {formatNumber(targetRkad === '' ? 0 : targetRkad, lang)}
+          </div>
+          {!hasMasterTarget && (
+            <p className="mt-1 text-xs" style={{ color: 'var(--warning)' }}>{t('dashboard.target_missing')}</p>
+          )}
         </div>
         <div className="form-group">
           <label className="form-label">{t('laporan.form.keu_realization')}</label>

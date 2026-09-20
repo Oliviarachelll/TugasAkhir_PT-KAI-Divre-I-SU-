@@ -13,7 +13,7 @@ const HistoryLaporan = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.peran === 'ADMIN_GLOBAL';
   const navigate = useNavigate();
-  const { laporanList, fetchLaporan, isLoading, setDraft } = useLaporanStore();
+  const { laporanList, fetchLaporan, isLoading, loadDraftFromLaporan } = useLaporanStore();
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
 
@@ -27,37 +27,7 @@ const HistoryLaporan = () => {
 
   const handleUserAction = (laporan) => {
     if (laporan.status === 'REVISI' || laporan.status === 'DRAFT') {
-      let barangTotal = (laporan.laporan_barang || []).find(b => b.id_komoditi === 99) || {};
-      if (Object.keys(barangTotal).length === 0 && laporan.laporan_barang && laporan.laporan_barang.length > 0) {
-        let autoVolume = 0;
-        let autoPendapatan = 0;
-        laporan.laporan_barang.forEach(b => {
-          autoVolume += parseFloat(b.volume) || 0;
-          autoPendapatan += parseFloat(b.pendapatan) || 0;
-        });
-        barangTotal = { volume: autoVolume, pendapatan: autoPendapatan };
-      }
-
-      const pendapatanKa = (laporan.laporan_penumpang || []).reduce((result, item) => {
-        result[item.nama_ka] = (result[item.nama_ka] || 0) + (Number(item.pendapatan) || 0);
-        return result;
-      }, {});
-
-      const mappedDraft = {
-        id_laporan: laporan.id_laporan,
-        jenis_laporan: 'Data Harian',
-        tanggal: laporan.tanggal.split('T')[0],
-        id_unit: laporan.id_unit,
-        status: laporan.status,
-        kotak_detail: laporan.kotak_detail,
-        kna: laporan.laporan_kna || null,
-        keuangan: laporan.laporan_keuangan || null,
-        penumpangItems: laporan.laporan_penumpang || [],
-        pendapatanKa,
-        barangItems: (laporan.laporan_barang || []).filter(b => b.id_komoditi !== 99),
-        barangTotal: barangTotal,
-      };
-      setDraft(mappedDraft);
+      loadDraftFromLaporan(laporan);
       navigate('/laporan/input');
     } else {
       navigate(`/laporan/detail/${laporan.id_laporan}`);

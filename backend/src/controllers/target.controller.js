@@ -36,6 +36,10 @@ const getAllTarget = async (req, res) => {
 
 const createTarget = async (req, res) => {
   const parsed = targetSchema.parse(req.body);
+  // USER_UNIT hanya boleh membuat target untuk unitnya sendiri.
+  if (req.pengguna.peran === 'USER_UNIT') {
+    parsed.id_unit = req.pengguna.id_unit;
+  }
   const target = await prisma.target.create({ data: parsed });
   return sendCreated(res, target, 'Target berhasil dibuat');
 };
@@ -43,6 +47,18 @@ const createTarget = async (req, res) => {
 const updateTarget = async (req, res) => {
   const { id } = req.params;
   const parsed = targetSchema.partial().parse(req.body);
+
+  const existing = await prisma.target.findUnique({ where: { id_target: parseInt(id) } });
+  if (!existing) return sendError(res, 'Target tidak ditemukan', 404);
+
+  // USER_UNIT hanya boleh mengubah target milik unitnya sendiri,
+  // dan tidak boleh memindahkan target ke unit lain.
+  if (req.pengguna.peran === 'USER_UNIT') {
+    if (existing.id_unit !== req.pengguna.id_unit) {
+      return sendError(res, 'Akses ditolak', 403);
+    }
+    delete parsed.id_unit;
+  }
 
   const target = await prisma.target.update({
     where: { id_target: parseInt(id) },

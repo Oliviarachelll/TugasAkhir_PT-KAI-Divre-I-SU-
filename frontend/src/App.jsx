@@ -10,7 +10,7 @@ function App() {
         position="top-right" 
         toastOptions={{
           style: {
-            background: 'var(--bg-card-2)',
+            background: 'var(--bg-modal)',
             color: 'var(--text-primary)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-sm)',

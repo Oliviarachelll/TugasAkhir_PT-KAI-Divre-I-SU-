@@ -34,6 +34,9 @@ img, svg, canvas {
   --sidebar-active: #FF7A00;
   --bg-card: rgba(255, 255, 255, 0.55);
   --bg-card-2: rgba(248, 250, 252, 0.65);
+  /* Solid backgrounds untuk popup/modal & toast (tidak ikut glass) */
+  --bg-modal: #FFFFFF;
+  --bg-modal-2: #F8FAFC;
 
   /* Borders */
   --border: #DCE6F2;
@@ -114,6 +117,9 @@ img, svg, canvas {
   --sidebar-active: #FF7A00;
   --bg-card: #1E293B;
   --bg-card-2: #243246;
+  /* Solid backgrounds untuk popup/modal & toast (tidak ikut glass) */
+  --bg-modal: #1E293B;
+  --bg-modal-2: #243246;
 
   /* Borders Dark */
   --border: #334155;
@@ -572,7 +578,8 @@ tbody tr:hover {
 }
 
 .modal {
-  background: var(--bg-card);
+  background: var(--bg-modal);
+  border: 1px solid var(--border);
   border-radius: 12px;
   width: min(100%, 450px);
   max-width: 100%;

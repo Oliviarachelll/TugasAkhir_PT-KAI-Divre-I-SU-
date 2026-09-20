@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Save, Send, ShieldCheck, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CheckCircle2, Save, Send, ShieldCheck } from 'lucide-react';
 import useLaporanStore from '../../store/laporan.store';
 import useAuthStore from '../../store/auth.store';
 import toast from 'react-hot-toast';
@@ -9,12 +10,21 @@ import FormKNA from './components/FormKNA';
 import FormBarang from './components/FormBarang';
 import FormPenumpang from './components/FormPenumpang';
 import FormKeuangan from './components/FormKeuangan';
+import { formatDate } from '../../utils/format';
+import { targetApi } from '../../api/target.api';
+import { unitKategori } from '../../utils/unit';
 
 const InputLaporan = () => {
   const [currentStep, setCurrentStep] = useState(1);
-  const { draftLaporan, setDraft, submitDraft, isLoading } = useLaporanStore();
+  const { draftLaporan, setDraft, submitDraft, isLoading, fetchLaporan, loadDraftFromLaporan, laporanList } = useLaporanStore();
   const { user } = useAuthStore();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  // Mode edit (DRAFT) / resubmit (REVISI): tanggal asli laporan dipertahankan.
+  // Mode input baru: tanggal selalu hari ini (tanpa pilihan).
+  const isEditMode = !!draftLaporan.id_laporan;
 
   const steps = [
     { id: 1, name: t('laporan.step_draft'), status: 'current' },
@@ -23,6 +33,44 @@ const InputLaporan = () => {
   ];
 
   const unitName = user?.unit?.nama_unit || '';
+
+  // Target tahunan master unit ini (sumber field target read-only di form).
+  const [targetTahunan, setTargetTahunan] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await targetApi.getAll({ tahun: new Date().getFullYear() });
+        const found = (res.data || []).find((item) => item.kategori === unitKategori(unitName));
+        setTargetTahunan(found ? Number(found.nilai) : null);
+      } catch {
+        setTargetTahunan(null);
+      }
+    })();
+  }, [unitName]);
+
+  // Akumulasi YTD (tahun berjalan, s/d kemarin) per komoditi dari laporan
+  // DISETUJUI — basis angka Kumulatif otomatis form barang. Exclude id 99.
+  const ytdKomoditi = React.useMemo(() => {
+    const map = {};
+    const yr = String(draftLaporan.tanggal ? new Date(draftLaporan.tanggal).getFullYear() : new Date().getFullYear());
+    const myUnit = draftLaporan.id_unit || user?.id_unit;
+    (laporanList || []).forEach((l) => {
+      if (l.status !== 'DISETUJUI') return;
+      if (myUnit && l.id_unit !== myUnit) return;
+      const tgl = String(l.tanggal || '').slice(0, 10);
+      if (!tgl.startsWith(yr) || tgl >= todayStr) return;
+      (l.laporan_barang || []).forEach((b) => {
+        if (b.id_komoditi === 99) return;
+        const key = b.id_komoditi === 98
+          ? `custom:${String(b.nama_kustom || '').toUpperCase()}`
+          : String(b.id_komoditi);
+        if (!map[key]) map[key] = { volume: 0, pendapatan: 0 };
+        map[key].volume += parseFloat(b.volume) || 0;
+        map[key].pendapatan += parseFloat(b.pendapatan) || 0;
+      });
+    });
+    return map;
+  }, [laporanList, draftLaporan.tanggal, draftLaporan.id_unit, user, todayStr]);
 
   // Inisialisasi draft saat pertama kali render
   useEffect(() => {
@@ -54,7 +102,52 @@ const InputLaporan = () => {
     }
   }, [draftLaporan.kna, draftLaporan.keuangan, draftLaporan.id_unit, draftLaporan.barangItems, draftLaporan.barangTotal, user, setDraft]);
 
+  // Tanggal input baru selalu hari ini (tanpa pilihan). Mode edit/resubmit
+  // mempertahankan tanggal asli laporan.
+  useEffect(() => {
+    if (isEditMode) return;
+    if (!draftLaporan.id_laporan && draftLaporan.tanggal !== todayStr) {
+      setDraft({ tanggal: todayStr });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Guard duplikat: satu unit hanya boleh punya satu laporan per tanggal,
+  // kecuali DRAFT (dilanjutkan) dan REVISI (alur resubmit).
+  useEffect(() => {
+    (async () => {
+      if (isEditMode) return; // mode edit/resubmit
+      await fetchLaporan({ limit: 1000 });
+      const list = useLaporanStore.getState().laporanList || [];
+      const myUnit = draftLaporan.id_unit || user?.id_unit;
+      const existing = list.find(
+        (l) => l.id_unit === myUnit && String(l.tanggal).startsWith(todayStr)
+      );
+      if (!existing) return;
+      if (existing.status === 'DRAFT') {
+        loadDraftFromLaporan(existing);
+        toast(t('laporan.draft_continue'), { icon: <Save size={18} color="var(--brand-500)" /> });
+      } else {
+        toast.error(t('laporan.duplicate_blocked'));
+        navigate('/laporan/history');
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSubmit = async () => {
+    // Backstop: cegah laporan ganda hari yang sama (selain edit/resubmit).
+    if (!draftLaporan.id_laporan) {
+      const list = useLaporanStore.getState().laporanList || [];
+      const myUnit = draftLaporan.id_unit || user?.id_unit;
+      const clash = list.find(
+        (l) => l.id_unit === myUnit && String(l.tanggal).startsWith(draftLaporan.tanggal) && l.status !== 'DRAFT'
+      );
+      if (clash) {
+        toast.error(t('laporan.duplicate_blocked'));
+        return;
+      }
+    }
     const success = await submitDraft();
     if (success) {
       setCurrentStep(3); // pindah ke step waiting
@@ -152,21 +245,20 @@ const InputLaporan = () => {
             value={t('laporan.daily_data')} 
             disabled 
           />
-          <input 
-            type="date" 
-            className="form-control" 
+          <div
+            className="form-control bg-card-2 text-muted"
             style={{ padding: '8px 12px' }}
-            value={draftLaporan.tanggal} 
-            onChange={(e) => setDraft({ tanggal: e.target.value })} 
-          />
+          >
+            {formatDate(draftLaporan.tanggal || todayStr, { day: '2-digit', month: 'short', year: 'numeric' }, i18n.language)}
+          </div>
         </div>
       </div>
 
       {/* RENDER FORM DINAMIS BERDASARKAN UNIT */}
       {unitName === 'Unit Angkutan Penumpang' && <FormPenumpang draftLaporan={draftLaporan} setDraft={setDraft} />}
-      {unitName === 'Unit Angkutan Barang' && <FormBarang draftLaporan={draftLaporan} setDraft={setDraft} />}
-      {unitName === 'Unit Keuangan' && <FormKeuangan draftLaporan={draftLaporan} setDraft={setDraft} />}
-      {unitName === 'Unit KNA' && <FormKNA draftLaporan={draftLaporan} handleChangeKNA={handleChangeKNA} />}
+      {unitName === 'Unit Angkutan Barang' && <FormBarang draftLaporan={draftLaporan} setDraft={setDraft} ytdKomoditi={ytdKomoditi} />}
+      {unitName === 'Unit Keuangan' && <FormKeuangan draftLaporan={draftLaporan} setDraft={setDraft} targetTahunan={targetTahunan} />}
+      {unitName === 'Unit KNA' && <FormKNA draftLaporan={draftLaporan} handleChangeKNA={handleChangeKNA} targetTahunan={targetTahunan} />}
 
       {/* Catatan */}
       <div className="card mb-6" style={{ marginBottom: '24px' }}>

@@ -6,19 +6,15 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatNumber, formatCompact, currencyPrefix } from '../../../utils/format';
 
-const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
+const DashboardKeuangan = ({ laporanList, approvedLaporan, targetTahunan = null }) => {
   const [chartDays, setChartDays] = useState(7);
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const cur = currencyPrefix(lang);
 
-  // 1. Get Target RKAD from the latest LaporanKeuangan in the DB
-  const latestLaporan = useMemo(() => {
-    const found = laporanList?.find(l => l.laporan_keuangan);
-    return found ? found.laporan_keuangan : null;
-  }, [laporanList]);
-
-  const targetRKAD = latestLaporan?.target_rkad ? parseFloat(latestLaporan.target_rkad) : 0;
+  // 1. Target RKAD tahunan dari tabel master (diisi unit 1x setahun).
+  const hasMasterTarget = targetTahunan !== null && targetTahunan !== undefined && Number.isFinite(Number(targetTahunan));
+  const targetRKAD = hasMasterTarget ? Number(targetTahunan) : 0;
 
   // 2. Kalkulasi Akumulasi Keuangan dari semua yang approved
   let totalRealisasiKeuangan = 0;
@@ -64,6 +60,8 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
   });
 
   const persentaseKeuangan = targetRKAD > 0 ? ((totalRealisasiKeuangan / targetRKAD) * 100).toFixed(1) : 0;
+  const sisaKeuangan = Math.max(0, targetRKAD - totalRealisasiKeuangan);
+  const sisaPersenKeuangan = targetRKAD > 0 ? ((sisaKeuangan / targetRKAD) * 100).toFixed(1) : '0.0';
 
   const donutDataKeuangan = [
     { name: t('unit.realization'), value: totalRealisasiKeuangan },
@@ -181,6 +179,9 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
         {/* Right: Donut Chart for RKAD */}
         <div className="card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
           <h3 className="font-semibold text-lg m-0 text-gray-800 mb-4">{t('unit.rkad_title')}</h3>
+          {!hasMasterTarget && (
+            <p className="text-xs mb-4" style={{ color: 'var(--warning)' }}>{t('dashboard.target_missing')}</p>
+          )}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
             <div style={{ width: '100%', height: 220 }}>
               <ResponsiveContainer>
@@ -203,9 +204,13 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan }) => {
               <p className="text-xs text-muted mb-1">{t('unit.total_realization')}</p>
               <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(totalRealisasiKeuangan, lang, 2)}</p>
             </div>
-            <div style={{ textAlign: 'center', flex: 1 }}>
+            <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
               <p className="text-xs text-muted mb-1">{t('unit.rkad_target')}</p>
               <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(targetRKAD, lang, 2)}</p>
+            </div>
+            <div style={{ textAlign: 'center', flex: 1 }}>
+              <p className="text-xs text-muted mb-1">{t('dashboard.remaining')} ({sisaPersenKeuangan}%)</p>
+              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(sisaKeuangan, lang, 2)}</p>
             </div>
           </div>
         </div>

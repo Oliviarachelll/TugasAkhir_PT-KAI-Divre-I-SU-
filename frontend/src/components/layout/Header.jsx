@@ -25,11 +25,12 @@ const Header = ({ onMenuClick }) => {
     if (path.includes('laporan/review')) return t('header.review_laporan');
     if (path.includes('laporan/history')) return t('header.history_laporan');
     if (path.includes('laporan/input')) return t('header.input_laporan');
-    if (path.includes('monitoring')) return t('header.monitoring');
+    if (path.includes('monitoring')) return t('menu.manajemen');
     if (path.includes('helpdesk')) return t('header.helpdesk');
     if (path.includes('notifikasi')) return t('header.notifikasi');
     if (path.includes('settings')) return t('header.settings');
     if (path.includes('analitik')) return t('header.analitik');
+    if (path.includes('/target')) return t('router.my_target');
     return t('header.dashboard');
   };
 

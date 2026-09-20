@@ -331,8 +331,8 @@ const NotifikasiPage = () => {
       {/* Broadcast Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="rounded-xl shadow-xl w-full max-w-lg overflow-hidden border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-            <div className="px-6 py-4 border-b flex justify-between items-center" style={{ backgroundColor: 'var(--bg-card-2)', borderColor: 'var(--border)' }}>
+          <div className="rounded-xl shadow-xl w-full max-w-lg overflow-hidden border" style={{ backgroundColor: 'var(--bg-modal)', borderColor: 'var(--border)' }}>
+            <div className="px-6 py-4 border-b flex justify-between items-center" style={{ backgroundColor: 'var(--bg-modal-2)', borderColor: 'var(--border)' }}>
               <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <Send className="text-blue-600" size={18} />
                 {t('notifikasi.modal_title')}
@@ -429,8 +429,8 @@ const NotifikasiPage = () => {
       {/* Create Template Modal */}
       {isTemplateModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="rounded-xl shadow-xl w-full max-w-lg overflow-hidden border" style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-            <div className="px-6 py-4 border-b flex justify-between items-center" style={{ backgroundColor: 'var(--bg-card-2)', borderColor: 'var(--border)' }}>
+          <div className="rounded-xl shadow-xl w-full max-w-lg overflow-hidden border" style={{ backgroundColor: 'var(--bg-modal)', borderColor: 'var(--border)' }}>
+            <div className="px-6 py-4 border-b flex justify-between items-center" style={{ backgroundColor: 'var(--bg-modal-2)', borderColor: 'var(--border)' }}>
               <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <Edit2 className="text-blue-600" size={18} />
                 {t('notifikasi.tpl_title')}

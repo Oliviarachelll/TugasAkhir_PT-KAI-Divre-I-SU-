@@ -10,6 +10,8 @@ import DashboardBarang from './components/DashboardBarang';
 import DashboardPenumpang from './components/DashboardPenumpang';
 import DashboardKeuangan from './components/DashboardKeuangan';
 import { formatDate } from '../../utils/format';
+import { targetApi } from '../../api/target.api';
+import { unitKategori } from '../../utils/unit';
 
 const DashboardUserUnit = () => {
   const navigate = useNavigate();
@@ -35,6 +37,20 @@ const DashboardUserUnit = () => {
 
   const [countdownText, setCountdownText] = React.useState('');
   const [historyFilter, setHistoryFilter] = React.useState('Semua');
+  // Target tahunan dari tabel master (sumber denominator % dashboard).
+  const [targetTahunan, setTargetTahunan] = React.useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await targetApi.getAll({ tahun: new Date().getFullYear() });
+        const found = (res.data || []).find((item) => item.kategori === unitKategori(unitName));
+        setTargetTahunan(found ? Number(found.nilai) : null);
+      } catch {
+        setTargetTahunan(null);
+      }
+    })();
+  }, [unitName]);
 
   const countDisetujui = useMemo(() => laporanList.filter(l => l.status === 'DISETUJUI').length, [laporanList]);
   const countReview = useMemo(() => laporanList.filter(l => l.status === 'DIAJUKAN').length, [laporanList]);
@@ -79,10 +95,10 @@ const DashboardUserUnit = () => {
       ) : (
         <>
           {/* Dashboard Komponen Unit Spesifik */}
-          {isKNA && <DashboardKNA laporanList={laporanList} approvedLaporan={approvedLaporan} />}
+          {isKNA && <DashboardKNA laporanList={laporanList} approvedLaporan={approvedLaporan} targetTahunan={targetTahunan} />}
           {isBarang && <DashboardBarang approvedLaporan={approvedLaporan} />}
           {isPenumpang && <DashboardPenumpang approvedLaporan={approvedLaporan} />}
-          {isKeuangan && <DashboardKeuangan laporanList={laporanList} approvedLaporan={approvedLaporan} />}
+          {isKeuangan && <DashboardKeuangan laporanList={laporanList} approvedLaporan={approvedLaporan} targetTahunan={targetTahunan} />}
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
             {/* Kiri: History Laporan */}

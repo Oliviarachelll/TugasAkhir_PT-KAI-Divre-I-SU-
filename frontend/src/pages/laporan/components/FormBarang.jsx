@@ -1,17 +1,91 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import FormattedNumberInput from './FormattedNumberInput';
-import { currencyPrefix } from '../../../utils/format';
+import { currencyPrefix, formatNumber } from '../../../utils/format';
 
-const FormBarang = ({ draftLaporan, setDraft }) => {
+const toNumLocal = (v) => {
+  if (v === '' || v === null || v === undefined) return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const ytdKeyFor = (item) => {
+  if (!item) return '';
+  return item.id_komoditi === 98
+    ? `custom:${String(item.nama_kustom || '').toUpperCase()}`
+    : String(item.id_komoditi);
+};
+
+const ytdLookup = (map, item) => map[ytdKeyFor(item)] || { volume: 0, pendapatan: 0 };
+
+// Field read-only untuk angka otomatis (kumulatif & pencapaian).
+const AutoField = ({ value, affix }) => (
+  <div className="form-control bg-card-2 text-muted" style={{ padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <span>{value}</span>
+    {affix && <span style={{ color: '#9CA3AF', fontSize: '0.875rem' }}>{affix}</span>}
+  </div>
+);
+
+const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
   const { t, i18n } = useTranslation();
-  const cur = currencyPrefix(i18n.language);
+  const lang = i18n.language;
+  const cur = currencyPrefix(lang);
   const tonUnit = t('dashboard.ton');
   const [activeBarangTab, setActiveBarangTab] = useState(0);
 
   const items = draftLaporan.barangItems || [];
   const total = draftLaporan.barangTotal || {};
+
+  // YTD per komoditi dari laporan DISETUJUI (s/d kemarin, exclude id 99).
+  const ytdFor = (item) => ytdLookup(ytdKomoditi, item);
+  const ytdTotalVol = Object.values(ytdKomoditi).reduce((s, v) => s + (v.volume || 0), 0);
+  const ytdTotalPdt = Object.values(ytdKomoditi).reduce((s, v) => s + (v.pendapatan || 0), 0);
+
+  // Kumulatif & pencapaian otomatis (TOTAL).
+  const kumVolTotal = ytdTotalVol + toNumLocal(total.volume);
+  const kumPdtTotal = ytdTotalPdt + toNumLocal(total.pendapatan);
+  const pencVolTotal = toNumLocal(total.volume_program) > 0 ? Math.round((kumVolTotal / toNumLocal(total.volume_program)) * 1000) / 10 : 0;
+  const pencPdtTotal = toNumLocal(total.pendapatan_program) > 0 ? Math.round((kumPdtTotal / toNumLocal(total.pendapatan_program)) * 1000) / 10 : 0;
+
+  // Kumulatif & pencapaian otomatis (komoditi aktif).
+  const activeItemEarly = items[activeBarangTab];
+  const ytdActive = ytdFor(activeItemEarly);
+  const kumVolItem = ytdActive.volume + toNumLocal(activeItemEarly?.volume);
+  const kumPdtItem = ytdActive.pendapatan + toNumLocal(activeItemEarly?.pendapatan);
+  const pencVolItem = activeItemEarly && toNumLocal(activeItemEarly.volume_program) > 0 ? Math.round((kumVolItem / toNumLocal(activeItemEarly.volume_program)) * 1000) / 10 : 0;
+  const pencPdtItem = activeItemEarly && toNumLocal(activeItemEarly.pendapatan_program) > 0 ? Math.round((kumPdtItem / toNumLocal(activeItemEarly.pendapatan_program)) * 1000) / 10 : 0;
+
+  // Tulis balik angka otomatis ke draft agar tersimpan & tampil di review.
+  // Hanya menulis saat nilai berbeda agar tidak loop render.
+  useEffect(() => {
+    const numEq = (a, b) => Number(a) === Number(b);
+    const patchTotal = {};
+    if (!numEq(total.volume_kumulatif, kumVolTotal)) patchTotal.volume_kumulatif = kumVolTotal;
+    if (!numEq(total.volume_pencapaian, pencVolTotal)) patchTotal.volume_pencapaian = pencVolTotal;
+    if (!numEq(total.pendapatan_kumulatif, kumPdtTotal)) patchTotal.pendapatan_kumulatif = kumPdtTotal;
+    if (!numEq(total.pendapatan_pencapaian, pencPdtTotal)) patchTotal.pendapatan_pencapaian = pencPdtTotal;
+    let itemsChanged = false;
+    const newItems = items.map((item) => {
+      const y = ytdLookup(ytdKomoditi, item);
+      const kv = y.volume + toNumLocal(item.volume);
+      const kp = y.pendapatan + toNumLocal(item.pendapatan);
+      const pv = toNumLocal(item.volume_program) > 0 ? Math.round((kv / toNumLocal(item.volume_program)) * 1000) / 10 : 0;
+      const pp = toNumLocal(item.pendapatan_program) > 0 ? Math.round((kp / toNumLocal(item.pendapatan_program)) * 1000) / 10 : 0;
+      if (!numEq(item.volume_kumulatif, kv) || !numEq(item.volume_pencapaian, pv) ||
+          !numEq(item.pendapatan_kumulatif, kp) || !numEq(item.pendapatan_pencapaian, pp)) {
+        itemsChanged = true;
+        return { ...item, volume_kumulatif: kv, volume_pencapaian: pv, pendapatan_kumulatif: kp, pendapatan_pencapaian: pp };
+      }
+      return item;
+    });
+    if (Object.keys(patchTotal).length > 0 || itemsChanged) {
+      setDraft({
+        ...(Object.keys(patchTotal).length > 0 ? { barangTotal: { ...total, ...patchTotal } } : {}),
+        ...(itemsChanged ? { barangItems: newItems } : {}),
+      });
+    }
+  }, [items, total, ytdKomoditi, kumVolTotal, kumPdtTotal, pencVolTotal, pencPdtTotal, setDraft]);
 
   if (items.length === 0) return null;
 
@@ -64,6 +138,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
       {/* Bagian Atas: TOTAL */}
       <div className="card mb-4" style={{ marginBottom: '24px' }}>
         <h3 className="section-title">{t('laporan.form.barang_total_title')}</h3>
+        <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{t('laporan.form.barang_auto_hint')}</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
           
           {/* Kiri: Input KA */}
@@ -106,7 +181,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_cumulative', { year: currentYear })}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_kumulatif} onChange={(val) => handleChangeBarangTotal('volume_kumulatif', val)} suffix={tonUnit} />
+                <AutoField value={formatNumber(kumVolTotal, lang)} affix={tonUnit} />
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_program', { year: currentYear })}</label>
@@ -114,7 +189,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_achievement')}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_pencapaian} onChange={(val) => handleChangeBarangTotal('volume_pencapaian', val)} suffix="%" />
+                <AutoField value={formatNumber(pencVolTotal, lang)} affix="%" />
               </div>
             </div>
 
@@ -127,7 +202,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_cumulative', { year: currentYear })}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_kumulatif} onChange={(val) => handleChangeBarangTotal('pendapatan_kumulatif', val)} prefix={cur} />
+                <AutoField value={`${cur} ${formatNumber(kumPdtTotal, lang)}`} />
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_program', { year: currentYear })}</label>
@@ -135,7 +210,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_achievement')}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_pencapaian} onChange={(val) => handleChangeBarangTotal('pendapatan_pencapaian', val)} suffix="%" />
+                <AutoField value={formatNumber(pencPdtTotal, lang)} affix="%" />
               </div>
             </div>
           </div>
@@ -212,7 +287,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_vol_cum', { year: currentYear })}</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_kumulatif} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_kumulatif', val)} suffix={tonUnit} />
+                    <AutoField value={formatNumber(kumVolItem, lang)} affix={tonUnit} />
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_vol_prog', { year: currentYear })}</label>
@@ -220,7 +295,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_vol_ach')}</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_pencapaian} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_pencapaian', val)} suffix="%" />
+                    <AutoField value={formatNumber(pencVolItem, lang)} affix="%" />
                   </div>
                 </div>
               </div>
@@ -235,7 +310,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_inc_cum', { year: currentYear })}</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_kumulatif} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_kumulatif', val)} prefix={cur} />
+                    <AutoField value={`${cur} ${formatNumber(kumPdtItem, lang)}`} />
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_inc_prog', { year: currentYear })}</label>
@@ -243,7 +318,7 @@ const FormBarang = ({ draftLaporan, setDraft }) => {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_inc_ach')}</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_pencapaian} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_pencapaian', val)} suffix="%" />
+                    <AutoField value={formatNumber(pencPdtItem, lang)} affix="%" />
                   </div>
                 </div>
               </div>
