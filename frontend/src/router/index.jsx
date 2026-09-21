@@ -35,7 +35,6 @@ const AppRouter = () => {
         <Route element={<ProtectedRoute allowedRoles={['IT']} />}>
           <Route path="/dashboard/it" element={<DashboardIT />} />
           <Route path="/monitoring" element={<MonitoringPage />} />
-          <Route path="/target" element={<TargetPage />} />
         </Route>
 
         {/* ADMIN_GLOBAL Routes */}
@@ -58,7 +57,6 @@ const AppRouter = () => {
         <Route element={<ProtectedRoute allowedRoles={['ADMIN_GLOBAL']} />}>
           <Route path="/notifikasi" element={<NotifikasiPage />} />
           <Route path="/analitik" element={<AnalitikPage />} />
-          <Route path="/target" element={<TargetPage />} />
         </Route>
 
         {/* Shared Routes: Admin & User Unit */}

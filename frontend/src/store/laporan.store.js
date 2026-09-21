@@ -55,7 +55,8 @@ const useLaporanStore = create((set, get) => ({
     }
 
     const pendapatanKa = (laporan.laporan_penumpang || []).reduce((result, item) => {
-      result[item.nama_ka] = (result[item.nama_ka] || 0) + (Number(item.pendapatan) || 0);
+      const key = String(item.nama_ka || '').toUpperCase();
+      result[key] = (result[key] || 0) + (Number(item.pendapatan) || 0);
       return result;
     }, {});
 
@@ -182,6 +183,7 @@ const useLaporanStore = create((set, get) => ({
         const appliedKa = new Set();
         const revisionPenumpang = (penumpangItems || []).map(item => {
           const payload = { ...item };
+          payload.nama_ka = String(payload.nama_ka || '').toUpperCase();
           payload.pendapatan = appliedKa.has(payload.nama_ka) ? 0 : toNum(pendapatanKaObj[payload.nama_ka] ?? payload.pendapatan);
           appliedKa.add(payload.nama_ka);
           payload.jml_penumpang = toInt(payload.jml_penumpang);
@@ -204,8 +206,8 @@ const useLaporanStore = create((set, get) => ({
           total.id_komoditi = 99;
           revisionBarang.push(total);
         }
-        const KNA_NUM_FIELDS = ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'target_rkad', 'realisasi_rkad', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row'];
-        const KEU_NUM_FIELDS = ['target_rkad', 'realisasi_rkad', 'pendapatan', 'pengeluaran'];
+        const KNA_NUM_FIELDS = ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'target_rkad', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row'];
+        const KEU_NUM_FIELDS = ['target_rkad', 'pendapatan', 'pengeluaran'];
         const normalizeNumerics = (value, numericFields, intFields = []) => value ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, numericFields.includes(key) ? (intFields.includes(key) ? toInt(item) : toNum(item)) : item])) : null;
         await laporanApi.resubmit(draft.id_laporan, {
           tanggal: new Date(draft.tanggal).toISOString(),
@@ -228,6 +230,7 @@ const useLaporanStore = create((set, get) => ({
         
         for (const item of penumpangItems) {
           const payload = { ...item };
+          payload.nama_ka = String(payload.nama_ka || '').toUpperCase();
           if (!appliedKa.has(payload.nama_ka)) {
             payload.pendapatan = pendapatanKaObj[payload.nama_ka] || 0;
             appliedKa.add(payload.nama_ka);
@@ -285,6 +288,7 @@ const useLaporanStore = create((set, get) => ({
         const hasKnaData = Object.keys(kna).some(k => kna[k] !== '');
         if (hasKnaData) {
           const payload = { ...kna };
+          delete payload.realisasi_rkad; // dihitung otomatis di backend
           Object.keys(payload).forEach(k => { if(payload[k] === '') payload[k] = 0; });
           await laporanApi.upsertKNA(idLaporanBaru, payload);
         }
@@ -292,6 +296,7 @@ const useLaporanStore = create((set, get) => ({
 
       if (keuangan && (keuangan.pendapatan !== '' || keuangan.pengeluaran !== '')) {
         const payload = { ...keuangan };
+        delete payload.realisasi_rkad; // dihitung otomatis di backend
         Object.keys(payload).forEach(k => { if(payload[k] === '') payload[k] = 0; });
         await laporanApi.upsertKeuangan(idLaporanBaru, payload);
       }

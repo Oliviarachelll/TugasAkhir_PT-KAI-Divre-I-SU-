@@ -175,8 +175,8 @@ const DashboardUserUnit = () => {
                         {row.kotak_detail || (row.status === 'DISETUJUI' ? t('dashboard.validated') : t('dashboard.waiting_review'))}
                       </span>
                       <div className="text-center">
-                        <button 
-                          onClick={() => navigate('/laporan/history')}
+                        <button
+                          onClick={() => navigate(`/laporan/detail/${row.id_laporan}`)}
                           style={{ padding: '6px 16px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border)', fontSize: '13px', fontWeight: '500', color: 'var(--text-main)', cursor: 'pointer' }}
                         >
                           {t('dashboard.view_detail')}

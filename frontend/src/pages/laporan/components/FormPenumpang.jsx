@@ -15,7 +15,9 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
     let items = draftLaporan.penumpangItems || [];
     if (items.length === 0) {
       items = KA_PENUMPANG_LIST.map(ka => ({
-        nama_ka: ka.nama_ka,
+        // Normalisasi ke huruf besar agar tidak ada duplikat beda kapital
+        // (mis. "Putri Deli" vs "PUTRI DELI").
+        nama_ka: String(ka.nama_ka || '').toUpperCase(),
         no_ka: ka.no_ka,
         lintas: ka.lintas,
         berangkat: ka.berangkat,
@@ -61,8 +63,9 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
     setDraft({ penumpangItems: newItems });
   };
 
-  // Dynamically calculate KA_NAMES_FILTER
-  const uniqueKaNames = Array.from(new Set(items.map(i => i.nama_ka)));
+  // Dynamically calculate KA_NAMES_FILTER (disamakan huruf besar semua
+  // agar nama yang sama dengan kapital beda tidak jadi dua opsi).
+  const uniqueKaNames = Array.from(new Set(items.map(i => String(i.nama_ka || '').toUpperCase())));
   const DEFAULT_KA_NAMES = [
     'SRILELAWANGSA', 'SRIBILAH UTAMA', 'DATUK BELAMBANGAN',
     'PUTRI DELI', 'SIANTAR EKSPRES', 'AMIR HAMZAH', 'NURMALA', 'CUT MUTIA'
@@ -70,7 +73,7 @@ const FormPenumpang = ({ draftLaporan, setDraft }) => {
   const KA_NAMES_FILTER = Array.from(new Set([...DEFAULT_KA_NAMES, ...uniqueKaNames]));
 
   const filteredItems = items.map((item, originalIndex) => ({ ...item, originalIndex }))
-                             .filter(item => item.nama_ka === filterKa);
+                             .filter(item => String(item.nama_ka || '').toUpperCase() === filterKa);
 
   const totalPenumpangFilter = filteredItems.reduce((sum, item) => sum + (parseInt(item.jml_penumpang) || 0), 0);
 

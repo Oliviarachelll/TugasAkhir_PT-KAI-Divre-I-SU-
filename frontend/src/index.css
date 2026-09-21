@@ -550,6 +550,12 @@ tbody tr:hover {
   z-index: 2;
 }
 
+/* Login texts: abu terang di mode terang, putih di mode gelap */
+.login-text { color: #cbd5e1; }
+.login-text-dim { color: #94a3b8; }
+[data-theme="dark"] .login-text { color: #ffffff; }
+[data-theme="dark"] .login-text-dim { color: #ffffff; }
+
 /* Divider */
 .divider {
   height: 1px;

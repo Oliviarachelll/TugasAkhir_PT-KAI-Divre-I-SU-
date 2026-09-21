@@ -6,7 +6,7 @@ import TableSPJ from './TableSPJ';
 import TableInvoice from './TableInvoice';
 import { formatNumber, currencyPrefix } from '../../../utils/format';
 
-const FormKeuangan = ({ draftLaporan, setDraft, targetTahunan = null }) => {
+const FormKeuangan = ({ draftLaporan, setDraft, targetTahunan = null, previewRealisasi = null }) => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const cur = currencyPrefix(lang);
@@ -52,14 +52,17 @@ const FormKeuangan = ({ draftLaporan, setDraft, targetTahunan = null }) => {
     });
   };
 
-  // Target tahunan master otomatis mengisi field (hanya bila masih kosong,
-  // agar nilai historis laporan lama tidak tertimpa).
+  // Target tahunan master otomatis mengisi field. Draft BARU selalu ikut master
+  // terbaru (field read-only); draft lama/edit dipertahankan, kecuali masih kosong.
+  const isNewKeu = !draftLaporan.id_laporan;
   useEffect(() => {
-    if (hasMasterTarget && (targetRkad === '' || targetRkad === null || targetRkad === undefined)) {
+    if (!hasMasterTarget) return;
+    const empty = targetRkad === '' || targetRkad === null || targetRkad === undefined;
+    if ((isNewKeu || empty) && Number(targetRkad) !== Number(targetTahunan)) {
       handleChangeKeuangan('target_rkad', Number(targetTahunan));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMasterTarget, targetRkad]);
+  }, [hasMasterTarget, targetTahunan, isNewKeu]);
 
   return (
     <div className="card mb-4" style={{ marginBottom: '24px' }}>
@@ -77,7 +80,10 @@ const FormKeuangan = ({ draftLaporan, setDraft, targetTahunan = null }) => {
         </div>
         <div className="form-group">
           <label className="form-label">{t('laporan.form.keu_realization')}</label>
-          <FormattedNumberInput className="form-control" placeholder="0" prefix={cur} value={realisasiRkad} onChange={(val) => handleChangeKeuangan('realisasi_rkad', val)} />
+          <div className="form-control bg-card-2 text-muted" style={{ padding: '8px 12px' }}>
+            {cur} {formatNumber(previewRealisasi ?? (realisasiRkad === '' ? 0 : realisasiRkad), lang)}
+          </div>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{t('laporan.form.realisasi_auto')}</p>
         </div>
       </div>
 

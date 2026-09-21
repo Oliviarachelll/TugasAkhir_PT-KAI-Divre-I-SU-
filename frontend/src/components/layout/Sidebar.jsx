@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import useAuthStore from '../../store/auth.store';
 import toast from 'react-hot-toast';
-import kaiLogo from '../../assets/kai-logo.svg';
+import kaiLogo from '../../assets/logokai.webp';
 import { useTranslation } from 'react-i18next';
 
 const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) => {
@@ -49,13 +49,11 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
       { path: '/manajemen/user', label: t('menu.manajemen_user'), icon: Users },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/notifikasi', label: t('menu.notifikasi'), icon: Bell },
-      { path: '/target', label: t('router.my_target'), icon: Target },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ],
     IT: [
       { path: '/dashboard/it', label: t('menu.dashboard'), icon: LayoutDashboard },
       { path: '/monitoring', label: t('menu.manajemen'), icon: Building2 },
-      { path: '/target', label: t('router.my_target'), icon: Target },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ]
@@ -71,8 +69,8 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
             <img src={kaiLogo} alt="KAI Logo" className="h-7 w-auto object-contain" />
           </div>
           <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-[200px] opacity-100'}`}>
-            <span className="text-[15px] font-bold tracking-tight leading-none truncate" style={{ color: 'var(--sidebar-active-text)' }}>Access by KAI</span>
-            <span className="text-xs mt-1.5 font-medium truncate" style={{ color: 'var(--sidebar-text-muted)' }}>Divre 1 SUMUT</span>
+            <span className="text-[15px] font-bold tracking-tight leading-none truncate" style={{ color: 'var(--sidebar-active-text)' }}>PT KAI</span>
+            <span className="text-xs mt-1.5 font-medium truncate" style={{ color: 'var(--sidebar-text-muted)' }}>Divre I SU</span>
           </div>
         </div>
         

@@ -35,7 +35,13 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    // Request ke endpoint auth (login / reset-password / unlock) TIDAK boleh
+    // memicu logout global: 401 di sana artinya kredensial salah, dan halaman
+    // login sendiri yang menampilkan pesannya. Tanpa pengecualian ini, salah
+    // password me-reload halaman login dan error tidak pernah terlihat.
+    const url = error.config?.url || '';
+    const isAuthRequest = url.startsWith('/auth/');
+    if (error.response?.status === 401 && !isAuthRequest) {
       useAuthStore.getState().logout();
       toast.error(i18n.t('api.session_expired'));
     } else if (error.response?.status === 403) {

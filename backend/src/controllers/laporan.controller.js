@@ -8,9 +8,11 @@ const { sendSuccess, sendCreated, sendError, sendPaginated } = require('../utils
 const { parsePagination, buildPaginationMeta } = require('../utils/pagination');
 const whatsappService = require('../whatsapp/baileys.service');
 
-const KNA_FIELDS = ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'target_rkad', 'realisasi_rkad', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row'];
+const KNA_FIELDS = ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'target_rkad', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row'];
 const BARANG_FIELDS = ['jml_ka', 'nama_kustom', 'volume', 'volume_kumulatif', 'volume_program', 'volume_pencapaian', 'pendapatan', 'pendapatan_kumulatif', 'pendapatan_program', 'pendapatan_pencapaian', 'id_komoditi'];
-const KEUANGAN_FIELDS = ['target_rkad', 'realisasi_rkad', 'pendapatan', 'pengeluaran', 'rincian_transaksi', 'rincian_spj', 'rincian_invoice'];
+const KEUANGAN_FIELDS = ['target_rkad', 'pendapatan', 'pengeluaran', 'rincian_transaksi', 'rincian_spj', 'rincian_invoice'];
+// realisasi_rkad TIDAK lagi diinput/disimpa dari user — dihitung otomatis
+// saat baca (lihat attachRealisasiOtomatis) dan diabaikan saat tulis.
 const PENUMPANG_FIELDS = ['nama_ka', 'no_ka', 'lintas', 'berangkat', 'kedatangan', 'jml_penumpang', 'pendapatan'];
 
 const pick = (value, fields) => fields.reduce((result, field) => {
@@ -45,6 +47,66 @@ const snapshotLaporan = (laporan) => normalizeValue({
   barang: (laporan.laporan_barang || []).map(item => pick(item, BARANG_FIELDS)),
   keuangan: laporan.laporan_keuangan ? pick(laporan.laporan_keuangan, KEUANGAN_FIELDS) : null,
 });
+
+const numVal = (v) => {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'object' && typeof v.toNumber === 'function') return v.toNumber() || 0;
+  return Number(v) || 0;
+};
+
+/**
+ * Realisasi RKAD otomatis: penjumlahan nilai harian unit tersebut sejak
+ * 1 Januari tahun berjalan sampai tanggal tiap laporan (yang DITOLAK dikecualikan).
+ * KNA menjumlah nilai_row + nilai_non_row, keuangan menjumlah pendapatan.
+ * Hasilnya menimpa field realisasi_rkad pada response (kolom DB tidak dipakai lagi).
+ */
+const attachRealisasiOtomatis = async (rows) => {
+  const targets = rows.filter((r) => r.laporan_kna || r.laporan_keuangan);
+  if (targets.length === 0) return rows;
+
+  const combos = new Map();
+  for (const r of targets) {
+    const year = new Date(r.tanggal).getFullYear();
+    combos.set(`${r.id_unit}-${year}`, { id_unit: r.id_unit, year });
+  }
+
+  const harian = new Map();
+  await Promise.all([...combos.entries()].map(async ([key, { id_unit, year }]) => {
+    const baseWhere = {
+      id_unit,
+      tanggal: { gte: new Date(year, 0, 1), lt: new Date(year + 1, 0, 1) },
+      status: { not: 'DITOLAK' },
+    };
+    const [knaRows, keuRows] = await Promise.all([
+      prisma.laporan.findMany({
+        where: { ...baseWhere, laporan_kna: { isNot: null } },
+        select: { tanggal: true, laporan_kna: { select: { nilai_row: true, nilai_non_row: true } } },
+      }),
+      prisma.laporan.findMany({
+        where: { ...baseWhere, laporan_keuangan: { isNot: null } },
+        select: { tanggal: true, laporan_keuangan: { select: { pendapatan: true } } },
+      }),
+    ]);
+    harian.set(key, {
+      kna: knaRows.map((x) => ({ t: new Date(x.tanggal).getTime(), v: numVal(x.laporan_kna.nilai_row) + numVal(x.laporan_kna.nilai_non_row) })),
+      keu: keuRows.map((x) => ({ t: new Date(x.tanggal).getTime(), v: numVal(x.laporan_keuangan.pendapatan) })),
+    });
+  }));
+
+  for (const r of targets) {
+    const year = new Date(r.tanggal).getFullYear();
+    const t = new Date(r.tanggal).getTime();
+    const data = harian.get(`${r.id_unit}-${year}`);
+    if (!data) continue;
+    if (r.laporan_kna) {
+      r.laporan_kna.realisasi_rkad = data.kna.filter((x) => x.t <= t).reduce((s, x) => s + x.v, 0);
+    }
+    if (r.laporan_keuangan) {
+      r.laporan_keuangan.realisasi_rkad = data.keu.filter((x) => x.t <= t).reduce((s, x) => s + x.v, 0);
+    }
+  }
+  return rows;
+};
 
 const collectChangedFields = (before, after, path = '') => {
   if (JSON.stringify(before) === JSON.stringify(after)) return [];
@@ -109,6 +171,8 @@ const getAllLaporan = async (req, res) => {
     prisma.laporan.count({ where }),
   ]);
 
+  await attachRealisasiOtomatis(data);
+
   return sendPaginated(res, data, buildPaginationMeta(total, page, limit));
 };
 
@@ -140,6 +204,8 @@ const getLaporanById = async (req, res) => {
   if (req.pengguna.peran === 'USER_UNIT' && laporan.id_unit !== req.pengguna.id_unit) {
     return sendError(res, 'Akses ditolak', 403);
   }
+
+  await attachRealisasiOtomatis([laporan]);
 
   return sendSuccess(res, laporan);
 };
@@ -264,10 +330,12 @@ const upsertLaporanKNA = async (req, res) => {
   const laporan = await prisma.laporan.findUnique({ where: { id_laporan } });
   if (!laporan) return sendError(res, 'Laporan tidak ditemukan', 404);
 
+  // realisasi_rkad diabaikan: selalu dihitung otomatis saat baca.
+  const { realisasi_rkad: _abaikanKna, ...knaBody } = req.body;
   const kna = await prisma.laporanKNA.upsert({
     where: { id_laporan },
-    create: { ...req.body, id_laporan },
-    update: req.body,
+    create: { ...knaBody, id_laporan },
+    update: knaBody,
   });
 
   return sendSuccess(res, kna, 'Data KNA berhasil disimpan');
@@ -360,12 +428,12 @@ const upsertLaporanKeuangan = async (req, res) => {
   const laporan = await prisma.laporan.findUnique({ where: { id_laporan } });
   if (!laporan) return sendError(res, 'Laporan tidak ditemukan', 404);
 
-  const { target_rkad, realisasi_rkad, pendapatan, pengeluaran, rincian_transaksi, rincian_spj, rincian_invoice } = req.body;
+  // realisasi_rkad diabaikan: selalu dihitung otomatis saat baca.
+  const { target_rkad, pendapatan, pengeluaran, rincian_transaksi, rincian_spj, rincian_invoice } = req.body;
   const laba_rugi = parseFloat(pendapatan) - parseFloat(pengeluaran);
 
   const data = {
     target_rkad,
-    realisasi_rkad,
     pendapatan,
     pengeluaran,
     laba_rugi,

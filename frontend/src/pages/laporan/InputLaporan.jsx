@@ -12,6 +12,7 @@ import FormPenumpang from './components/FormPenumpang';
 import FormKeuangan from './components/FormKeuangan';
 import { formatDate } from '../../utils/format';
 import { targetApi } from '../../api/target.api';
+import { programApi } from '../../api/program.api';
 import { unitKategori } from '../../utils/unit';
 
 const InputLaporan = () => {
@@ -33,6 +34,28 @@ const InputLaporan = () => {
   ];
 
   const unitName = user?.unit?.nama_unit || '';
+
+  // Program tahunan barang per komoditi (diisi sekali di Target, read-only di form).
+  const [programMaster, setProgramMaster] = useState({});
+  useEffect(() => {
+    (async () => {
+      try {
+        const yr = draftLaporan.tanggal ? new Date(draftLaporan.tanggal).getFullYear() : new Date().getFullYear();
+        const res = await programApi.getAll({ tahun: yr });
+        const map = {};
+        (res.data || []).forEach((p) => {
+          map[String(p.id_komoditi)] = {
+            volume_program: p.volume_program ?? '',
+            pendapatan_program: p.pendapatan_program ?? '',
+          };
+        });
+        setProgramMaster(map);
+      } catch {
+        setProgramMaster({});
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftLaporan.tanggal, draftLaporan.id_unit]);
 
   // Target tahunan master unit ini (sumber field target read-only di form).
   const [targetTahunan, setTargetTahunan] = useState(null);
@@ -72,14 +95,39 @@ const InputLaporan = () => {
     return map;
   }, [laporanList, draftLaporan.tanggal, draftLaporan.id_unit, user, todayStr]);
 
+  // Pratinjau realisasi otomatis selagi mengisi: jumlah nilai harian unit ini
+  // sejak 1 Jan s/d tanggal draft + nilai yang sedang diketik. Angka final
+  // dihitung backend saat simpan (yang DITOLAK tidak ikut).
+  const previewRealisasi = React.useMemo(() => {
+    const draftTgl = String(draftLaporan.tanggal || todayStr).slice(0, 10);
+    const yr = draftTgl.slice(0, 4);
+    const myUnit = draftLaporan.id_unit || user?.id_unit;
+    let kna = 0, keu = 0;
+    (laporanList || []).forEach((l) => {
+      if (l.status === 'DITOLAK') return;
+      if (myUnit && l.id_unit !== myUnit) return;
+      const tgl = String(l.tanggal || '').slice(0, 10);
+      if (!tgl.startsWith(yr) || tgl > draftTgl) return;
+      if (isEditMode && l.id_laporan === draftLaporan.id_laporan) return; // diganti nilai draft
+      if (l.laporan_kna) kna += (parseFloat(l.laporan_kna.nilai_row) || 0) + (parseFloat(l.laporan_kna.nilai_non_row) || 0);
+      if (l.laporan_keuangan) keu += parseFloat(l.laporan_keuangan.pendapatan) || 0;
+    });
+    const dk = draftLaporan.kna || {};
+    kna += (parseFloat(dk.nilai_row) || 0) + (parseFloat(dk.nilai_non_row) || 0);
+    const dkeu = draftLaporan.keuangan || {};
+    keu += parseFloat(dkeu.pendapatan) || 0;
+    return { kna, keu };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [laporanList, draftLaporan, user, todayStr, isEditMode]);
+
   // Inisialisasi draft saat pertama kali render
   useEffect(() => {
     if (!draftLaporan.id_unit && user?.id_unit) {
       setDraft({ id_unit: user.id_unit });
     }
     if (!draftLaporan.kna) {
-      setDraft({ kna: { 
-        target_rkad: '', realisasi_rkad: '', 
+      setDraft({ kna: {
+        target_rkad: '',
         jml_kontrak_row: '', luas_t_row: '', luas_b_row: '', nilai_row: '',
         jml_kontrak_non_row: '', luas_t_non_row: '', luas_b_non_row: '', nilai_non_row: ''
       } });
@@ -256,9 +304,9 @@ const InputLaporan = () => {
 
       {/* RENDER FORM DINAMIS BERDASARKAN UNIT */}
       {unitName === 'Unit Angkutan Penumpang' && <FormPenumpang draftLaporan={draftLaporan} setDraft={setDraft} />}
-      {unitName === 'Unit Angkutan Barang' && <FormBarang draftLaporan={draftLaporan} setDraft={setDraft} ytdKomoditi={ytdKomoditi} />}
-      {unitName === 'Unit Keuangan' && <FormKeuangan draftLaporan={draftLaporan} setDraft={setDraft} targetTahunan={targetTahunan} />}
-      {unitName === 'Unit KNA' && <FormKNA draftLaporan={draftLaporan} handleChangeKNA={handleChangeKNA} targetTahunan={targetTahunan} />}
+      {unitName === 'Unit Angkutan Barang' && <FormBarang draftLaporan={draftLaporan} setDraft={setDraft} ytdKomoditi={ytdKomoditi} programMaster={programMaster} />}
+      {unitName === 'Unit Keuangan' && <FormKeuangan draftLaporan={draftLaporan} setDraft={setDraft} targetTahunan={targetTahunan} previewRealisasi={previewRealisasi.keu} />}
+      {unitName === 'Unit KNA' && <FormKNA draftLaporan={draftLaporan} handleChangeKNA={handleChangeKNA} targetTahunan={targetTahunan} previewRealisasi={previewRealisasi.kna} />}
 
       {/* Catatan */}
       <div className="card mb-6" style={{ marginBottom: '24px' }}>

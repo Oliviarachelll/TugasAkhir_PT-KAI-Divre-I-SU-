@@ -467,6 +467,7 @@
       "kna_target_title": "Target vs Realisasi",
       "kna_target": "Target RKAD (Rp)",
       "kna_realization": "Realisasi RKAD (Rp)",
+      "realisasi_auto": "Dihitung otomatis dari penjumlahan harian.",
       "barang_total_title": "Total KA, VOL, & PENDAPATAN ANGKUTAN BARANG",
       "barang_ka_per_commodity": "Jumlah KA per Komoditi",
       "barang_volume": "Volume",
@@ -491,6 +492,7 @@
       "barang_inc_prog": "Program Pendapatan ({{year}})",
       "barang_inc_ach": "Pencapaian Pendapatan",
       "barang_auto_hint": "Otomatis dari laporan yang disetujui",
+      "barang_program_hint": "Diisi sekali setahun di Target. Komoditi custom diisi manual.",
       "pnp_title": "Data Harian Penumpang",
       "pnp_choose": "Pilih Kereta Api:",
       "pnp_add_train": "+ Add Kereta Baru",
@@ -867,6 +869,13 @@
     "create_success": "Target berhasil dibuat",
     "update_success": "Target berhasil diperbarui",
     "fetch_fail": "Gagal mengambil data target",
-    "save_fail": "Gagal menyimpan target"
+    "save_fail": "Gagal menyimpan target",
+    "retry": "Coba lagi",
+    "program_title": "Program Tahunan per Komoditi",
+    "program_sub": "Diisi sekali setahun. Form laporan hanya membaca angka ini.",
+    "program_komoditi": "KOMODITI",
+    "program_vol": "VOLUME PROGRAM (TON)",
+    "program_pend": "PENDAPATAN PROGRAM (RP)",
+    "program_total": "TOTAL"
   }
 }

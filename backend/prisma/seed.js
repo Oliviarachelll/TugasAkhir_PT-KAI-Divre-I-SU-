@@ -152,20 +152,9 @@ async function main() {
   }
 
   // ============================================================
-  // 3. Bersihkan Data Laporan & Komoditi Lama
+  // 3. Komoditi (upsert — data laporan asli tidak dihapus)
   // ============================================================
-  console.log('\n🧹 Menghapus data laporan lama...');
-  await prisma.laporanKNA.deleteMany({});
-  await prisma.laporanBarang.deleteMany({});
-  await prisma.laporanPenumpang.deleteMany({});
-  await prisma.laporanKeuangan.deleteMany({});
-  await prisma.laporan.deleteMany({});
-  console.log('  ✅ Data laporan lama berhasil dihapus.');
-
   console.log('\n📦 Seeding komoditi...');
-
-  // Hapus semua komoditi lama agar tidak ada sisa 'Pupuk', 'Beras', dll.
-  await prisma.komoditiBarang.deleteMany({});
 
   // Komoditi wajib yang diminta user
   const KOMODITI = [
@@ -181,8 +170,10 @@ async function main() {
   ];
 
   for (const k of KOMODITI) {
-    const komoditi = await prisma.komoditiBarang.create({
-      data: k,
+    const komoditi = await prisma.komoditiBarang.upsert({
+      where: { id_komoditi: k.id_komoditi },
+      update: { nama_komoditi: k.nama_komoditi, satuan: k.satuan, id_unit: k.id_unit },
+      create: k,
     });
     console.log(`  ✅ ${komoditi.nama_komoditi} (${komoditi.satuan})`);
   }
@@ -218,9 +209,25 @@ async function main() {
   }
 
   // ============================================================
-  // 6. Seed Laporan Bervariasi (KNA, Barang, Penumpang) - 50 Data
+  // 6. Seed Laporan Dummy SESUAI TEMPLATE (tidak menghapus data asli:
+  //    tanggal+unit yang sudah ada dilewati)
   // ============================================================
-  console.log('\n📄 Seeding 50 Laporan bervariasi...');
+  console.log('\n📄 Seeding laporan dummy sesuai template...');
+
+  // target_rkad mengikuti master target per unit (agar konsisten dgn Target Saya).
+  const targetRows = await prisma.target.findMany();
+  const targetOf = (idUnit, fallback) => {
+    const t = targetRows.find((x) => x.id_unit === idUnit);
+    return t ? Number(t.nilai) : fallback;
+  };
+  const targetKNA = targetOf(unitKNA.id_unit, 10000000000);
+  const targetKeuangan = targetOf(unitKeuangan.id_unit, 150000000000);
+
+  // Kombinasi unit+tanggal yang sudah ada (data asli user) dilewati.
+  const sudahAda = new Set(
+    (await prisma.laporan.findMany({ select: { id_unit: true, tanggal: true } }))
+      .map((l) => `${l.id_unit}-${new Date(l.tanggal).toISOString().slice(0, 10)}`)
+  );
 
   const userKna = await prisma.pengguna.findUnique({ where: { email: 'unit.kna@rache.id' } });
   const userBarang = await prisma.pengguna.findUnique({ where: { email: 'unit.barang@rache.id' } });
@@ -235,30 +242,30 @@ async function main() {
   });
 
   const statusInternalList = ['PENDING', 'DALAM_PROSES', 'SELESAI', 'DIBATALKAN'];
-  const statusLaporanList = ['DRAFT', 'DIAJUKAN', 'DISETUJUI', 'DITOLAK', 'REVISI'];
-  const namaKaList = ['Argo Bromo', 'Argo Lawu', 'Taksaka', 'Gajayana', 'Bima', 'Turangga'];
+  // KA asli Unit Angkutan Penumpang Divre I (huruf besar semua).
+  const namaKaList = ['SRILELAWANGSA', 'SRIBILAH UTAMA', 'DATUK BELAMBANGAN', 'PUTRI DELI', 'SIANTAR EKSPRES', 'AMIR HAMZAH', 'NURMALA', 'CUT MUTIA'];
 
   let countKNA = 0;
   let countBarang = 0;
   let countPenumpang = 0;
   let countKeuangan = 0;
+  let skipped = 0;
+
+  const tglKey = (d, idUnit) => `${idUnit}-${new Date(d).toISOString().slice(0, 10)}`;
 
   for (let i = 0; i < 30; i++) {
     // Tanggal berurut dari hari ini mundur 30 hari
     const pastDate = new Date();
     pastDate.setDate(pastDate.getDate() - i);
-    
-    // Fungsi bantuan untuk merandom status
-    const getRandomInternal = () => statusInternalList[Math.floor(Math.random() * statusInternalList.length)];
-    // Beri bobot lebih tinggi (50%) untuk DISETUJUI agar grafik lebih mudah dilihat
-    const getRandomStatus = () => {
-      const rand = Math.random();
-      if (rand < 0.5) return 'DISETUJUI';
-      return statusLaporanList[Math.floor(Math.random() * statusLaporanList.length)];
-    };
 
-    // 1. Seed KNA
-    if (userKna) {
+    // Fungsi bantuan untuk merandom status.
+    // Dummy hanya DISETUJUI (70%) / DIAJUKAN (30%) agar tidak mengotori
+    // (tidak ada DRAFT/REVISI/DITOLAK).
+    const getRandomInternal = () => statusInternalList[Math.floor(Math.random() * statusInternalList.length)];
+    const getRandomStatus = () => (Math.random() < 0.7 ? 'DISETUJUI' : 'DIAJUKAN');
+
+    // 1. Seed KNA (dilewati bila unit+tanggal sudah ada = data asli)
+    if (userKna && !sudahAda.has(tglKey(pastDate, unitKNA.id_unit))) {
       await prisma.laporan.create({
         data: {
           tanggal: pastDate,
@@ -271,22 +278,23 @@ async function main() {
               jml_kontrak_row: Math.floor(Math.random() * 20) + 5,
               luas_t_row: parseFloat((Math.random() * 10000 + 1000).toFixed(4)),
               luas_b_row: parseFloat((Math.random() * 5000 + 500).toFixed(4)),
-              nilai_row: parseFloat((Math.random() * 500000000 + 50000000).toFixed(2)),
-              target_rkad: 1000000000,
-              realisasi_rkad: parseFloat((Math.random() * 1000000000).toFixed(2)),
+              nilai_row: parseFloat((Math.random() * 500000 + 50000).toFixed(2)),
+              target_rkad: targetKNA,
               jml_kontrak_non_row: Math.floor(Math.random() * 10) + 1,
               luas_t_non_row: parseFloat((Math.random() * 5000 + 500).toFixed(4)),
               luas_b_non_row: parseFloat((Math.random() * 2000 + 200).toFixed(4)),
-              nilai_non_row: parseFloat((Math.random() * 200000000 + 20000000).toFixed(2))
+              nilai_non_row: parseFloat((Math.random() * 200000 + 20000).toFixed(2))
             }
           }
         }
       });
       countKNA++;
+    } else if (userKna) {
+      skipped++;
     }
 
     // 2. Seed Barang
-    if (userBarang && semuaKomoditiBarang.length > 0) {
+    if (userBarang && semuaKomoditiBarang.length > 0 && !sudahAda.has(tglKey(pastDate, unitBarang.id_unit))) {
       const arrayLaporanBarang = semuaKomoditiBarang.map(komoditi => {
         return {
           jml_ka: Math.floor(Math.random() * 15) + 2,
@@ -315,10 +323,12 @@ async function main() {
         }
       });
       countBarang++;
+    } else if (userBarang) {
+      skipped++;
     }
 
     // 3. Seed Penumpang
-    if (userPenumpang) {
+    if (userPenumpang && !sudahAda.has(tglKey(pastDate, unitPenumpang.id_unit))) {
       const arrayLaporanPenumpang = namaKaList.map(ka => ({
         nama_ka: ka,
         jml_penumpang: Math.floor(Math.random() * 5000) + 1000,
@@ -338,13 +348,15 @@ async function main() {
         }
       });
       countPenumpang++;
+    } else if (userPenumpang) {
+      skipped++;
     }
     // 4. Seed Keuangan
-    if (userKeuangan) {
-      const p1 = Math.floor(Math.random() * 500000000);
-      const e1 = Math.floor(Math.random() * 100000000);
-      const e2 = Math.floor(Math.random() * 50000000);
-      const e3 = Math.floor(Math.random() * 20000000);
+    if (userKeuangan && !sudahAda.has(tglKey(pastDate, unitKeuangan.id_unit))) {
+      const p1 = Math.floor(Math.random() * 4000000) + 1000000;
+      const e1 = Math.floor(Math.random() * 1000000);
+      const e2 = Math.floor(Math.random() * 500000);
+      const e3 = Math.floor(Math.random() * 200000);
 
       const rincianTransaksi = [
         { id: '1', jenis: 'Penerimaan', uraian: 'Pendapatan Jasa', penerimaan: p1.toString(), pengeluaran: '0', unit_kerja: 'KNA' },
@@ -361,8 +373,7 @@ async function main() {
       const pengeluaran = e1 + e2 + e3;
       const labaRugi = pendapatan - pengeluaran;
 
-      const targetRKAD = 150000000000;
-      const realisasiRKAD = parseFloat((Math.random() * targetRKAD * 0.05).toFixed(2)); // add a bit each day
+      const targetRKAD = targetKeuangan;
 
       await prisma.laporan.create({
         data: {
@@ -374,7 +385,6 @@ async function main() {
           laporan_keuangan: {
             create: {
               target_rkad: targetRKAD,
-              realisasi_rkad: realisasiRKAD,
               rincian_transaksi: JSON.stringify(rincianTransaksi),
               rincian_spj: JSON.stringify(rincianSPJ),
               rincian_invoice: JSON.stringify(rincianInvoice),
@@ -386,10 +396,12 @@ async function main() {
         }
       });
       countKeuangan++;
+    } else if (userKeuangan) {
+      skipped++;
     }
   }
 
-  console.log(`  ✅ Berhasil generate ${countKNA} KNA, ${countBarang} Barang, ${countPenumpang} Penumpang, ${countKeuangan} Keuangan bervariasi.`);
+  console.log(`  ✅ Berhasil generate ${countKNA} KNA, ${countBarang} Barang, ${countPenumpang} Penumpang, ${countKeuangan} Keuangan bervariasi (${skipped} tanggal dilewati = data asli).`);
 
   // ============================================================
   // RINGKASAN

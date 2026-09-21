@@ -281,11 +281,34 @@ model KomoditiBarang {
 
   // Relasi
   laporan_barang LaporanBarang[]
+  program_barang ProgramBarang[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   @@map("komoditi_barang")
+}
+
+// ============================================================
+// TABEL: Program Tahunan per Komoditi (diisi sekali setahun,
+// seperti target KNA — form laporan hanya membaca)
+// ============================================================
+
+model ProgramBarang {
+  id_program         Int      @id @default(autoincrement())
+  tahun              Int
+  volume_program     Decimal? @db.Decimal(15, 4)
+  pendapatan_program Decimal? @db.Decimal(15, 2)
+
+  // Foreign Key
+  id_komoditi Int
+  komoditi    KomoditiBarang @relation(fields: [id_komoditi], references: [id_komoditi])
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([tahun, id_komoditi])
+  @@map("program_barang")
 }
 
 // ============================================================

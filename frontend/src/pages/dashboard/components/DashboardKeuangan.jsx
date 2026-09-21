@@ -27,9 +27,14 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan, targetTahunan = null 
   let countSPJ = 0;
   let countTransaksi = 0;
 
+  // realisasi_rkad tiap baris SUDAH kumulatif (dihitung backend), jadi total
+  // = nilai kumulatif pada laporan terbaru, BUKAN jumlah semua baris.
+  let latestTglKeu = '';
   approvedLaporan?.forEach(l => {
     if (l.laporan_keuangan) {
-      totalRealisasiKeuangan += l.laporan_keuangan.realisasi_rkad ? parseFloat(l.laporan_keuangan.realisasi_rkad) : 0;
+      const v = l.laporan_keuangan.realisasi_rkad ? parseFloat(l.laporan_keuangan.realisasi_rkad) : 0;
+      const t = String(l.tanggal || '');
+      if (t >= latestTglKeu) { latestTglKeu = t; totalRealisasiKeuangan = v; }
       totalPendapatanKeuangan += l.laporan_keuangan.pendapatan ? parseFloat(l.laporan_keuangan.pendapatan) : 0;
       totalPengeluaranKeuangan += l.laporan_keuangan.pengeluaran ? parseFloat(l.laporan_keuangan.pengeluaran) : 0;
       totalLabaRugiKeuangan += l.laporan_keuangan.laba_rugi ? parseFloat(l.laporan_keuangan.laba_rugi) : 0;
@@ -194,23 +199,23 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan, targetTahunan = null 
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-              <h2 className="text-3xl font-bold" style={{ color: 'var(--brand-500)' }}>{persentaseKeuangan}%</h2>
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', maxWidth: '70%' }}>
+              <h2 className="font-bold" style={{ color: 'var(--brand-500)', margin: 0, lineHeight: 1.1, overflowWrap: 'anywhere', fontSize: String(persentaseKeuangan).length > 7 ? '18px' : String(persentaseKeuangan).length > 5 ? '22px' : '30px' }}>{persentaseKeuangan}%</h2>
               <p className="text-xs text-muted">{t('unit.realization')}</p>
             </div>
           </div>
-          <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
+          <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ textAlign: 'center', flex: 1, minWidth: 0, borderRight: '1px solid var(--border)', padding: '0 4px' }}>
               <p className="text-xs text-muted mb-1">{t('unit.total_realization')}</p>
-              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(totalRealisasiKeuangan, lang, 2)}</p>
+              <p className="font-semibold text-gray-800" style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{cur} {formatCompact(totalRealisasiKeuangan, lang, 2)}</p>
             </div>
-            <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
+            <div style={{ textAlign: 'center', flex: 1, minWidth: 0, borderRight: '1px solid var(--border)', padding: '0 4px' }}>
               <p className="text-xs text-muted mb-1">{t('unit.rkad_target')}</p>
-              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(targetRKAD, lang, 2)}</p>
+              <p className="font-semibold text-gray-800" style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{cur} {formatCompact(targetRKAD, lang, 2)}</p>
             </div>
-            <div style={{ textAlign: 'center', flex: 1 }}>
+            <div style={{ textAlign: 'center', flex: 1, minWidth: 0, padding: '0 4px' }}>
               <p className="text-xs text-muted mb-1">{t('dashboard.remaining')} ({sisaPersenKeuangan}%)</p>
-              <p className="font-semibold text-gray-800" style={{ fontSize: '14px' }}>{cur} {formatCompact(sisaKeuangan, lang, 2)}</p>
+              <p className="font-semibold text-gray-800" style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{cur} {formatCompact(sisaKeuangan, lang, 2)}</p>
             </div>
           </div>
         </div>

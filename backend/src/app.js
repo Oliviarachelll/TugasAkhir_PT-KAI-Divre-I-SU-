@@ -23,7 +23,7 @@ const authRoutes = require('./routes/auth.routes');
 const penggunaRoutes = require('./routes/pengguna.routes');
 const unitRoutes = require('./routes/unit.routes');
 const laporanRoutes = require('./routes/laporan.routes');
-const { targetRouter, komoditiRouter, permintaanRouter, auditRouter, systemRouter } = require('./routes/misc.routes');
+const { targetRouter, komoditiRouter, permintaanRouter, auditRouter, systemRouter, programRouter } = require('./routes/misc.routes');
 const waCloudRoutes = require('./routes/waCloudRoutes');
 
 // Socket.io & WhatsApp
@@ -75,14 +75,16 @@ app.use(`${API_PREFIX}/unit`, unitRoutes);
 app.use(`${API_PREFIX}/laporan`, laporanRoutes);
 app.use(`${API_PREFIX}/target`, targetRouter);
 app.use(`${API_PREFIX}/komoditi`, komoditiRouter);
+app.use(`${API_PREFIX}/program`, programRouter);
 app.use(`${API_PREFIX}/permintaan`, permintaanRouter);
 app.use(`${API_PREFIX}/audit`, auditRouter);
 app.use(`${API_PREFIX}/system`, systemRouter);
 app.use(`${API_PREFIX}/wacloud`, waCloudRoutes);
 
 // Health check
-
-app.get('/health', async (req, res) => {
+// Alias /api/health disediakan agar konsisten dengan prefix API
+// (sebelumnya request ke /api/health selalu 404).
+const healthHandler = async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     return sendSuccess(res, {
@@ -94,7 +96,10 @@ app.get('/health', async (req, res) => {
   } catch {
     return sendError(res, 'Database tidak terhubung', 503);
   }
-});
+};
+
+app.get('/health', healthHandler);
+app.get(`${API_PREFIX}/health`, healthHandler);
 
 // 404 handler
 app.use((req, res) => {

@@ -74,6 +74,7 @@ const login = async (req, res) => {
       email: pengguna.email,
       peran: pengguna.peran,
       no_hp: pengguna.no_hp,
+      id_unit: pengguna.id_unit,
       unit: pengguna.unit,
     },
   }, 'Login berhasil');
@@ -91,6 +92,7 @@ const getProfile = async (req, res) => {
       email: true,
       peran: true,
       no_hp: true,
+      id_unit: true,
       created_at: true,
       unit: { select: { id_unit: true, nama_unit: true, jenis_unit: true } },
     },

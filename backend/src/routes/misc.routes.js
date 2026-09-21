@@ -8,9 +8,11 @@ const { authenticate, authorize } = require('../middlewares/auth.middleware');
 const { getAllTarget, createTarget, updateTarget, deleteTarget } = require('../controllers/target.controller');
 
 targetRouter.use(authenticate);
+// GET tetap terbuka untuk semua peran yang login (dashboard admin membutuhkannya).
 targetRouter.get('/', getAllTarget);
-targetRouter.post('/', authorize('IT', 'ADMIN_GLOBAL', 'USER_UNIT'), createTarget);
-targetRouter.put('/:id', authorize('IT', 'ADMIN_GLOBAL', 'USER_UNIT'), updateTarget);
+// Tulis target hanya untuk USER_UNIT (menu Target hanya ada di unit).
+targetRouter.post('/', authorize('USER_UNIT'), createTarget);
+targetRouter.put('/:id', authorize('USER_UNIT'), updateTarget);
 targetRouter.delete('/:id', authorize('IT'), deleteTarget);
 
 // === KOMODITI ===
@@ -46,4 +48,12 @@ const { getSystemStats } = require('../controllers/system.controller');
 systemRouter.use(authenticate);
 systemRouter.get('/stats', authorize('IT', 'ADMIN_GLOBAL'), getSystemStats);
 
-module.exports = { targetRouter, komoditiRouter, permintaanRouter, auditRouter, systemRouter };
+// === PROGRAM BARANG TAHUNAN ===
+const programRouter = require('express').Router();
+const { getAllProgram, saveBulkProgram } = require('../controllers/program.controller');
+
+programRouter.use(authenticate);
+programRouter.get('/', getAllProgram);
+programRouter.put('/', authorize('IT', 'USER_UNIT'), saveBulkProgram);
+
+module.exports = { targetRouter, komoditiRouter, permintaanRouter, auditRouter, systemRouter, programRouter };

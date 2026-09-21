@@ -35,7 +35,7 @@ const DashboardPenumpang = ({ approvedLaporan }) => {
           l.laporan_penumpang.forEach(p => {
             const jml = p.jml_penumpang ? parseInt(p.jml_penumpang) : 0;
             const pend = p.pendapatan ? parseFloat(p.pendapatan) : 0;
-            const nama = p.nama_ka || 'Unknown';
+            const nama = String(p.nama_ka || 'Unknown').toUpperCase();
 
             totalJml += jml;
             totalPendapatan += pend;

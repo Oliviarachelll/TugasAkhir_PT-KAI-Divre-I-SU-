@@ -27,7 +27,7 @@ const AutoField = ({ value, affix }) => (
   </div>
 );
 
-const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
+const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {}, programMaster = {} }) => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const cur = currencyPrefix(lang);
@@ -36,6 +36,7 @@ const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
 
   const items = draftLaporan.barangItems || [];
   const total = draftLaporan.barangTotal || {};
+  const isNewDraft = !draftLaporan.id_laporan;
 
   // YTD per komoditi dari laporan DISETUJUI (s/d kemarin, exclude id 99).
   const ytdFor = (item) => ytdLookup(ytdKomoditi, item);
@@ -58,34 +59,56 @@ const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
 
   // Tulis balik angka otomatis ke draft agar tersimpan & tampil di review.
   // Hanya menulis saat nilai berbeda agar tidak loop render.
+  // Program per komoditi diambil dari master tahunan (diisi sekali di Target):
+  // draft baru selalu ikut master, draft lama hanya bila masih kosong.
+  // Komoditi custom (98) tetap manual. Program TOTAL = jumlah semua item.
   useEffect(() => {
     const numEq = (a, b) => Number(a) === Number(b);
+    const isEmpty = (v) => v === '' || v === null || v === undefined;
+    let itemsChanged = false;
+    const newItems = items.map((item) => {
+      const y = ytdLookup(ytdKomoditi, item);
+      let volProg = item.volume_program;
+      let pdtProg = item.pendapatan_program;
+      if (item.id_komoditi !== 98) {
+        const m = programMaster[String(item.id_komoditi)];
+        if (m) {
+          if (isNewDraft || isEmpty(volProg)) volProg = m.volume_program ?? (isNewDraft ? 0 : volProg);
+          if (isNewDraft || isEmpty(pdtProg)) pdtProg = m.pendapatan_program ?? (isNewDraft ? 0 : pdtProg);
+        } else if (isNewDraft) {
+          if (isEmpty(volProg)) volProg = 0;
+          if (isEmpty(pdtProg)) pdtProg = 0;
+        }
+      }
+      const kv = y.volume + toNumLocal(item.volume);
+      const kp = y.pendapatan + toNumLocal(item.pendapatan);
+      const pv = toNumLocal(volProg) > 0 ? Math.round((kv / toNumLocal(volProg)) * 1000) / 10 : 0;
+      const pp = toNumLocal(pdtProg) > 0 ? Math.round((kp / toNumLocal(pdtProg)) * 1000) / 10 : 0;
+      if (!numEq(item.volume_program, volProg) || !numEq(item.pendapatan_program, pdtProg) ||
+          !numEq(item.volume_kumulatif, kv) || !numEq(item.volume_pencapaian, pv) ||
+          !numEq(item.pendapatan_kumulatif, kp) || !numEq(item.pendapatan_pencapaian, pp)) {
+        itemsChanged = true;
+        return { ...item, volume_program: volProg, pendapatan_program: pdtProg, volume_kumulatif: kv, volume_pencapaian: pv, pendapatan_kumulatif: kp, pendapatan_pencapaian: pp };
+      }
+      return item;
+    });
+    const sumVolProg = newItems.reduce((s, it) => s + toNumLocal(it.volume_program), 0);
+    const sumPdtProg = newItems.reduce((s, it) => s + toNumLocal(it.pendapatan_program), 0);
     const patchTotal = {};
+    if (!numEq(total.volume_program, sumVolProg)) patchTotal.volume_program = sumVolProg;
+    if (!numEq(total.pendapatan_program, sumPdtProg)) patchTotal.pendapatan_program = sumPdtProg;
     if (!numEq(total.volume_kumulatif, kumVolTotal)) patchTotal.volume_kumulatif = kumVolTotal;
     if (!numEq(total.volume_pencapaian, pencVolTotal)) patchTotal.volume_pencapaian = pencVolTotal;
     if (!numEq(total.pendapatan_kumulatif, kumPdtTotal)) patchTotal.pendapatan_kumulatif = kumPdtTotal;
     if (!numEq(total.pendapatan_pencapaian, pencPdtTotal)) patchTotal.pendapatan_pencapaian = pencPdtTotal;
-    let itemsChanged = false;
-    const newItems = items.map((item) => {
-      const y = ytdLookup(ytdKomoditi, item);
-      const kv = y.volume + toNumLocal(item.volume);
-      const kp = y.pendapatan + toNumLocal(item.pendapatan);
-      const pv = toNumLocal(item.volume_program) > 0 ? Math.round((kv / toNumLocal(item.volume_program)) * 1000) / 10 : 0;
-      const pp = toNumLocal(item.pendapatan_program) > 0 ? Math.round((kp / toNumLocal(item.pendapatan_program)) * 1000) / 10 : 0;
-      if (!numEq(item.volume_kumulatif, kv) || !numEq(item.volume_pencapaian, pv) ||
-          !numEq(item.pendapatan_kumulatif, kp) || !numEq(item.pendapatan_pencapaian, pp)) {
-        itemsChanged = true;
-        return { ...item, volume_kumulatif: kv, volume_pencapaian: pv, pendapatan_kumulatif: kp, pendapatan_pencapaian: pp };
-      }
-      return item;
-    });
     if (Object.keys(patchTotal).length > 0 || itemsChanged) {
       setDraft({
         ...(Object.keys(patchTotal).length > 0 ? { barangTotal: { ...total, ...patchTotal } } : {}),
         ...(itemsChanged ? { barangItems: newItems } : {}),
       });
     }
-  }, [items, total, ytdKomoditi, kumVolTotal, kumPdtTotal, pencVolTotal, pencPdtTotal, setDraft]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, total, ytdKomoditi, kumVolTotal, kumPdtTotal, pencVolTotal, pencPdtTotal, programMaster, isNewDraft, setDraft]);
 
   if (items.length === 0) return null;
 
@@ -185,7 +208,7 @@ const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_program', { year: currentYear })}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.volume_program} onChange={(val) => handleChangeBarangTotal('volume_program', val)} suffix={tonUnit} />
+                <AutoField value={formatNumber(total.volume_program ?? 0, lang)} affix={tonUnit} />
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_achievement')}</label>
@@ -206,7 +229,7 @@ const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_program', { year: currentYear })}</label>
-                <FormattedNumberInput className="form-control" placeholder="0" value={total.pendapatan_program} onChange={(val) => handleChangeBarangTotal('pendapatan_program', val)} prefix={cur} />
+                <AutoField value={`${cur} ${formatNumber(total.pendapatan_program ?? 0, lang)}`} />
               </div>
               <div className="form-group">
                 <label className="text-xs text-muted mb-1 block">{t('laporan.form.barang_achievement')}</label>
@@ -252,6 +275,9 @@ const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
         {/* Form Content for Active Tab */}
         {activeItem && (
           <div style={{ minHeight: '400px' }}>
+            {activeItem.id_komoditi !== 98 && (
+              <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>{t('laporan.form.barang_program_hint')}</p>
+            )}
             {/* Jika ini komoditi custom, tampilkan input nama_kustom */}
             {activeBarangTab > 5 && (
                <div className="mb-4 flex items-end gap-3">
@@ -291,7 +317,11 @@ const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_vol_prog', { year: currentYear })}</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_program', val)} suffix={tonUnit} />
+                    {activeItem.id_komoditi === 98 ? (
+                      <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.volume_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'volume_program', val)} suffix={tonUnit} />
+                    ) : (
+                      <AutoField value={formatNumber(activeItem.volume_program ?? 0, lang)} affix={tonUnit} />
+                    )}
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_vol_ach')}</label>
@@ -314,7 +344,11 @@ const FormBarang = ({ draftLaporan, setDraft, ytdKomoditi = {} }) => {
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_inc_prog', { year: currentYear })}</label>
-                    <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_program', val)} prefix={cur} />
+                    {activeItem.id_komoditi === 98 ? (
+                      <FormattedNumberInput className="form-control" placeholder="0" value={activeItem.pendapatan_program} onChange={(val) => handleChangeBarang(activeBarangTab, 'pendapatan_program', val)} prefix={cur} />
+                    ) : (
+                      <AutoField value={`${cur} ${formatNumber(activeItem.pendapatan_program ?? 0, lang)}`} />
+                    )}
                   </div>
                   <div className="col-md-6 mb-3">
                     <label className="form-label">{t('laporan.form.barang_inc_ach')}</label>

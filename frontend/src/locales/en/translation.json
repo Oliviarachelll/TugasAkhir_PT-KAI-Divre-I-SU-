@@ -467,6 +467,7 @@
       "kna_target_title": "Target vs Realization",
       "kna_target": "RKAD Target (Rp)",
       "kna_realization": "RKAD Realization (Rp)",
+      "realisasi_auto": "Calculated automatically from daily totals.",
       "barang_total_title": "Total Trains, Volume & Freight Revenue",
       "barang_ka_per_commodity": "Trains per Commodity",
       "barang_volume": "Volume",
@@ -491,6 +492,7 @@
       "barang_inc_prog": "Program Revenue ({{year}})",
       "barang_inc_ach": "Revenue Achievement",
       "barang_auto_hint": "Auto-calculated from approved reports",
+      "barang_program_hint": "Filled once a year in Target. Custom commodities are filled manually.",
       "pnp_title": "Daily Passenger Data",
       "pnp_choose": "Select Train:",
       "pnp_add_train": "+ Add New Train",
@@ -867,6 +869,13 @@
     "create_success": "Target created successfully",
     "update_success": "Target updated successfully",
     "fetch_fail": "Failed to load target data",
-    "save_fail": "Failed to save target"
+    "save_fail": "Failed to save target",
+    "retry": "Try again",
+    "program_title": "Annual Program per Commodity",
+    "program_sub": "Filled once a year. The report form only reads these figures.",
+    "program_komoditi": "COMMODITY",
+    "program_vol": "VOLUME PROGRAM (TON)",
+    "program_pend": "REVENUE PROGRAM (RP)",
+    "program_total": "TOTAL"
   }
 }

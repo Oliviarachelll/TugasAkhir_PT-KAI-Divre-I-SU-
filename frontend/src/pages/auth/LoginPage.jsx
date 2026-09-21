@@ -4,7 +4,7 @@ import { ShieldAlert, Loader2, KeyRound, ChevronLeft, CheckCircle2 } from 'lucid
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/auth.store';
 import apiClient, { API_ERROR_TOAST_ID } from '../../api/client';
-import kaiLogo from '../../assets/kai-logo.svg';
+import kaiLogo from '../../assets/logokai.webp';
 import { useTranslation } from 'react-i18next';
 
 
@@ -121,13 +121,13 @@ const LoginPage = () => {
           </div>
         </div>
         <div className="text-center mb-8">
-          <p className="text-slate-300 text-sm font-medium">{t('auth.subtitle')}<br/>{t('auth.company')}</p>
+          <p className="login-text text-sm font-medium">{t('auth.subtitle')}<br/>{t('auth.company')}</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">{t('auth.email')}</label>
+            <label className="login-text block text-sm font-medium mb-1.5">{t('auth.email')}</label>
             <input
               type="email"
               className="form-control text-slate-900 placeholder:text-slate-500 focus:border-purple-500 transition-colors"
@@ -139,7 +139,7 @@ const LoginPage = () => {
           </div>
 
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">{t('auth.password')}</label>
+            <label className="login-text block text-sm font-medium mb-1.5">{t('auth.password')}</label>
             <input
               type="password"
               className="form-control text-slate-900 placeholder:text-slate-500 focus:border-purple-500 transition-colors"
@@ -150,7 +150,7 @@ const LoginPage = () => {
             />
           </div>
             
-          <p className="text-sm text-slate-400 mt-1">{t('auth.hint')}</p>
+          <p className="login-text-dim text-sm mt-1">{t('auth.hint')}</p>
 
           {/* Error State */}
           {errorMsg && !isLocked && (
@@ -196,7 +196,7 @@ const LoginPage = () => {
           
         </form>
         
-        <div className="mt-8 text-center text-xs font-medium text-slate-400">
+        <div className="login-text-dim mt-8 text-center text-xs font-medium">
           © {new Date().getFullYear()} {t('auth.footer')}
         </div>
       </div>

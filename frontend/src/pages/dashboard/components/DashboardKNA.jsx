@@ -26,10 +26,16 @@ const DashboardKNA = ({ laporanList, approvedLaporan, targetTahunan = null }) =>
   let totalKontrakRow = 0;
   let totalKontrakNonRow = 0;
 
+  // realisasi_rkad tiap baris SUDAH kumulatif (dihitung backend), jadi total
+  // = nilai kumulatif pada laporan terbaru, BUKAN jumlah semua baris
+  // (dijumlah akan menghitung ganda dan persen bisa >1000%).
+  let latestTglKNA = '';
   approvedLaporan.forEach(l => {
     if (l.laporan_kna) {
       const kna = l.laporan_kna;
-      realisasiRKAD += kna.realisasi_rkad ? parseFloat(kna.realisasi_rkad) : 0;
+      const v = kna.realisasi_rkad ? parseFloat(kna.realisasi_rkad) : 0;
+      const t = String(l.tanggal || '');
+      if (t >= latestTglKNA) { latestTglKNA = t; realisasiRKAD = v; }
       totalLuasTanahRow += kna.luas_t_row ? parseFloat(kna.luas_t_row) : 0;
       totalLuasBangunanRow += kna.luas_b_row ? parseFloat(kna.luas_b_row) : 0;
       totalLuasTanahNonRow += kna.luas_t_non_row ? parseFloat(kna.luas_t_non_row) : 0;
@@ -197,23 +203,23 @@ const DashboardKNA = ({ laporanList, approvedLaporan, targetTahunan = null }) =>
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' }}>
-                <h2 className="text-3xl font-bold" style={{ color: 'var(--brand-500)' }}>{persentaseKNA}%</h2>
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', maxWidth: '70%' }}>
+                <h2 className="font-bold" style={{ color: 'var(--brand-500)', margin: 0, lineHeight: 1.1, overflowWrap: 'anywhere', fontSize: String(persentaseKNA).length > 7 ? '18px' : String(persentaseKNA).length > 5 ? '22px' : '30px' }}>{persentaseKNA}%</h2>
                 <p className="text-xs text-muted">{t('unit.realization')}</p>
               </div>
             </div>
-            <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
-              <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
+            <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+              <div style={{ textAlign: 'center', flex: 1, minWidth: 0, borderRight: '1px solid var(--border)', padding: '0 4px' }}>
                 <p className="text-xs text-muted mb-1">{t('unit.total_realization')}</p>
-                <p className="font-semibold text-gray-800">{cur} {formatNumber(realisasiRKAD, lang)}</p>
+                <p className="font-semibold text-gray-800" style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{cur} {formatCompact(realisasiRKAD, lang, 2)}</p>
               </div>
-              <div style={{ textAlign: 'center', flex: 1, borderRight: '1px solid var(--border)' }}>
+              <div style={{ textAlign: 'center', flex: 1, minWidth: 0, borderRight: '1px solid var(--border)', padding: '0 4px' }}>
                 <p className="text-xs text-muted mb-1">{t('unit.rkad_target')}</p>
-                <p className="font-semibold text-gray-800">{cur} {formatNumber(targetRKAD, lang)}</p>
+                <p className="font-semibold text-gray-800" style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{cur} {formatCompact(targetRKAD, lang, 2)}</p>
               </div>
-              <div style={{ textAlign: 'center', flex: 1 }}>
+              <div style={{ textAlign: 'center', flex: 1, minWidth: 0, padding: '0 4px' }}>
                 <p className="text-xs text-muted mb-1">{t('dashboard.remaining')} ({sisaPersenKNA}%)</p>
-                <p className="font-semibold text-gray-800">{cur} {formatNumber(sisaRKAD, lang)}</p>
+                <p className="font-semibold text-gray-800" style={{ fontSize: '13px', overflowWrap: 'anywhere' }}>{cur} {formatCompact(sisaRKAD, lang, 2)}</p>
               </div>
             </div>
           </div>

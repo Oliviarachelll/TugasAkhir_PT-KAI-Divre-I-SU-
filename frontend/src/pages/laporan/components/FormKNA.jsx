@@ -3,21 +3,25 @@ import { useTranslation } from 'react-i18next';
 import FormattedNumberInput from './FormattedNumberInput';
 import { currencyPrefix, formatNumber } from '../../../utils/format';
 
-const FormKNA = ({ draftLaporan, handleChangeKNA, targetTahunan = null }) => {
+const FormKNA = ({ draftLaporan, handleChangeKNA, targetTahunan = null, previewRealisasi = null }) => {
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
   const cur = currencyPrefix(lang);
   const kna = draftLaporan.kna || {};
   const hasMasterTarget = targetTahunan !== null && targetTahunan !== undefined;
+  const isNew = !draftLaporan.id_laporan;
 
-  // Target tahunan master otomatis mengisi field (hanya bila masih kosong,
-  // agar nilai historis laporan lama tidak tertimpa).
+  // Target tahunan master otomatis mengisi field. Draft BARU selalu ikut master
+  // terbaru (field read-only, user tak bisa ubah manual); draft lama/edit
+  // dipertahankan agar histori tidak tertimpa, kecuali masih kosong.
   useEffect(() => {
-    if (hasMasterTarget && (kna.target_rkad === '' || kna.target_rkad === null || kna.target_rkad === undefined)) {
+    if (!hasMasterTarget) return;
+    const empty = kna.target_rkad === '' || kna.target_rkad === null || kna.target_rkad === undefined;
+    if ((isNew || empty) && Number(kna.target_rkad) !== Number(targetTahunan)) {
       handleChangeKNA('target_rkad', Number(targetTahunan));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMasterTarget]);
+  }, [hasMasterTarget, targetTahunan, isNew]);
 
   return (
     <>
@@ -91,7 +95,10 @@ const FormKNA = ({ draftLaporan, handleChangeKNA, targetTahunan = null }) => {
           </div>
           <div className="form-group mb-0">
             <label className="form-label">{t('laporan.form.kna_realization')}</label>
-            <FormattedNumberInput className="form-control" placeholder="0" prefix={cur} value={kna.realisasi_rkad ?? ''} onChange={(val) => handleChangeKNA('realisasi_rkad', val)} />
+            <div className="form-control bg-card-2 text-muted" style={{ padding: '8px 12px' }}>
+              {cur} {formatNumber(previewRealisasi ?? kna.realisasi_rkad ?? 0, lang)}
+            </div>
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>{t('laporan.form.realisasi_auto')}</p>
           </div>
         </div>
       </div>

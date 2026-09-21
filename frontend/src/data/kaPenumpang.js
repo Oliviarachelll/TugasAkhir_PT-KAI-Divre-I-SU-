@@ -575,28 +575,28 @@ export const KA_PENUMPANG_LIST = [
   },
   {
     "no_ka": "plb U53A",
-    "nama_ka": "Sribilah Utama",
+    "nama_ka": "SRIBILAH UTAMA",
     "lintas": "RAP - MDN",
     "berangkat": "15:00",
     "kedatangan": "20:00"
   },
   {
     "no_ka": "plb U58A",
-    "nama_ka": "Sribilah Utama",
+    "nama_ka": "SRIBILAH UTAMA",
     "lintas": "MDN - RAP",
     "berangkat": "10:10",
     "kedatangan": "16:08"
   },
   {
     "no_ka": "plb U95A",
-    "nama_ka": "Putri Deli",
+    "nama_ka": "PUTRI DELI",
     "lintas": "TNB - MDN",
     "berangkat": "8:15",
     "kedatangan": "12:23"
   },
   {
     "no_ka": "plb U97A",
-    "nama_ka": "Putri Deli",
+    "nama_ka": "PUTRI DELI",
     "lintas": "TNB - MDN",
     "berangkat": "12:35",
     "kedatangan": "16:42"
