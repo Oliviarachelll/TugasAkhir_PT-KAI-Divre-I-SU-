@@ -215,6 +215,8 @@ model Laporan {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  // Satu unit hanya boleh punya satu laporan per tanggal (sinkron seed/guard).
+  @@unique([tanggal, id_unit])
   @@map("laporan")
 }
 

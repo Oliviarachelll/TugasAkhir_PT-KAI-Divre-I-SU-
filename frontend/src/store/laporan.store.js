@@ -5,6 +5,48 @@ import i18n from '../i18n';
 import { apiErrorMessage, API_ERROR_TOAST_ID } from '../api/client';
 import useAuthStore from './auth.store';
 
+// Helper guard revisi: minimal 1 angka DATA berubah (target/realisasi/
+// rincian/catatan/tanggal tidak dihitung). Cukup 1 field.
+const KNA_DATA_FIELDS = ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row'];
+const numEq = (a, b) => {
+  const na = a === '' || a === null || a === undefined ? 0 : Number(a);
+  const nb = b === '' || b === null || b === undefined ? 0 : Number(b);
+  if (Number.isNaN(na) || Number.isNaN(nb)) return na === nb;
+  return Math.abs(na - nb) < 1e-9;
+};
+const hasNumericDataChangeClient = (original, draft) => {
+  if (!original) return true; // tidak ada pembanding → biarkan backend yang menilai
+  for (const f of KNA_DATA_FIELDS) {
+    if (!numEq(original?.kna?.[f], draft?.kna?.[f])) return true;
+  }
+  if (!numEq(original?.keuangan?.pendapatan, draft?.keuangan?.pendapatan)) return true;
+  if (!numEq(original?.keuangan?.pengeluaran, draft?.keuangan?.pengeluaran)) return true;
+  const keyP = (x) => String(x?.nama_ka || '').toUpperCase();
+  const mapP = new Map((original?.penumpangItems || []).map((x) => [keyP(x), x]));
+  if ((original?.penumpangItems || []).length !== (draft?.penumpangItems || []).length) {
+    // Jumlah baris beda belum tentu angka berubah — cek angka dulu di bawah.
+  }
+  for (const x of draft?.penumpangItems || []) {
+    const y = mapP.get(keyP(x));
+    if (!y) return true;
+    if (!numEq(y.jml_penumpang, x.jml_penumpang) || !numEq(y.pendapatan, x.pendapatan)) return true;
+  }
+  for (const [k, y] of mapP) {
+    if (!(draft?.penumpangItems || []).some((x) => keyP(x) === k)) return true;
+  }
+  const keyB = (x) => (x?.id_komoditi !== undefined && x?.id_komoditi !== null && x?.id_komoditi !== '')
+    ? `id:${x.id_komoditi}` : `custom:${String(x?.nama_kustom || '').toUpperCase()}`;
+  const mapB = new Map((original?.barangItems || []).map((x) => [keyB(x), x]));
+  for (const x of draft?.barangItems || []) {
+    const y = mapB.get(keyB(x));
+    if (!y) return true;
+    if (!numEq(y.jml_ka, x.jml_ka) || !numEq(y.volume, x.volume) || !numEq(y.pendapatan, x.pendapatan)) return true;
+  }
+  for (const [k] of mapB) {
+    if (!(draft?.barangItems || []).some((x) => keyB(x) === k)) return true;
+  }
+  return false;
+};
 // Koersi angka untuk payload resubmit: nilai dari DB tiba sebagai string
 // (kolom Decimal Prisma terserialisasi jadi string, mis. "123.00") atau
 // null, sementara validasi backend menuntut z.number(). Helper ini
@@ -75,6 +117,13 @@ const useLaporanStore = create((set, get) => ({
         pendapatanKa,
         barangItems: (laporan.laporan_barang || []).filter(b => b.id_komoditi !== 99),
         barangTotal: barangTotal,
+        // Snapshot angka asli untuk guard revisi (wajib 1 angka berubah).
+        _original: {
+          kna: laporan.laporan_kna ? { ...laporan.laporan_kna } : null,
+          keuangan: laporan.laporan_keuangan ? { ...laporan.laporan_keuangan } : null,
+          penumpangItems: (laporan.laporan_penumpang || []).map((x) => ({ ...x })),
+          barangItems: (laporan.laporan_barang || []).filter(b => b.id_komoditi !== 99).map((x) => ({ ...x })),
+        },
       }
     }));
   },
@@ -179,6 +228,14 @@ const useLaporanStore = create((set, get) => ({
       // Resubmit revisi menggunakan satu request atomik agar ID laporan tetap sama,
       // snapshot konsisten, dan item lama tidak terduplikasi.
       if (draft.id_laporan && draft.status === 'REVISI') {
+        // Guard: wajib minimal 1 angka DATA berubah (backend juga validasi).
+        if (draft._original && !hasNumericDataChangeClient(draft._original, draft)) {
+          const msg = 'Revisi wajib mengubah minimal satu angka data (mis. nilai, volume, pendapatan, jumlah).';
+          set({ error: msg });
+          toast.error(msg, { id: API_ERROR_TOAST_ID });
+          set({ isLoading: false });
+          return false;
+        }
         const pendapatanKaObj = draft.pendapatanKa || {};
         const appliedKa = new Set();
         const revisionPenumpang = (penumpangItems || []).map(item => {

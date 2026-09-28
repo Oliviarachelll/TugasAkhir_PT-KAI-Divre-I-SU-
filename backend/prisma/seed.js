@@ -179,11 +179,11 @@ async function main() {
   }
 
   // ============================================================
-  // 4. Seed Target Tahun Berjalan (per unit)
+  // 4. Seed Target Tahun FIX 2026 (sinkron semua mesin/admin/user)
   // ============================================================
   console.log('\n🎯 Seeding target...');
 
-  const tahunIni = new Date().getFullYear();
+  const tahunIni = 2026;
 
   const TARGETS = [
     { tahun: tahunIni, kategori: 'KNA',          nilai: 500,           id_unit: unitKNA.id_unit },
@@ -223,10 +223,35 @@ async function main() {
   const targetKNA = targetOf(unitKNA.id_unit, 10000000000);
   const targetKeuangan = targetOf(unitKeuangan.id_unit, 150000000000);
 
+  // Tanggal FIX 1-27 September 2026 agar sinkron semua mesin/peran.
+  // Format lokal WIB (jam 12 siang) supaya tidak geser ±1 hari via UTC.
+  const SEED_YEAR = 2026;
+  const SEED_MONTH_IDX = 8; // September (0-based)
+  const SEED_DAYS = Array.from({ length: 27 }, (_, k) => k + 1);
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const dateKeyWib = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const seedDate = (day) => new Date(SEED_YEAR, SEED_MONTH_IDX, day, 12, 0, 0);
+
+  // RNG deterministik (mulberry32) — angka sama di semua mesin,
+  // bervariasi per unit+tanggal.
+  const mulberry32 = (seed) => () => {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const rngFor = (idUnit, day) => mulberry32(idUnit * 1000 + day);
+
+  // Pola status FIX per tanggal (sinkron Admin/IT/User):
+  // tgl 1-24 = DISETUJUI, tgl 25 = REVISI (1), tgl 26-27 = DIAJUKAN (2).
+  const statusForDay = (day) => (day === 25 ? 'REVISI' : day >= 26 ? 'DIAJUKAN' : 'DISETUJUI');
+  const internalFor = (rng) => statusInternalList[Math.floor(rng() * statusInternalList.length)];
+
   // Kombinasi unit+tanggal yang sudah ada (data asli user) dilewati.
+  // Key memakai format WIB agar konsisten dengan guard frontend.
   const sudahAda = new Set(
     (await prisma.laporan.findMany({ select: { id_unit: true, tanggal: true } }))
-      .map((l) => `${l.id_unit}-${new Date(l.tanggal).toISOString().slice(0, 10)}`)
+      .map((l) => `${l.id_unit}-${dateKeyWib(new Date(l.tanggal))}`)
   );
 
   const userKna = await prisma.pengguna.findUnique({ where: { email: 'unit.kna@rache.id' } });
@@ -251,43 +276,43 @@ async function main() {
   let countKeuangan = 0;
   let skipped = 0;
 
-  const tglKey = (d, idUnit) => `${idUnit}-${new Date(d).toISOString().slice(0, 10)}`;
+  const tglKey = (d, idUnit) => `${idUnit}-${dateKeyWib(new Date(d))}`;
 
-  for (let i = 0; i < 30; i++) {
-    // Tanggal berurut dari hari ini mundur 30 hari
-    const pastDate = new Date();
-    pastDate.setDate(pastDate.getDate() - i);
+  for (const day of SEED_DAYS) {
+    // Tanggal FIX (bukan relatif hari ini) agar sinkron semua mesin.
+    const pastDate = seedDate(day);
+    const dateStr = dateKeyWib(pastDate);
 
-    // Fungsi bantuan untuk merandom status.
-    // Dummy hanya DISETUJUI (70%) / DIAJUKAN (30%) agar tidak mengotori
-    // (tidak ada DRAFT/REVISI/DITOLAK).
-    const getRandomInternal = () => statusInternalList[Math.floor(Math.random() * statusInternalList.length)];
-    const getRandomStatus = () => (Math.random() < 0.7 ? 'DISETUJUI' : 'DIAJUKAN');
+    // Status FIX + RNG deterministik per unit+tanggal.
+    const statusFix = statusForDay(day);
 
     // 1. Seed KNA (dilewati bila unit+tanggal sudah ada = data asli)
     if (userKna && !sudahAda.has(tglKey(pastDate, unitKNA.id_unit))) {
+      const rng = rngFor(unitKNA.id_unit, day);
+      const pickInternal = internalFor(rng);
       await prisma.laporan.create({
         data: {
           tanggal: pastDate,
-          status_internal: getRandomInternal(),
-          status: getRandomStatus(),
+          status_internal: pickInternal,
+          status: statusFix,
           id_unit: unitKNA.id_unit,
           id_pengguna: userKna.id_pengguna,
           laporan_kna: {
             create: {
-              jml_kontrak_row: Math.floor(Math.random() * 20) + 5,
-              luas_t_row: parseFloat((Math.random() * 10000 + 1000).toFixed(4)),
-              luas_b_row: parseFloat((Math.random() * 5000 + 500).toFixed(4)),
-              nilai_row: parseFloat((Math.random() * 500000 + 50000).toFixed(2)),
+              jml_kontrak_row: Math.floor(rng() * 20) + 5,
+              luas_t_row: parseFloat((rng() * 10000 + 1000).toFixed(4)),
+              luas_b_row: parseFloat((rng() * 5000 + 500).toFixed(4)),
+              nilai_row: parseFloat((rng() * 500000 + 50000).toFixed(2)),
               target_rkad: targetKNA,
-              jml_kontrak_non_row: Math.floor(Math.random() * 10) + 1,
-              luas_t_non_row: parseFloat((Math.random() * 5000 + 500).toFixed(4)),
-              luas_b_non_row: parseFloat((Math.random() * 2000 + 200).toFixed(4)),
-              nilai_non_row: parseFloat((Math.random() * 200000 + 20000).toFixed(2))
+              jml_kontrak_non_row: Math.floor(rng() * 10) + 1,
+              luas_t_non_row: parseFloat((rng() * 5000 + 500).toFixed(4)),
+              luas_b_non_row: parseFloat((rng() * 2000 + 200).toFixed(4)),
+              nilai_non_row: parseFloat((rng() * 200000 + 20000).toFixed(2))
             }
           }
         }
       });
+      sudahAda.add(`${unitKNA.id_unit}-${dateStr}`);
       countKNA++;
     } else if (userKna) {
       skipped++;
@@ -295,17 +320,19 @@ async function main() {
 
     // 2. Seed Barang
     if (userBarang && semuaKomoditiBarang.length > 0 && !sudahAda.has(tglKey(pastDate, unitBarang.id_unit))) {
+      const rng = rngFor(unitBarang.id_unit, day);
+      const pickInternal = internalFor(rng);
       const arrayLaporanBarang = semuaKomoditiBarang.map(komoditi => {
         return {
-          jml_ka: Math.floor(Math.random() * 15) + 2,
-          volume: parseFloat((Math.random() * 20000 + 5000).toFixed(4)),
-          volume_kumulatif: parseFloat((Math.random() * 100000 + 20000).toFixed(4)),
+          jml_ka: Math.floor(rng() * 15) + 2,
+          volume: parseFloat((rng() * 20000 + 5000).toFixed(4)),
+          volume_kumulatif: parseFloat((rng() * 100000 + 20000).toFixed(4)),
           volume_program: 150000,
-          volume_pencapaian: parseFloat((Math.random() * 100).toFixed(2)),
-          pendapatan: parseFloat((Math.random() * 1000000000 + 100000000).toFixed(2)),
-          pendapatan_kumulatif: parseFloat((Math.random() * 5000000000 + 500000000).toFixed(2)),
+          volume_pencapaian: parseFloat((rng() * 100).toFixed(2)),
+          pendapatan: parseFloat((rng() * 1000000000 + 100000000).toFixed(2)),
+          pendapatan_kumulatif: parseFloat((rng() * 5000000000 + 500000000).toFixed(2)),
           pendapatan_program: 6000000000,
-          pendapatan_pencapaian: parseFloat((Math.random() * 100).toFixed(2)),
+          pendapatan_pencapaian: parseFloat((rng() * 100).toFixed(2)),
           id_komoditi: komoditi.id_komoditi
         };
       });
@@ -313,8 +340,8 @@ async function main() {
       await prisma.laporan.create({
         data: {
           tanggal: pastDate,
-          status_internal: getRandomInternal(),
-          status: getRandomStatus(),
+          status_internal: pickInternal,
+          status: statusFix,
           id_unit: unitBarang.id_unit,
           id_pengguna: userBarang.id_pengguna,
           laporan_barang: {
@@ -322,6 +349,7 @@ async function main() {
           }
         }
       });
+      sudahAda.add(`${unitBarang.id_unit}-${dateStr}`);
       countBarang++;
     } else if (userBarang) {
       skipped++;
@@ -329,17 +357,19 @@ async function main() {
 
     // 3. Seed Penumpang
     if (userPenumpang && !sudahAda.has(tglKey(pastDate, unitPenumpang.id_unit))) {
+      const rng = rngFor(unitPenumpang.id_unit, day);
+      const pickInternal = internalFor(rng);
       const arrayLaporanPenumpang = namaKaList.map(ka => ({
         nama_ka: ka,
-        jml_penumpang: Math.floor(Math.random() * 5000) + 1000,
-        pendapatan: parseFloat((Math.random() * 500000000 + 50000000).toFixed(2))
+        jml_penumpang: Math.floor(rng() * 5000) + 1000,
+        pendapatan: parseFloat((rng() * 500000000 + 50000000).toFixed(2))
       }));
 
       await prisma.laporan.create({
         data: {
           tanggal: pastDate,
-          status_internal: getRandomInternal(),
-          status: getRandomStatus(),
+          status_internal: pickInternal,
+          status: statusFix,
           id_unit: unitPenumpang.id_unit,
           id_pengguna: userPenumpang.id_pengguna,
           laporan_penumpang: {
@@ -347,26 +377,29 @@ async function main() {
           }
         }
       });
+      sudahAda.add(`${unitPenumpang.id_unit}-${dateStr}`);
       countPenumpang++;
     } else if (userPenumpang) {
       skipped++;
     }
     // 4. Seed Keuangan
     if (userKeuangan && !sudahAda.has(tglKey(pastDate, unitKeuangan.id_unit))) {
-      const p1 = Math.floor(Math.random() * 4000000) + 1000000;
-      const e1 = Math.floor(Math.random() * 1000000);
-      const e2 = Math.floor(Math.random() * 500000);
-      const e3 = Math.floor(Math.random() * 200000);
+      const rng = rngFor(unitKeuangan.id_unit, day);
+      const pickInternal = internalFor(rng);
+      const p1 = Math.floor(rng() * 4000000) + 1000000;
+      const e1 = Math.floor(rng() * 1000000);
+      const e2 = Math.floor(rng() * 500000);
+      const e3 = Math.floor(rng() * 200000);
 
       const rincianTransaksi = [
         { id: '1', jenis: 'Penerimaan', uraian: 'Pendapatan Jasa', penerimaan: p1.toString(), pengeluaran: '0', unit_kerja: 'KNA' },
         { id: '2', jenis: 'Pengeluaran', uraian: 'Biaya Operasional', penerimaan: '0', pengeluaran: e1.toString(), unit_kerja: 'Keuangan' }
       ];
       const rincianSPJ = [
-        { id: '1', no_spj: `SPJ-${i}`, tanggal_spj: pastDate.toISOString().split('T')[0], uraian: 'Biaya Dinas', nominal: e2.toString(), keterangan: '-' }
+        { id: '1', no_spj: `SPJ-202609${pad2(day)}`, tanggal_spj: dateStr, uraian: 'Biaya Dinas', nominal: e2.toString(), keterangan: '-' }
       ];
       const rincianInvoice = [
-        { id: '1', no_invoice: `INV-${i}`, tanggal_invoice: pastDate.toISOString().split('T')[0], vendor: 'Vendor A', nominal: e3.toString(), jatuh_tempo: pastDate.toISOString().split('T')[0], status: 'Belum Lunas', keterangan: '-' }
+        { id: '1', no_invoice: `INV-202609${pad2(day)}`, tanggal_invoice: dateStr, vendor: 'Vendor A', nominal: e3.toString(), jatuh_tempo: dateStr, status: 'Belum Lunas', keterangan: '-' }
       ];
 
       const pendapatan = p1;
@@ -378,8 +411,8 @@ async function main() {
       await prisma.laporan.create({
         data: {
           tanggal: pastDate,
-          status_internal: getRandomInternal(),
-          status: getRandomStatus(),
+          status_internal: pickInternal,
+          status: statusFix,
           id_unit: unitKeuangan.id_unit,
           id_pengguna: userKeuangan.id_pengguna,
           laporan_keuangan: {
@@ -395,13 +428,14 @@ async function main() {
           }
         }
       });
+      sudahAda.add(`${unitKeuangan.id_unit}-${dateStr}`);
       countKeuangan++;
     } else if (userKeuangan) {
       skipped++;
     }
   }
 
-  console.log(`  ✅ Berhasil generate ${countKNA} KNA, ${countBarang} Barang, ${countPenumpang} Penumpang, ${countKeuangan} Keuangan bervariasi (${skipped} tanggal dilewati = data asli).`);
+  console.log(`  ✅ Berhasil generate ${countKNA} KNA, ${countBarang} Barang, ${countPenumpang} Penumpang, ${countKeuangan} Keuangan FIX 1-27 Sep 2026 (${skipped} tanggal dilewati = data asli).`);
 
   // ============================================================
   // RINGKASAN

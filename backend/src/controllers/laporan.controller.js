@@ -117,6 +117,70 @@ const collectChangedFields = (before, after, path = '') => {
     .flatMap(key => collectChangedFields(before[key], after[key], path ? `${path}.${key}` : key));
 };
 
+// Field angka DATA yang wajib berubah minimal 1 saat resubmit revisi.
+// target_rkad / realisasi_rkad / rincian_* / tanggal / kotak_detail /
+// status_internal / nama_ka / lintas dsb TIDAK dihitung.
+const KNA_DATA_FIELDS = ['jml_kontrak_row', 'luas_t_row', 'luas_b_row', 'nilai_row', 'jml_kontrak_non_row', 'luas_t_non_row', 'luas_b_non_row', 'nilai_non_row'];
+const BARANG_DATA_FIELDS = ['jml_ka', 'volume', 'pendapatan'];
+const PENUMPANG_DATA_FIELDS = ['jml_penumpang', 'pendapatan'];
+const KEUANGAN_DATA_FIELDS = ['pendapatan', 'pengeluaran'];
+
+const numEqual = (a, b) => {
+  const na = a === null || a === undefined || a === '' ? 0 : Number(a);
+  const nb = b === null || b === undefined || b === '' ? 0 : Number(b);
+  if (Number.isNaN(na) || Number.isNaN(nb)) return na === nb;
+  return Math.abs(na - nb) < 1e-9;
+};
+
+const hasNumericDataChange = (before, after) => {
+  const changed = [];
+  if (before?.kna || after?.kna) {
+    for (const f of KNA_DATA_FIELDS) {
+      if (!numEqual(before?.kna?.[f], after?.kna?.[f])) changed.push(`kna.${f}`);
+    }
+  }
+  if (before?.keuangan || after?.keuangan) {
+    for (const f of KEUANGAN_DATA_FIELDS) {
+      if (!numEqual(before?.keuangan?.[f], after?.keuangan?.[f])) changed.push(`keuangan.${f}`);
+    }
+  }
+  const keyPenumpang = (x) => String(x?.nama_ka || '').toUpperCase();
+  const mapP = new Map();
+  for (const x of before?.penumpang || []) mapP.set(keyPenumpang(x), x);
+  const seenP = new Set();
+  for (const x of after?.penumpang || []) {
+    const k = keyPenumpang(x);
+    seenP.add(k);
+    const y = mapP.get(k);
+    if (!y) { changed.push(`penumpang.${k || 'baru'}`); continue; }
+    for (const f of PENUMPANG_DATA_FIELDS) {
+      if (!numEqual(y[f], x[f])) changed.push(`penumpang.${k}.${f}`);
+    }
+  }
+  for (const k of mapP.keys()) {
+    if (!seenP.has(k)) changed.push(`penumpang.${k || 'hapus'}`);
+  }
+  const keyBarang = (x) => (x?.id_komoditi !== undefined && x?.id_komoditi !== null && x?.id_komoditi !== '')
+    ? `id:${x.id_komoditi}`
+    : `custom:${String(x?.nama_kustom || '').toUpperCase()}`;
+  const mapB = new Map();
+  for (const x of before?.barang || []) mapB.set(keyBarang(x), x);
+  const seenB = new Set();
+  for (const x of after?.barang || []) {
+    const k = keyBarang(x);
+    seenB.add(k);
+    const y = mapB.get(k);
+    if (!y) { changed.push(`barang.${k}`); continue; }
+    for (const f of BARANG_DATA_FIELDS) {
+      if (!numEqual(y[f], x[f])) changed.push(`barang.${k}.${f}`);
+    }
+  }
+  for (const k of mapB.keys()) {
+    if (!seenB.has(k)) changed.push(`barang.${k}.hapus`);
+  }
+  return changed;
+};
+
 /**
  * GET /api/laporan
  */
@@ -477,9 +541,16 @@ const resubmitLaporan = async (req, res) => {
   };
   const after = snapshotLaporan(incoming);
   const changedFields = collectChangedFields(before, after);
+  const numericChanged = hasNumericDataChange(before, after);
 
   if (changedFields.length === 0) {
     return sendError(res, 'Tidak ada perubahan data. Ubah minimal satu field sebelum resubmit.', 409);
+  }
+
+  // Revisi wajib mengubah minimal 1 angka DATA (target/realisasi/rincian/
+  // catatan/tanggal tidak dihitung). Cukup 1 field, tidak wajib semua.
+  if (numericChanged.length === 0) {
+    return sendError(res, 'Revisi wajib mengubah minimal satu angka data (mis. nilai, volume, pendapatan, jumlah). Perubahan catatan/tanggal saja belum cukup.', 422);
   }
 
   const result = await prisma.$transaction(async (tx) => {
