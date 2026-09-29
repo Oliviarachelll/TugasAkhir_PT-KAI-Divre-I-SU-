@@ -33,7 +33,7 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response.data,
+  (response) => response.config?.responseType === 'blob' ? response : response.data,
   (error) => {
     // Request ke endpoint auth (login / reset-password / unlock) TIDAK boleh
     // memicu logout global: 401 di sana artinya kredensial salah, dan halaman
@@ -41,12 +41,13 @@ apiClient.interceptors.response.use(
     // password me-reload halaman login dan error tidak pernah terlihat.
     const url = error.config?.url || '';
     const isAuthRequest = url.startsWith('/auth/');
+    const isBlobRequest = error.config?.responseType === 'blob';
     if (error.response?.status === 401 && !isAuthRequest) {
       useAuthStore.getState().logout();
-      toast.error(i18n.t('api.session_expired'));
+      if (!isBlobRequest) toast.error(i18n.t('api.session_expired'));
     } else if (error.response?.status === 403) {
-      toast.error(i18n.t('api.forbidden'));
-    } else {
+      if (!isBlobRequest) toast.error(i18n.t('api.forbidden'));
+    } else if (!isBlobRequest) {
       toast.error(apiErrorMessage(error, i18n.t('api.server_error')), { id: API_ERROR_TOAST_ID });
     }
     

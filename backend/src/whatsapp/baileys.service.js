@@ -1,15 +1,14 @@
 /**
- * Baileys WhatsApp Service
- * SCOPE: Notifikasi keluar + pengiriman token reset password
+ * Baileys WhatsApp Service (jalur utama pengiriman — migrasi dari Meta Cloud API)
+ * SCOPE: Notifikasi keluar + pengiriman token reset password + pengingat kondisional
  *
  * Fungsi yang tersedia:
  *   1. kirimTokenReset(nomor, token)             → Reset password
  *   2. notifikasiLaporanDisetujui(nomor, nama, tanggal, unit)
  *   3. notifikasiLaporanDitolak(nomor, nama, tanggal, alasan)
  *   4. notifikasiPermintaanUpdate(nomor, nama, jenis, status)
- *
- * Install Baileys terpisah:
- *   npm install @whiskeysockets/baileys
+ *   5. notifikasiPengingatDeadline(...)          → Pengingat unit belum lapor (H-3/H-1/H+)
+ *   6. notifikasiRevisiTertunda(...)             → Pengingat laporan DITOLAK/REVISI belum diperbaiki
  *
  * Aktifkan di .env:
  *   ENABLE_WHATSAPP=true
@@ -116,6 +115,29 @@ class WhatsAppService extends EventEmitter {
   }
 
   /**
+   * Normalisasi nomor HP ke format internasional 62xxx (satu-satunya helper resmi).
+   * '0813...' -> '62813...', '62813...' tetap, karakter non-digit dibuang.
+   */
+  static formatNomor62(nomor) {
+    if (!nomor) return '';
+    let bersih = String(nomor).replace(/[^0-9]/g, '');
+    if (bersih.startsWith('0')) {
+      bersih = '62' + bersih.substring(1);
+    }
+    return bersih;
+  }
+
+  /**
+   * Status koneksi untuk health-check / UI admin (tanpa membocorkan socket).
+   */
+  getStatus() {
+    return {
+      connected: this.isConnected && this._ready,
+      queued: this._messageQueue.length,
+    };
+  }
+
+  /**
    * Kirim pesan — dengan antrian jika belum siap
    * @param {string} nomor - Format: 628xxx (tanpa + atau spasi)
    * @param {string} teks - Isi pesan
@@ -127,7 +149,11 @@ class WhatsAppService extends EventEmitter {
       return false;
     }
 
-    const nomorBersih = nomor.replace(/[^0-9]/g, '');
+    const nomorBersih = WhatsAppService.formatNomor62(nomor);
+    if (!nomorBersih) {
+      console.warn('[WA] Nomor tujuan kosong/invalid, pengiriman dibatalkan.');
+      return false;
+    }
     const jid = `${nomorBersih}@s.whatsapp.net`;
 
     if (!this.isConnected || !this._ready) {
@@ -243,6 +269,43 @@ class WhatsAppService extends EventEmitter {
       `Permintaan *${jenis}* Anda\n` +
       `sekarang berstatus: *${status}*\n\n` +
       `Silakan login untuk detail.`;
+
+    return await this.kirimPesan(nomor, pesan);
+  }
+
+  /**
+   * 5. Pengingat deadline laporan (jalur Baileys — pengganti broadcast Meta).
+   * Dipanggil di: reminder.service.js → kirimPengingatUnit() / cron 08:00
+   */
+  async notifikasiPengingatDeadline(nomor, nama, namaUnit, tenggat, sisaHari) {
+    const urgensi = sisaHari < 0
+      ? `⚠️ Sudah lewat *${Math.abs(sisaHari)} hari* dari tenggat.`
+      : sisaHari === 0
+        ? `⚠️ Tenggat *HARI INI*.`
+        : `⏰ Sisa *${sisaHari} hari* menuju tenggat.`;
+    const pesan =
+      `⏰ *Pengingat Laporan - Sistem Laporan*\n\n` +
+      `Halo ${nama} (${namaUnit}),\n\n` +
+      `Unit Anda belum mengirim laporan periode ini.\n` +
+      `Tenggat: *${tenggat}*\n` +
+      `${urgensi}\n\n` +
+      `Silakan login dan submit laporan sebelum tenggat.`;
+
+    return await this.kirimPesan(nomor, pesan);
+  }
+
+  /**
+   * 6. Pengingat revisi tertunda (DITOLAK/REVISI belum diperbaiki).
+   * Dipanggil di: reminder.service.js → cron 16:00
+   */
+  async notifikasiRevisiTertunda(nomor, nama, tanggal, status, hariTertunda) {
+    const emoji = status === 'DITOLAK' ? '❌' : '🔄';
+    const pesan =
+      `${emoji} *Pengingat Revisi Laporan*\n\n` +
+      `Halo ${nama},\n\n` +
+      `Laporan tanggal *${tanggal}* berstatus *${status}* ` +
+      `dan belum diperbaiki selama *${hariTertunda} hari*.\n\n` +
+      `Silakan login untuk melihat catatan reviewer dan ajukan ulang.`;
 
     return await this.kirimPesan(nomor, pesan);
   }

@@ -65,8 +65,8 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
     <aside className={`sidebar bg-[var(--sidebar)] backdrop-blur-md ${className || ''} ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ borderRight: '1px solid var(--border)' }}>
       <div className="px-6 py-5 border-b relative flex flex-col items-start gap-4" style={{ height: '88px', justifyContent: 'center', borderColor: 'var(--border)' }}>
         <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : 'gap-4'}`}>
-          <div className="flex items-center justify-center p-1.5 rounded-xl flex-shrink-0" style={{ backgroundColor: 'var(--bg-main)' }}>
-            <img src={kaiLogo} alt="KAI Logo" className="h-7 w-auto object-contain" />
+          <div className="flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'transparent' }}>
+            <img src={kaiLogo} alt="KAI Logo" className="h-8 w-auto object-contain" style={{ maxWidth: '120px' }} />
           </div>
           <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${isCollapsed ? 'max-w-0 opacity-0' : 'max-w-[200px] opacity-100'}`}>
             <span className="text-[15px] font-bold tracking-tight leading-none truncate" style={{ color: 'var(--sidebar-active-text)' }}>PT KAI</span>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <title>Ekspor Laporan Operasional RACHE</title>
+  <style>{{{styles}}}</style>
+</head>
+<body>
+  <main>
+    <section class="cover">
+      <div class="cover-brand">
+        <img src="{{logoDataUri}}" alt="KAI" />
+        <div>
+          <p class="eyebrow">PT KERETA API INDONESIA (PERSERO)</p>
+          <h1>Rekap Laporan Operasional</h1>
+          <p class="subtitle">Divisi Regional I Sumatera Utara</p>
+        </div>
+      </div>
+
+      <div class="meta-grid">
+        <div><span>Dibuat oleh</span><strong>{{meta.generated_by.nama}}</strong><small>{{meta.generated_by.peran}}</small></div>
+        <div><span>Waktu ekspor</span><strong>{{formatDateTime meta.generated_at}}</strong><small>{{meta.timezone}}</small></div>
+        <div><span>Jumlah laporan</span><strong>{{formatNumber meta.record_count 0}}</strong><small>record terpilih</small></div>
+        <div><span>Versi template</span><strong>{{template_version}}</strong><small>{{schema_version}}</small></div>
+      </div>
+
+      <div class="filter-box">
+        <h2>Filter Ekspor</h2>
+        <dl>
+          <div><dt>Unit</dt><dd>{{fallback meta.filters.unit_name "Semua unit"}}</dd></div>
+          <div><dt>Status</dt><dd>{{fallback meta.filters.status "Semua status"}}</dd></div>
+          <div><dt>Bulan</dt><dd>{{fallback meta.filters.bulan "-"}}</dd></div>
+          <div><dt>Rentang tanggal</dt><dd>{{dateRange meta.filters.tanggal_mulai meta.filters.tanggal_akhir}}</dd></div>
+        </dl>
+      </div>
+
+      <h2 class="section-heading">Ringkasan Status</h2>
+      <div class="status-grid">
+        {{#each summary.by_status}}
+          <div class="status-card"><span>{{@key}}</span><strong>{{this}}</strong></div>
+        {{/each}}
+      </div>
+
+      <div class="summary-columns">
+        <section>
+          <h2 class="section-heading">Laporan per Unit</h2>
+          <table class="compact-table">
+            <thead><tr><th>Unit</th><th class="num">Jumlah</th></tr></thead>
+            <tbody>
+              {{#each summary.by_unit}}
+                <tr><td>{{nama}}</td><td class="num">{{jumlah_laporan}}</td></tr>
+              {{else}}
+                <tr><td colspan="2" class="empty">Tidak ada data</td></tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </section>
+        <section>
+          <h2 class="section-heading">Metrik Utama</h2>
+          <table class="compact-table">
+            <tbody>
+              <tr><th>Nilai KNA</th><td class="num">{{formatCurrency summary.domain_totals.kna_nilai}}</td></tr>
+              <tr><th>Jumlah Penumpang</th><td class="num">{{formatNumber summary.domain_totals.penumpang 0}}</td></tr>
+              <tr><th>Pendapatan Penumpang</th><td class="num">{{formatCurrency summary.domain_totals.pendapatan_penumpang}}</td></tr>
+              <tr><th>Pendapatan Barang</th><td class="num">{{formatCurrency summary.domain_totals.pendapatan_barang}}</td></tr>
+              <tr><th>Pendapatan Keuangan</th><td class="num">{{formatCurrency summary.domain_totals.pendapatan_keuangan}}</td></tr>
+              <tr><th>Pengeluaran Keuangan</th><td class="num">{{formatCurrency summary.domain_totals.pengeluaran_keuangan}}</td></tr>
+              <tr><th>Laba/Rugi Keuangan</th><td class="num">{{formatCurrency summary.domain_totals.laba_rugi_keuangan}}</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      {{#if summary.domain_totals.volume_barang.length}}
+        <h2 class="section-heading">Volume Barang per Satuan</h2>
+        <div class="metric-row">
+          {{#each summary.domain_totals.volume_barang}}
+            <div class="metric-pill"><strong>{{formatNumber volume 4}}</strong><span>{{satuan}}</span></div>
+          {{/each}}
+        </div>
+      {{/if}}
+
+      {{#if warnings.length}}
+        <div class="warning-box"><strong>{{warnings.length}} peringatan kualitas data</strong><span>Rincian ditampilkan pada bagian akhir dokumen.</span></div>
+      {{/if}}
+    </section>
+
+    {{#each reports}}
+      {{> report}}
+    {{else}}
+      <section class="empty-state">
+        <h2>Tidak ada data laporan</h2>
+        <p>Tidak ditemukan laporan yang sesuai dengan filter dan hak akses pengguna.</p>
+      </section>
+    {{/each}}
+
+    {{#if warnings.length}}
+      <section class="report warning-page">
+        <h2 class="report-title">Peringatan Kualitas Data</h2>
+        <ol class="warning-list">
+          {{#each warnings}}<li>{{this}}</li>{{/each}}
+        </ol>
+      </section>
+    {{/if}}
+  </main>
+</body>
+</html>

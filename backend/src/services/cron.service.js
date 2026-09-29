@@ -1,176 +1,162 @@
 const cron = require('node-cron');
 const prisma = require('../config/database');
+const whatsappService = require('../whatsapp/baileys.service');
+const reminderService = require('./reminder.service');
 
-// Helper to format phone number to Meta's requirement
-const formatPhoneNumber = (rawNumber) => {
-  let phone = rawNumber.trim();
-  if (/^\d+$/.test(phone)) {
-    if (phone.startsWith('0')) {
-      phone = '62' + phone.substring(1);
+// Eksekusi 1 template terjadwal via Baileys (pengganti executeBroadcast Meta).
+// Hanya kirim ke unit yang RELEVAN: belum lapor (deadline) atau revisi tertunda.
+const executeReminderBaileys = async (template) => {
+  const { nama_template, isi_pesan, unit_penerima } = template;
+  console.log(`[Cron-Baileys] Menjalankan template: ${nama_template}`);
+
+  const jenis = (nama_template || '').toUpperCase();
+  const isRevisi = jenis.includes('REVISI') || jenis.includes('DITOLAK');
+
+  try {
+    if (isRevisi) {
+      const tertunda = await reminderService.cariRevisiTertunda(3);
+      const relevan = unit_penerima === 'SEMUA'
+        ? tertunda
+        : tertunda.filter((l) => l.unit?.nama_unit === unit_penerima);
+      if (relevan.length === 0) {
+        console.log(`[Cron-Baileys] Skip ${nama_template}: tidak ada revisi tertunda.`);
+        return;
+      }
+      let s = 0, f = 0;
+      for (const lap of relevan) {
+        if (!lap.pengguna?.no_hp) { f++; continue; }
+        const tgl = new Date(lap.tanggal).toLocaleDateString('id-ID');
+        const hari = Math.floor((Date.now() - new Date(lap.updated_at)) / 86400000);
+        const ok = await whatsappService.notifikasiRevisiTertunda(
+          lap.pengguna.no_hp, lap.pengguna.nama, tgl, lap.status, hari
+        );
+        ok ? s++ : f++;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      await prisma.logNotifikasi.create({
+        data: {
+          template: nama_template,
+          penerima: `${relevan.length} Laporan tertunda`,
+          status: `${s} Berhasil, ${f} Gagal (Otomatis Baileys)`,
+        },
+      });
+      console.log(`[Cron-Baileys] ${nama_template}: ${s} berhasil, ${f} gagal.`);
+      return;
     }
+
+    // Default: pengingat deadline → hanya unit yang belum lapor bulan ini
+    const belum = await reminderService.cariUnitBelumLapor();
+    const target = unit_penerima === 'SEMUA'
+      ? belum
+      : belum.filter((u) => u.nama_unit === unit_penerima);
+    if (target.length === 0) {
+      console.log(`[Cron-Baileys] Skip ${nama_template}: semua unit sudah lapor.`);
+      return;
+    }
+    // Jika template punya isi kustom, pakai broadcast teksnya; jika tidak, pakai template deadline baku
+    if (isi_pesan && isi_pesan.trim() && !nama_template.toUpperCase().startsWith('PENGINGAT')) {
+      const results = await reminderService.broadcastBaileys({
+        messageType: 'text', messageText: isi_pesan, unitPenerima: unit_penerima,
+      });
+      console.log(`[Cron-Baileys] ${nama_template}: ${results.success.length} berhasil.`);
+      return;
+    }
+    for (const unit of target) {
+      await reminderService.kirimPengingatUnit(unit);
+    }
+    console.log(`[Cron-Baileys] ${nama_template}: pengingat ke ${target.length} unit.`);
+  } catch (error) {
+    console.error(`[Cron-Baileys] Error template ${template.nama_template}:`, error.message);
   }
-  return phone;
 };
 
-// Function to send the broadcast to Meta
-const executeBroadcast = async (template) => {
+const cekTriggerHarian = async () => {
+  console.log('🕒 [Baileys] Cek trigger pengingat harian...');
   try {
-    const { nama_template, isi_pesan, unit_penerima } = template;
-    console.log(`[Cron] Executing scheduled broadcast for template: ${nama_template}`);
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentDayOfWeek = now.getDay();
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-    // Build where clause based on unit_penerima
-    let whereClause = {
-      peran: 'USER_UNIT',
-      OR: [
-        { no_hp: { not: null } },
-        { bsuid: { not: null } }
-      ]
-    };
+    const triggersToRun = [];
+    if (currentDayOfWeek === 1) triggersToRun.push('MINGGUAN');
+    if (currentDay === 1) triggersToRun.push('BULANAN');
+    if (currentDay === lastDayOfMonth - 1) triggersToRun.push('H_MIN_1');
+    if (currentDay === lastDayOfMonth - 3) triggersToRun.push('H_MIN_3');
 
-    if (unit_penerima !== 'SEMUA') {
-      whereClause.unit = unit_penerima;
+    if (triggersToRun.length === 0) {
+      console.log('[Cron-Baileys] Tidak ada trigger aktif hari ini.');
+      return;
     }
-
-    const users = await prisma.pengguna.findMany({
-      where: whereClause,
-      select: { no_hp: true, bsuid: true }
+    console.log(`[Cron-Baileys] Trigger aktif: ${triggersToRun.join(', ')}`);
+    const templates = await prisma.konfigurasiTemplate.findMany({
+      where: { trigger_waktu: { in: triggersToRun } },
     });
-
-    const targets = users.map(u => {
-      if (u.bsuid) return u.bsuid;
-      return u.no_hp;
-    }).filter(target => target && target.trim() !== '');
-
-    if (targets.length === 0) {
-      console.log(`[Cron] Skipping broadcast for ${nama_template}, no valid targets.`);
+    if (templates.length === 0) {
+      console.log('[Cron-Baileys] Tidak ada template cocok untuk trigger hari ini.');
       return;
     }
+    console.log(`[Cron-Baileys] ${templates.length} template akan dijalankan.`);
+    for (const template of templates) {
+      await executeReminderBaileys(template);
+    }
+  } catch (error) {
+    console.error('[Cron-Baileys] Error cek harian:', error.message);
+  }
+};
 
-    const accessToken = process.env.META_WA_ACCESS_TOKEN;
-    const phoneNumberId = process.env.META_WA_PHONE_NUMBER_ID;
-    const apiVersion = process.env.META_WA_API_VERSION || 'v20.0';
-
-    if (!accessToken || !phoneNumberId) {
-      console.error('[Cron] Meta API credentials are not configured in .env');
+const cekRevisiTertunda = async () => {
+  console.log('🕒 [Baileys] Cek revisi tertunda...');
+  try {
+    const tertunda = await reminderService.cariRevisiTertunda(3);
+    if (tertunda.length === 0) {
+      console.log('[Cron-Baileys] Tidak ada revisi tertunda.');
       return;
     }
-
-    const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
-    
-    let successCount = 0;
-    let failedCount = 0;
-
-    for (const rawNumber of targets) {
-      const phone = formatPhoneNumber(rawNumber);
-      
-      const payload = {
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: phone,
-        type: 'text',
-        text: {
-          preview_url: false,
-          body: isi_pesan
-        }
-      };
-
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (response.ok) {
-          successCount++;
-        } else {
-          failedCount++;
-        }
-      } catch (err) {
-        failedCount++;
-      }
+    let s = 0, f = 0;
+    for (const lap of tertunda) {
+      if (!lap.pengguna?.no_hp) { f++; continue; }
+      const tgl = new Date(lap.tanggal).toLocaleDateString('id-ID');
+      const hari = Math.floor((Date.now() - new Date(lap.updated_at)) / 86400000);
+      const ok = await whatsappService.notifikasiRevisiTertunda(
+        lap.pengguna.no_hp, lap.pengguna.nama, tgl, lap.status, hari
+      );
+      ok ? s++ : f++;
+      await new Promise((r) => setTimeout(r, 2000));
     }
-
-    // Log to LogNotifikasi
-    const penerimaText = `${successCount + failedCount} Pengguna`;
-    const statusText = `${successCount} Berhasil, ${failedCount} Gagal`;
-
     await prisma.logNotifikasi.create({
       data: {
-        template: nama_template,
-        penerima: penerimaText,
-        status: statusText + ' (Otomatis)'
-      }
+        template: 'PENGINGAT_REVISI (Baileys)',
+        penerima: `${tertunda.length} Laporan tertunda`,
+        status: `${s} Berhasil, ${f} Gagal (Otomatis Baileys)`,
+      },
     });
-
-    console.log(`[Cron] Broadcast ${nama_template} completed: ${statusText}`);
-
+    console.log(`[Cron-Baileys] Revisi tertunda: ${s} berhasil, ${f} gagal.`);
   } catch (error) {
-    console.error(`[Cron] Error executing broadcast for template ${template.nama_template}:`, error);
+    console.error('[Cron-Baileys] Error revisi tertunda:', error.message);
   }
 };
 
 const initCronJobs = () => {
-  console.log('🕒 Initializing Cron Scheduler...');
+  console.log('🕒 Initializing Cron Scheduler (Baileys)...');
 
-  // Run every day at 09:00 AM
-  cron.schedule('0 9 * * *', async () => {
-    console.log('🕒 Running daily scheduled broadcast check...');
-    
-    try {
-      const now = new Date();
-      const currentDay = now.getDate();
-      const currentDayOfWeek = now.getDay();
-      
-      // Calculate last day of the current month
-      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-
-      const triggersToRun = [];
-
-      // MINGGUAN: Runs on Monday (day 1)
-      if (currentDayOfWeek === 1) triggersToRun.push('MINGGUAN');
-
-      // BULANAN: Runs on the 1st of every month
-      if (currentDay === 1) triggersToRun.push('BULANAN');
-
-      // H_MIN_1: Runs 1 day before the last day of the month
-      if (currentDay === lastDayOfMonth - 1) triggersToRun.push('H_MIN_1');
-
-      // H_MIN_3: Runs 3 days before the last day of the month
-      if (currentDay === lastDayOfMonth - 3) triggersToRun.push('H_MIN_3');
-
-      if (triggersToRun.length > 0) {
-        console.log(`[Cron] Active triggers today: ${triggersToRun.join(', ')}`);
-        
-        const templates = await prisma.konfigurasiTemplate.findMany({
-          where: {
-            trigger_waktu: {
-              in: triggersToRun
-            }
-          }
-        });
-
-        if (templates.length > 0) {
-          console.log(`[Cron] Found ${templates.length} templates to broadcast.`);
-          for (const template of templates) {
-            await executeBroadcast(template);
-          }
-        } else {
-          console.log('[Cron] No matching templates found for today\'s triggers.');
-        }
-      } else {
-        console.log('[Cron] No active triggers for today.');
-      }
-    } catch (error) {
-      console.error('[Cron] Error during scheduled check:', error);
-    }
-  }, {
+  // 08:00 — pengingat deadline kondisional (hanya unit belum lapor)
+  cron.schedule('0 8 * * *', cekTriggerHarian, {
     scheduled: true,
-    timezone: "Asia/Jakarta" // Set timezone accordingly
+    timezone: 'Asia/Jakarta',
+  });
+
+  // 16:00 — pengingat revisi tertunda
+  cron.schedule('0 16 * * *', cekRevisiTertunda, {
+    scheduled: true,
+    timezone: 'Asia/Jakarta',
+  });
+
+  // 09:00 — kompatibilitas trigger lama (dulu Meta 09:00), kini via Baileys
+  cron.schedule('0 9 * * *', cekTriggerHarian, {
+    scheduled: true,
+    timezone: 'Asia/Jakarta',
   });
 };
 
-module.exports = { initCronJobs };
+module.exports = { initCronJobs, executeReminderBaileys };

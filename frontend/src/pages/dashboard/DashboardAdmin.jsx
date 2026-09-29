@@ -1,10 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import * as XLSX from 'xlsx';
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
+import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { FileText, CheckCircle, Clock, AlertTriangle, Download, LayoutDashboard, Truck, Users, Activity, Building2, FileSpreadsheet } from 'lucide-react';
 import StatCard from '../../components/ui/StatCard';
@@ -23,8 +19,11 @@ import DashboardKNA from './components/DashboardKNA';
 import DashboardBarang from './components/DashboardBarang';
 import DashboardPenumpang from './components/DashboardPenumpang';
 import DashboardKeuangan from './components/DashboardKeuangan';
-import { formatDate } from '../../utils/format';
+import { formatDateOnly } from '../../utils/format';
 import { targetApi } from '../../api/target.api';
+import { unitApi } from '../../api/unit.api';
+import { exportApi } from '../../api/export.api';
+import { readBlobErrorMessage, saveBlobResponse } from '../../utils/downloadBlob';
 
 const DashboardAdmin = () => {
   const navigate = useNavigate();
@@ -33,8 +32,11 @@ const DashboardAdmin = () => {
   
   const [activeTab, setActiveTab] = useState('global');
   const [filterUnit, setFilterUnit] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL_STATUS');
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+  const [units, setUnits] = useState([]);
+  const [isExporting, setIsExporting] = useState(null);
   // Target tahunan master per kategori (denominator % dashboard).
   const [masterTargets, setMasterTargets] = useState([]);
 
@@ -53,6 +55,17 @@ const DashboardAdmin = () => {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await unitApi.getAll({ limit: 100 });
+        setUnits(res.data || []);
+      } catch {
+        setUnits([]);
+      }
+    })();
+  }, []);
+
   const sumTargetKategori = (kategori) => {
     const rows = masterTargets.filter((item) => item.kategori === kategori);
     if (rows.length === 0) return null;
@@ -66,25 +79,6 @@ const DashboardAdmin = () => {
   const approvedLaporan = useMemo(() => {
     return filteredLaporan.filter(l => l.status === 'DISETUJUI');
   }, [filteredLaporan]);
-
-  const laporanToExport = useMemo(() => {
-    return approvedLaporan.filter(l => {
-      let match = true;
-      if (filterUnit !== 'ALL') {
-        if (l.unit?.nama_unit !== filterUnit) match = false;
-      }
-      if (exportStartDate) {
-        if (new Date(l.tanggal) < new Date(exportStartDate)) match = false;
-      }
-      if (exportEndDate) {
-        // End date should include the whole day
-        const end = new Date(exportEndDate);
-        end.setHours(23, 59, 59, 999);
-        if (new Date(l.tanggal) > end) match = false;
-      }
-      return match;
-    });
-  }, [approvedLaporan, filterUnit, exportStartDate, exportEndDate]);
 
 
 
@@ -108,308 +102,35 @@ const DashboardAdmin = () => {
       .sort((a, b) => b.value - a.value);
   }, [filteredLaporan]);
 
-  const handleExportPDF = () => {
+  const handleExport = async (format) => {
+    if (exportStartDate && exportEndDate && exportStartDate > exportEndDate) {
+      toast.error(t('export.invalid_date_range'));
+      return;
+    }
+
+    const filters = {};
+    if (filterUnit !== 'ALL') filters.id_unit = Number(filterUnit);
+    if (filterStatus !== 'ALL_STATUS') filters.status = filterStatus;
+    if (exportStartDate) filters.tanggal_mulai = exportStartDate;
+    if (exportEndDate) filters.tanggal_akhir = exportEndDate;
+
+    setIsExporting(format);
     try {
-      const doc = new jsPDF();
-      
-      const drawHeader = (doc, title) => {
-        // Simulate KAI Logo with text
-        doc.setFont("helvetica", "bolditalic");
-        doc.setFontSize(32);
-        doc.setTextColor(0, 58, 112); // KAI Navy
-        doc.text("K", 14, 22);
-        doc.text("A", 27, 22);
-        doc.setTextColor(243, 112, 33); // KAI Orange
-        doc.text("I", 40, 22);
-
-        // Company name
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.setTextColor(30, 136, 229);
-        doc.text("PT KERETA API INDONESIA (PERSERO)", 50, 16);
-        
-        // Address
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text("DIVISI REGIONAL I SUMATERA UTARA", 50, 22);
-        
-        // Line
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(0, 0, 0);
-        doc.line(14, 26, 196, 26);
-        
-        // Title
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
-        doc.text(title, 14, 36);
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        doc.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 14, 42);
-      };
-
-      let isFirstPage = true;
-
-      // 1. Data KNA
-      const knaData = laporanToExport.filter(l => l.laporan_kna).map(l => [
-        new Date(l.tanggal).toLocaleDateString('id-ID'),
-        `Rp ${(parseFloat(l.laporan_kna.target_rkad) || 0).toLocaleString('id-ID')}`,
-        `Rp ${(parseFloat(l.laporan_kna.realisasi_rkad) || 0).toLocaleString('id-ID')}`
-      ]);
-      if (knaData.length > 0) {
-        if (!isFirstPage) doc.addPage();
-        drawHeader(doc, 'Laporan: Unit KNA');
-        autoTable(doc, {
-          head: [['Tanggal Lapor', 'Target RKAD (KNA)', 'Realisasi RKAD (KNA)']],
-          body: knaData,
-          startY: 48,
-          theme: 'grid',
-          headStyles: { fillColor: [0, 58, 112] }
-        });
-        isFirstPage = false;
-      }
-
-      // 2. Data Keuangan
-      const keuData = laporanToExport.filter(l => l.laporan_keuangan).map(l => [
-        new Date(l.tanggal).toLocaleDateString('id-ID'),
-        `Rp ${(parseFloat(l.laporan_keuangan.target_rkad) || 0).toLocaleString('id-ID')}`,
-        `Rp ${(parseFloat(l.laporan_keuangan.realisasi_rkad) || 0).toLocaleString('id-ID')}`,
-        `Rp ${(parseFloat(l.laporan_keuangan.pendapatan) || 0).toLocaleString('id-ID')}`,
-        `Rp ${(parseFloat(l.laporan_keuangan.pengeluaran) || 0).toLocaleString('id-ID')}`
-      ]);
-      if (keuData.length > 0) {
-        if (!isFirstPage) doc.addPage();
-        drawHeader(doc, 'Laporan: Unit Keuangan');
-        autoTable(doc, {
-          head: [['Tanggal Lapor', 'Target RKAD', 'Realisasi RKAD', 'Pendapatan', 'Pengeluaran']],
-          body: keuData,
-          startY: 48,
-          theme: 'grid',
-          headStyles: { fillColor: [0, 58, 112] }
-        });
-        isFirstPage = false;
-      }
-
-      // 3. Data Barang
-      const brgData = laporanToExport.filter(l => l.laporan_barang && l.laporan_barang.length > 0).map(l => {
-        let totPendapatan = 0;
-        let totVolume = 0;
-        l.laporan_barang.forEach(b => {
-          totPendapatan += parseFloat(b.pendapatan) || 0;
-          totVolume += parseFloat(b.volume) || 0;
-        });
-        return [
-          new Date(l.tanggal).toLocaleDateString('id-ID'),
-          `Rp ${totPendapatan.toLocaleString('id-ID')}`,
-          `${totVolume.toLocaleString('id-ID')} Ton`
-        ];
-      });
-      if (brgData.length > 0) {
-        if (!isFirstPage) doc.addPage();
-        drawHeader(doc, 'Laporan: Unit Angkutan Barang');
-        autoTable(doc, {
-          head: [['Tanggal Lapor', 'Total Pendapatan Barang', 'Total Volume Barang']],
-          body: brgData,
-          startY: 48,
-          theme: 'grid',
-          headStyles: { fillColor: [0, 58, 112] }
-        });
-        isFirstPage = false;
-      }
-
-      // 4. Data Penumpang
-      const pnpData = laporanToExport.filter(l => l.laporan_penumpang && l.laporan_penumpang.length > 0).map(l => {
-        let totPendapatan = 0;
-        let totVolume = 0;
-        l.laporan_penumpang.forEach(p => {
-          totPendapatan += parseFloat(p.pendapatan) || 0;
-          totVolume += parseFloat(p.jml_penumpang) || 0;
-        });
-        return [
-          new Date(l.tanggal).toLocaleDateString('id-ID'),
-          `Rp ${totPendapatan.toLocaleString('id-ID')}`,
-          `${totVolume.toLocaleString('id-ID')} Orang`
-        ];
-      });
-      if (pnpData.length > 0) {
-        if (!isFirstPage) doc.addPage();
-        drawHeader(doc, 'Laporan: Unit Angkutan Penumpang');
-        autoTable(doc, {
-          head: [['Tanggal Lapor', 'Total Pendapatan Penumpang', 'Total Penumpang']],
-          body: pnpData,
-          startY: 48,
-          theme: 'grid',
-          headStyles: { fillColor: [0, 58, 112] }
-        });
-        isFirstPage = false;
-      }
-      
-      if (isFirstPage) {
-        drawHeader(doc, 'Laporan Metrik Angka KAI');
-        doc.text("Tidak ada data laporan.", 14, 48);
-      }
-
-      // Add signature block at the end
-      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 60;
-      // Check if we need a new page for the signature
-      if (finalY > 250) {
-        doc.addPage();
-        drawHeader(doc, 'Pengesahan Laporan');
-        doc.text("Medan, " + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), 140, 48);
-        doc.text("Mengetahui,", 140, 56);
-        doc.text("Manager / Vice President", 140, 64);
-        doc.text("______________________", 140, 94);
-      } else {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(11);
-        doc.text("Medan, " + new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }), 140, finalY);
-        doc.text("Mengetahui,", 140, finalY + 8);
-        doc.text("Manager / Vice President", 140, finalY + 16);
-        doc.text("______________________", 140, finalY + 46);
-      }
-
-      doc.save('Laporan_Metrik_Angka_Admin.pdf');
-    } catch (err) {
-      alert(t('admin.export_pdf_fail') + err.message);
-      console.error(err);
+      const response = await exportApi.downloadLaporan(format, filters);
+      const extension = format === 'xlsx' ? 'xlsx' : 'pdf';
+      saveBlobResponse(response, `RACHE_Laporan.${extension}`);
+      const recordCount = response.headers?.['x-export-record-count'];
+      toast.success(t('export.success', { count: recordCount ?? 0 }));
+    } catch (error) {
+      const message = await readBlobErrorMessage(error, t('export.failed'));
+      toast.error(message);
+    } finally {
+      setIsExporting(null);
     }
   };
 
-  const handleExportExcel = async () => {
-    try {
-      // 1. Fetch template.xlsx from the public folder
-      const response = await fetch('/template.xlsx');
-      if (!response.ok) {
-        throw new Error(t('admin.template_fail'));
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      
-      // 2. Load the template into a new workbook
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(arrayBuffer);
-      workbook.creator = 'PT KAI Divre I SU';
-
-      // 3. Fill Data KNA
-      const knaData = laporanToExport.filter(l => l.laporan_kna).map(l => {
-        const kna = l.laporan_kna;
-        return [
-          new Date(l.tanggal).toLocaleDateString('id-ID'),
-          parseFloat(kna.target_rkad) || 0,
-          parseFloat(kna.realisasi_rkad) || 0,
-          parseFloat(kna.nilai_row) || 0,
-          parseFloat(kna.nilai_non_row) || 0
-        ];
-      });
-
-      if (knaData.length > 0) {
-        const wsKna = workbook.getWorksheet('Data KNA');
-        if (wsKna) {
-          knaData.forEach((row, i) => {
-            const rowIndex = i + 2;
-            const [tanggal, target, realisasi, rowVal, nonRowVal] = row;
-            wsKna.getCell(`A${rowIndex}`).value = tanggal;
-            wsKna.getCell(`B${rowIndex}`).value = target;
-            wsKna.getCell(`C${rowIndex}`).value = realisasi;
-            wsKna.getCell(`D${rowIndex}`).value = rowVal;
-            wsKna.getCell(`E${rowIndex}`).value = nonRowVal;
-          });
-        }
-      }
-
-      // 4. Fill Data Keuangan
-      const keuData = laporanToExport.filter(l => l.laporan_keuangan).map(l => {
-        const keu = l.laporan_keuangan;
-        return [
-          new Date(l.tanggal).toLocaleDateString('id-ID'),
-          parseFloat(keu.target_rkad) || 0,
-          parseFloat(keu.realisasi_rkad) || 0,
-          parseFloat(keu.pendapatan) || 0,
-          parseFloat(keu.pengeluaran) || 0
-        ];
-      });
-
-      if (keuData.length > 0) {
-        const wsKeu = workbook.getWorksheet('Data Keuangan');
-        if (wsKeu) {
-          keuData.forEach((row, i) => {
-            const rowIndex = i + 2;
-            const [tanggal, targetRkad, realisasiRkad, pendapatan, pengeluaran] = row;
-            wsKeu.getCell(`A${rowIndex}`).value = tanggal;
-            wsKeu.getCell(`B${rowIndex}`).value = targetRkad;
-            wsKeu.getCell(`C${rowIndex}`).value = realisasiRkad;
-            wsKeu.getCell(`D${rowIndex}`).value = pendapatan;
-            wsKeu.getCell(`E${rowIndex}`).value = pengeluaran;
-          });
-        }
-      }
-
-      // 5. Fill Data Barang
-      const brgData = laporanToExport.filter(l => l.laporan_barang).map(l => {
-        let metrics = { barangPendapatan: 0, barangVolume: 0 };
-        if (l.laporan_barang && l.laporan_barang.length > 0) {
-          l.laporan_barang.forEach(b => {
-            metrics.barangPendapatan += parseFloat(b.pendapatan) || 0;
-            metrics.barangVolume += parseFloat(b.volume) || 0;
-          });
-        }
-        return [
-          new Date(l.tanggal).toLocaleDateString('id-ID'),
-          metrics.barangPendapatan,
-          metrics.barangVolume
-        ];
-      });
-
-      if (brgData.length > 0) {
-        const wsBrg = workbook.getWorksheet('Data Barang');
-        if (wsBrg) {
-          brgData.forEach((row, i) => {
-            const rowIndex = i + 2;
-            const [tanggal, pendapatan, volume] = row;
-            wsBrg.getCell(`A${rowIndex}`).value = tanggal;
-            wsBrg.getCell(`B${rowIndex}`).value = pendapatan;
-            wsBrg.getCell(`C${rowIndex}`).value = volume;
-          });
-        }
-      }
-
-      // 6. Fill Data Penumpang
-      const pnpData = laporanToExport.filter(l => l.laporan_penumpang && l.laporan_penumpang.length > 0).map(l => {
-        let totPendapatan = 0;
-        let totVolume = 0;
-        l.laporan_penumpang.forEach(p => {
-          totPendapatan += parseFloat(p.pendapatan) || 0;
-          totVolume += parseFloat(p.volume) || 0;
-        });
-        return [
-          new Date(l.tanggal).toLocaleDateString('id-ID'),
-          totPendapatan,
-          totVolume
-        ];
-      });
-
-      if (pnpData.length > 0) {
-        const wsPnp = workbook.getWorksheet('Data Penumpang');
-        if (wsPnp) {
-          pnpData.forEach((row, i) => {
-            const rowIndex = i + 2;
-            const [tanggal, pendapatan, volume] = row;
-            wsPnp.getCell(`A${rowIndex}`).value = tanggal;
-            wsPnp.getCell(`B${rowIndex}`).value = pendapatan;
-            wsPnp.getCell(`C${rowIndex}`).value = volume;
-          });
-        }
-      }
-
-      // 7. Download file
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      saveAs(blob, "Laporan_Metrik_Angka_Admin_Keren.xlsx");
-      
-    } catch (err) {
-      alert(t('admin.export_excel_fail') + err.message);
-      console.error(err);
-    }
-  };
+  const handleExportPDF = () => handleExport('pdf');
+  const handleExportExcel = () => handleExport('xlsx');
 
   const renderTabContent = () => {
     switch(activeTab) {
@@ -488,7 +209,7 @@ const DashboardAdmin = () => {
                       <tr key={item.id_laporan}>
                         <td className="font-medium text-primary">LPR-{item.id_laporan}</td>
                         <td>{item.unit?.nama_unit || `Unit ID: ${item.id_unit}`}</td>
-                        <td>{formatDate(item.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }, i18n.language)}</td>
+                        <td>{formatDateOnly(item.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }, i18n.language)}</td>
                         <td>{t('dashboard.daily_data')}</td>
                         <td>
                           <span className={`badge ${item.status === 'DISETUJUI' ? 'badge-disetujui' : item.status === 'DITOLAK' || item.status === 'REVISI' ? 'badge-revisi' : 'badge-diajukan'}`}>
@@ -538,6 +259,7 @@ const DashboardAdmin = () => {
             value={exportStartDate} 
             onChange={(e) => setExportStartDate(e.target.value)}
             title={t('admin.start_date')}
+            aria-label={t('admin.start_date')}
           />
           <span className="text-slate-400">-</span>
           <input 
@@ -547,22 +269,29 @@ const DashboardAdmin = () => {
             value={exportEndDate} 
             onChange={(e) => setExportEndDate(e.target.value)}
             title={t('admin.end_date')}
+            aria-label={t('admin.end_date')}
           />
 
-          <select className="form-control text-sm" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
+          <select aria-label={t('laporan.filter_unit')} className="form-control text-sm" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
             <option value="ALL">{t('admin.semua_unit')}</option>
-            <option value="Unit Pusat">{t('admin.unit_pusat')}</option>
-            <option value="Unit Angkutan Penumpang">{t('admin.unit_penumpang')}</option>
-            <option value="Unit Angkutan Barang">{t('admin.unit_barang')}</option>
-            <option value="Unit Keuangan">{t('admin.unit_keuangan')}</option>
-            <option value="Unit KNA">{t('admin.unit_kna')}</option>
+            {units.map((unit) => (
+              <option key={unit.id_unit} value={unit.id_unit}>{unit.nama_unit}</option>
+            ))}
+          </select>
+          <select aria-label={t('laporan.filter_status')} className="form-control text-sm" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <option value="ALL_STATUS">{t('laporan.filter_status')}</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="DIAJUKAN">DIAJUKAN</option>
+            <option value="DISETUJUI">DISETUJUI</option>
+            <option value="REVISI">REVISI</option>
+            <option value="DITOLAK">DITOLAK</option>
           </select>
           <div className="h-6 w-px bg-slate-300 mx-1"></div>
-          <button className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" onClick={handleExportExcel} style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669' }}>
-            <FileSpreadsheet size={16} /> Excel
+          <button type="button" disabled={Boolean(isExporting)} aria-busy={isExporting === 'xlsx'} className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" onClick={handleExportExcel} style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669', opacity: isExporting ? 0.65 : 1 }}>
+            <FileSpreadsheet size={16} /> {isExporting === 'xlsx' ? t('export.processing') : 'Excel'}
           </button>
-          <button className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" onClick={handleExportPDF} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#dc2626' }}>
-            <Download size={16} /> PDF
+          <button type="button" disabled={Boolean(isExporting)} aria-busy={isExporting === 'pdf'} className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" onClick={handleExportPDF} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#dc2626', opacity: isExporting ? 0.65 : 1 }}>
+            <Download size={16} /> {isExporting === 'pdf' ? t('export.processing') : 'PDF'}
           </button>
         </div>
       </div>

@@ -23,6 +23,7 @@ const authRoutes = require('./routes/auth.routes');
 const penggunaRoutes = require('./routes/pengguna.routes');
 const unitRoutes = require('./routes/unit.routes');
 const laporanRoutes = require('./routes/laporan.routes');
+const exportRoutes = require('./routes/export.routes');
 const { targetRouter, komoditiRouter, permintaanRouter, auditRouter, systemRouter, programRouter } = require('./routes/misc.routes');
 const waCloudRoutes = require('./routes/waCloudRoutes');
 
@@ -32,6 +33,8 @@ const whatsappService = require('./whatsapp/baileys.service');
 
 // Cron Scheduler
 const { initCronJobs } = require('./services/cron.service');
+const { closePdfBrowser } = require('./services/export/pdf.renderer');
+const { exportSemaphore } = require('./services/export/export-concurrency');
 
 // ============================================================
 // INISIALISASI APP
@@ -58,6 +61,7 @@ app.use(
   cors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
     credentials: true,
+    exposedHeaders: ['Content-Disposition', 'X-Export-Record-Count'],
   })
 );
 app.use(express.json({ limit: '10mb' }));
@@ -73,6 +77,7 @@ app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/pengguna`, penggunaRoutes);
 app.use(`${API_PREFIX}/unit`, unitRoutes);
 app.use(`${API_PREFIX}/laporan`, laporanRoutes);
+app.use(`${API_PREFIX}/exports`, exportRoutes);
 app.use(`${API_PREFIX}/target`, targetRouter);
 app.use(`${API_PREFIX}/komoditi`, komoditiRouter);
 app.use(`${API_PREFIX}/program`, programRouter);
@@ -160,17 +165,59 @@ const startServer = async () => {
 };
 
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Menghentikan server...');
-  await prisma.$disconnect();
-  process.exit(0);
-});
+const SHUTDOWN_TIMEOUT_MS = 30_000;
+let shutdownPromise = null;
 
-process.on('SIGTERM', async () => {
-  await prisma.$disconnect();
-  process.exit(0);
-});
+const shutdown = (signal) => {
+  if (shutdownPromise) return shutdownPromise;
 
-startServer();
+  shutdownPromise = (async () => {
+    console.log(`\n🛑 Menerima ${signal}, menghentikan server...`);
+    exportSemaphore.close();
 
-module.exports = { app, io };
+    const serverClosed = new Promise((resolve, reject) => {
+      io.close(() => {
+        if (!httpServer.listening) {
+          resolve();
+          return;
+        }
+        httpServer.close((error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
+    });
+    let timeoutId;
+    const drained = await Promise.race([
+      Promise.all([serverClosed, exportSemaphore.onIdle()]).then(() => true),
+      new Promise((resolve) => {
+        timeoutId = setTimeout(() => resolve(false), SHUTDOWN_TIMEOUT_MS);
+      }),
+    ]);
+    clearTimeout(timeoutId);
+
+    if (!drained) {
+      console.warn('⚠️ Batas waktu graceful shutdown tercapai; koneksi aktif akan ditutup.');
+      io.disconnectSockets(true);
+      httpServer.closeAllConnections?.();
+    }
+
+    await closePdfBrowser();
+    await prisma.$disconnect();
+    process.exit(drained ? 0 : 1);
+  })().catch((error) => {
+    console.error('❌ Gagal menghentikan server dengan aman:', error);
+    process.exit(1);
+  });
+
+  return shutdownPromise;
+};
+
+process.once('SIGINT', () => { void shutdown('SIGINT'); });
+process.once('SIGTERM', () => { void shutdown('SIGTERM'); });
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, io, startServer };

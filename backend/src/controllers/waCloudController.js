@@ -1,253 +1,65 @@
 const prisma = require('../config/database');
+const whatsappService = require('../whatsapp/baileys.service');
+const reminderService = require('../services/reminder.service');
 
 /**
- * Heuristik untuk mendeteksi ID kontak Meta
+ * DEPRECATED (Meta Cloud API): BSUID/webhook tidak lagi dipakai setelah migrasi ke Baileys.
+ * Fungsi dipertahankan agar tidak merusak import lama, tapi selalu melempar.
  */
-function resolveContactId(waMessage, waContacts) {
-  const contact = waContacts?.[0];
-  const from = waMessage?.from; // nomor pengirim (bisa BSUID)
-  
-  const waId = contact?.wa_id || from;
-  return {
-    waId: waId,
-    phoneNumber: contact?.profile?.phone_number || null,
-    name: contact?.profile?.name || null,
-    isBSUID: waId ? !/^\d{10,15}$/.test(waId) : false
-  };
+function resolveContactId() {
+  throw new Error('Meta webhook deprecated: gunakan Baileys (ENABLE_WHATSAPP=true)');
 }
 
 /**
- * Helper to format phone number to Meta's requirement (e.g., 628xxx without + or 0)
- */
-const formatPhoneNumber = (rawNumber) => {
-  let phone = rawNumber.trim();
-  if (/^\d+$/.test(phone)) {
-    if (phone.startsWith('0')) {
-      phone = '62' + phone.substring(1);
-    }
-  }
-  return phone;
-};
-
-/**
- * Broadcast message via Meta WhatsApp Cloud API
+ * Broadcast message via Baileys (migrasi dari Meta WhatsApp Cloud API).
+ * Kontrak request tetap sama agar frontend lama tidak jebol:
+ * { messageType: 'text'|'template', messageText, templateName, unitPenerima }
  */
 const sendBroadcast = async (req, res) => {
   try {
-    const { messageType, messageText, templateName } = req.body;
+    const { messageType, messageText, templateName, unitPenerima } = req.body;
 
-    // Fetch target phone numbers / bsuid from database
-    const users = await prisma.pengguna.findMany({
-      where: {
-        peran: 'USER_UNIT',
-        OR: [
-          { no_hp: { not: null } },
-          { bsuid: { not: null } }
-        ]
-      },
-      select: { no_hp: true, bsuid: true }
+    const results = await reminderService.broadcastBaileys({
+      messageType,
+      messageText,
+      templateName,
+      unitPenerima,
     });
 
-    const targets = users.map(u => {
-      // Prioritaskan BSUID, jika tidak ada fallback ke no_hp
-      if (u.bsuid) return u.bsuid;
-      return u.no_hp;
-    }).filter(target => target && target.trim() !== '');
-
-    if (targets.length === 0) {
-      return res.status(400).json({ error: 'Tidak ada unit dengan nomor HP / BSUID yang valid di database.' });
+    if (results.success.length === 0 && results.failed.length === 0) {
+      return res.status(400).json({ error: 'Tidak ada unit dengan nomor HP yang valid di database.' });
     }
 
-    const accessToken = process.env.META_WA_ACCESS_TOKEN;
-    const phoneNumberId = process.env.META_WA_PHONE_NUMBER_ID;
-    const apiVersion = process.env.META_WA_API_VERSION || 'v20.0';
-
-    if (!accessToken || !phoneNumberId) {
-      return res.status(500).json({ error: 'Meta API credentials are not configured in .env' });
-    }
-
-    const url = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
-    
-    const results = {
-      success: [],
-      failed: []
-    };
-
-    // Note: In production with thousands of numbers, consider using a queue (e.g., BullMQ)
-    for (const rawNumber of targets) {
-      const phone = formatPhoneNumber(rawNumber);
-      
-      let payload = {
-        messaging_product: 'whatsapp',
-        recipient_type: 'individual',
-        to: phone,
-      };
-
-      // Karena kita menggunakan Template Lokal, kita selalu ubah menjadi tipe TEKS BEBAS
-      let actualMessageText = messageText;
-      if (messageType === 'template') {
-        const templateConfig = await prisma.konfigurasiTemplate.findUnique({
-          where: { nama_template: templateName }
-        });
-        if (templateConfig && templateConfig.isi_pesan) {
-          actualMessageText = templateConfig.isi_pesan;
-        } else {
-          // Fallback or error, for safety we skip if not found
-          console.error(`Template ${templateName} tidak ditemukan di database`);
-          results.failed.push({ phone: rawNumber, error: 'Template lokal tidak ditemukan' });
-          continue;
-        }
-      }
-
-      payload.type = 'text';
-      payload.text = {
-        preview_url: false,
-        body: actualMessageText
-      };
-
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          console.error(`Failed to send to ${phone}: ${JSON.stringify(data)}`);
-          results.failed.push({ phone: rawNumber, error: data.error?.message || 'Unknown error' });
-        } else {
-          results.success.push({ phone: rawNumber, messageId: data.messages[0].id });
-        }
-      } catch (err) {
-        console.error(`Error sending to ${phone}: ${err.message}`);
-        results.failed.push({ phone: rawNumber, error: err.message });
-      }
-    }
-
-    // Simpan ke LogNotifikasi
-    const templateTitle = messageType === 'template' ? templateName : 'Teks Bebas';
-    const penerimaText = `${results.success.length + results.failed.length} Pengguna`;
-    const statusText = `${results.success.length} Berhasil, ${results.failed.length} Gagal`;
-
-    try {
-      await prisma.logNotifikasi.create({
-        data: {
-          template: templateTitle,
-          penerima: penerimaText,
-          status: statusText
-        }
-      });
-    } catch (logErr) {
-      console.error('Gagal mencatat log notifikasi:', logErr);
-    }
-
+    // Kompatibilitas: frontend lama membaca response.results
     res.status(200).json({
-      message: 'Broadcast processing completed',
-      results
+      message: 'Broadcast via Baileys selesai diproses',
+      results,
     });
 
   } catch (error) {
-    console.error(`Broadcast error: ${error.message}`);
-    res.status(500).json({ error: 'Internal server error during broadcast' });
+    console.error(`[WA-Baileys] Broadcast error: ${error.message}`);
+    const status = error.message.includes('tidak ditemukan') || error.message.includes('kosong') ? 400 : 500;
+    res.status(status).json({ error: error.message });
   }
 };
 
 /**
- * Webhook Verification for Meta
+ * Webhook Verification for Meta — DEPRECATED setelah migrasi Baileys.
+ * Selalu 410 agar integrasi lama jelas-jelas dimatikan.
  */
 const verifyWebhook = (req, res) => {
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  const VERIFY_TOKEN = process.env.META_WA_VERIFY_TOKEN || 'rache_secure_token_123';
-
-  if (mode && token) {
-    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('WEBHOOK_VERIFIED');
-      res.status(200).send(challenge);
-    } else {
-      res.sendStatus(403);
-    }
-  } else {
-    res.status(400).send('Missing parameters');
-  }
+  return res.status(410).json({ error: 'Meta webhook deprecated: gunakan Baileys (ENABLE_WHATSAPP=true)' });
 };
 
 /**
- * Receive Webhook Events from Meta
+ * Receive Webhook Events from Meta — DEPRECATED setelah migrasi Baileys.
  */
 const handleWebhook = async (req, res) => {
-  const body = req.body;
-  
-  console.log('--- Menerima Webhook dari Meta ---');
-  console.log(JSON.stringify(body, null, 2));
-
-  if (body.object) {
-    if (body.entry && body.entry[0].changes && body.entry[0].changes[0] && body.entry[0].changes[0].value.messages && body.entry[0].changes[0].value.messages[0]) {
-      const value = body.entry[0].changes[0].value;
-      const message = value.messages[0];
-      const contacts = value.contacts;
-      
-      console.log('📩 Pesan masuk via Webhook Meta:', message);
-
-      // Resolusi BSUID vs Nomor HP
-      const contactInfo = resolveContactId(message, contacts);
-      
-      if (!contactInfo.waId) {
-        console.warn('⚠️ Alert: Format wa_id tidak dikenali, cek payload baru dari Meta');
-      } else {
-        try {
-          // Cari apakah nomor HP (jika ada) sudah terdaftar di DB tanpa bsuid
-          let phoneToMatch = contactInfo.phoneNumber;
-          if (!phoneToMatch && !contactInfo.isBSUID) {
-            phoneToMatch = contactInfo.waId; // jika waId murni angka, anggap no_hp
-          }
-
-          if (phoneToMatch) {
-            // Coba normalkan nomor (misal 628 -> 08 untuk pencarian)
-            const localPhone = phoneToMatch.startsWith('62') ? '0' + phoneToMatch.substring(2) : phoneToMatch;
-            
-            const existingUser = await prisma.pengguna.findFirst({
-              where: { 
-                OR: [
-                  { no_hp: phoneToMatch },
-                  { no_hp: localPhone }
-                ],
-                bsuid: null 
-              }
-            });
-
-            if (existingUser) {
-              await prisma.pengguna.update({
-                where: { id_pengguna: existingUser.id_pengguna },
-                data: { bsuid: contactInfo.waId } // Simpan BSUID
-              });
-              console.log(`✅ Mapping BSUID berhasil untuk pengguna: ${existingUser.nama}`);
-            }
-          }
-        } catch (dbError) {
-          console.error("Gagal update BSUID ke database:", dbError);
-        }
-      }
-      
-    } else if (body.entry && body.entry[0].changes && body.entry[0].changes[0] && body.entry[0].changes[0].value.statuses) {
-      const status = body.entry[0].changes[0].value.statuses[0];
-      console.log('🔄 Status update via Webhook Meta:', status);
-    }
-    res.sendStatus(200);
-  } else {
-    res.sendStatus(404);
-  }
+  return res.status(410).json({ error: 'Meta webhook deprecated: gunakan Baileys (ENABLE_WHATSAPP=true)' });
 };
 
 /**
- * Create a new message template via Meta WhatsApp Business Management API
+ * Create a new message template — lokal saja (tidak lagi ke Meta Management API).
  */
 const createTemplate = async (req, res) => {
   try {
@@ -276,12 +88,12 @@ const createTemplate = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: 'Template berhasil dibuat dan disimpan ke database lokal.',
+      message: 'Template berhasil dibuat dan disimpan ke database lokal (Baileys).',
       data: {
         id: template.id_konfig.toString(),
         name: template.nama_template,
         status: 'APPROVED',
-        category: 'UTILITY',
+        category: 'LOCAL',
         language: 'id'
       }
     });
@@ -293,20 +105,20 @@ const createTemplate = async (req, res) => {
 };
 
 /**
- * Fetch list of message templates from Meta
+ * Fetch list of message templates — lokal saja (Baileys, tanpa Meta).
  */
 const getTemplates = async (req, res) => {
   try {
-    // Fetch local configurations ONLY
-    const configs = await prisma.konfigurasiTemplate.findMany();
+    // Fetch local configurations ONLY (Baileys tidak butuh approval Meta)
+    const configs = await prisma.konfigurasiTemplate.findMany({ orderBy: { created_at: 'desc' } });
 
     // Map to match frontend expected structure
     const mappedData = configs.map(localConfig => {
       return {
         id: localConfig.id_konfig.toString(),
         name: localConfig.nama_template,
-        status: 'APPROVED', // Mock status for UI
-        category: 'UTILITY', // Mock category
+        status: 'APPROVED', // lokal selalu siap kirim via Baileys
+        category: 'LOCAL',
         language: 'id',
         trigger_waktu: localConfig.trigger_waktu,
         unit_penerima: localConfig.unit_penerima,
@@ -348,11 +160,82 @@ const getLogs = async (req, res) => {
   }
 };
 
+/**
+ * Status koneksi Baileys untuk UI admin (ganti ketergantungan Meta).
+ */
+const getWaStatus = async (req, res) => {
+  const s = whatsappService.getStatus();
+  return res.status(200).json({
+    data: {
+      channel: 'baileys',
+      connected: s.connected,
+      queued: s.queued,
+    },
+  });
+};
+
+/**
+ * Daftar unit yang belum lapor bulan berjalan (sumber panel pengingat).
+ */
+const getUnitBelumLapor = async (req, res) => {
+  try {
+    const data = await reminderService.cariUnitBelumLapor();
+    return res.status(200).json({ data });
+  } catch (error) {
+    console.error('Error getUnitBelumLapor:', error);
+    return res.status(500).json({ error: 'Gagal mengambil unit belum lapor' });
+  }
+};
+
+/**
+ * Kirim pengingat manual ke 1 unit via Baileys.
+ * POST /wacloud/kirim-unit/:id_unit  body opsional { tenggat }
+ */
+const kirimPerUnit = async (req, res) => {
+  try {
+    const idUnit = parseInt(req.params.id_unit, 10);
+    if (Number.isNaN(idUnit)) {
+      return res.status(400).json({ error: 'id_unit tidak valid' });
+    }
+    const unit = await prisma.unit.findUnique({
+      where: { id_unit: idUnit },
+      include: {
+        pengguna: {
+          where: { peran: 'USER_UNIT', no_hp: { not: null } },
+          select: { nama: true, no_hp: true },
+        },
+      },
+    });
+    if (!unit) return res.status(404).json({ error: 'Unit tidak ditemukan' });
+
+    const target = {
+      id_unit: unit.id_unit,
+      nama_unit: unit.nama_unit,
+      penanggung: unit.pengguna.filter((p) => p.no_hp && p.no_hp.trim() !== ''),
+    };
+    if (target.penanggung.length === 0) {
+      return res.status(400).json({ error: 'Unit tidak punya penanggung dengan no_hp valid' });
+    }
+
+    const hasil = await reminderService.kirimPengingatUnit(target, {
+      tenggat: req.body?.tenggat,
+      skipAntiSpam: true, // manual admin selalu dikirim
+    });
+    return res.status(200).json({ message: 'Pengingat unit diproses via Baileys', results: hasil });
+  } catch (error) {
+    console.error('Error kirimPerUnit:', error);
+    return res.status(500).json({ error: 'Gagal mengirim pengingat unit' });
+  }
+};
+
 module.exports = {
   sendBroadcast,
   verifyWebhook,
   handleWebhook,
   createTemplate,
   getTemplates,
-  getLogs
+  getLogs,
+  getWaStatus,
+  getUnitBelumLapor,
+  kirimPerUnit
 };

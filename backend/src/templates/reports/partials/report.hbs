@@ -1,0 +1,115 @@
+<article class="report">
+  <header class="report-heading">
+    <div>
+      <span class="report-id">Laporan #{{id}}</span>
+      <h2>{{fallback unit.nama "Tanpa Unit"}}</h2>
+      <p>{{formatDate tanggal}} · {{fallback pembuat.nama "Pembuat tidak tersedia"}}</p>
+    </div>
+    <div class="status-stack">
+      <span class="badge badge-{{lowercase status}}">{{status}}</span>
+      <span class="badge badge-neutral">{{status_internal}}</span>
+    </div>
+  </header>
+
+  <div class="report-meta">
+    <div><span>Bagian data</span><strong>{{join sections_present ", "}}</strong></div>
+    <div><span>Dibuat</span><strong>{{formatDateTime created_at}}</strong></div>
+    <div><span>Diperbarui</span><strong>{{formatDateTime updated_at}}</strong></div>
+    <div class="wide"><span>Catatan</span><strong>{{fallback catatan "-"}}</strong></div>
+  </div>
+
+  {{#with sections.kna}}
+    <section class="data-section">
+      <h3>KNA / Aset</h3>
+      <div class="kpi-grid">
+        <div><span>Target RKAD</span><strong>{{formatCurrency target_rkad}}</strong></div>
+        <div><span>Realisasi RKAD</span><strong>{{formatCurrency realisasi_rkad}}</strong></div>
+        <div><span>Total Nilai ROW</span><strong>{{formatCurrency row.nilai}}</strong></div>
+        <div><span>Total Nilai Non-ROW</span><strong>{{formatCurrency non_row.nilai}}</strong></div>
+      </div>
+      <table>
+        <thead><tr><th>Kategori</th><th class="num">Kontrak</th><th class="num">Luas Tanah</th><th class="num">Luas Bangunan</th><th class="num">Nilai</th></tr></thead>
+        <tbody>
+          <tr><td>ROW</td><td class="num">{{formatNumber row.jumlah_kontrak 0}}</td><td class="num">{{formatNumber row.luas_tanah 4}}</td><td class="num">{{formatNumber row.luas_bangunan 4}}</td><td class="num">{{formatCurrency row.nilai}}</td></tr>
+          <tr><td>Non-ROW</td><td class="num">{{formatNumber non_row.jumlah_kontrak 0}}</td><td class="num">{{formatNumber non_row.luas_tanah 4}}</td><td class="num">{{formatNumber non_row.luas_bangunan 4}}</td><td class="num">{{formatCurrency non_row.nilai}}</td></tr>
+        </tbody>
+      </table>
+    </section>
+  {{/with}}
+
+  {{#if sections.penumpang.items.length}}
+    <section class="data-section">
+      <h3>Angkutan Penumpang</h3>
+      <div class="kpi-grid two">
+        <div><span>Total Penumpang</span><strong>{{formatNumber sections.penumpang.totals.jumlah_penumpang 0}} orang</strong></div>
+        <div><span>Total Pendapatan</span><strong>{{formatCurrency sections.penumpang.totals.pendapatan}}</strong></div>
+      </div>
+      <table>
+        <thead><tr><th>Nama KA</th><th>No. KA</th><th>Lintas</th><th>Berangkat</th><th>Kedatangan</th><th class="num">Penumpang</th><th class="num">Pendapatan</th></tr></thead>
+        <tbody>
+          {{#each sections.penumpang.items}}
+            <tr><td>{{nama_ka}}</td><td>{{fallback no_ka "-"}}</td><td>{{fallback lintas "-"}}</td><td>{{fallback berangkat "-"}}</td><td>{{fallback kedatangan "-"}}</td><td class="num">{{formatNumber jumlah_penumpang 0}}</td><td class="num">{{formatCurrency pendapatan}}</td></tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </section>
+  {{/if}}
+
+  {{#if sections.barang.items.length}}
+    <section class="data-section">
+      <h3>Angkutan Barang</h3>
+      <div class="metric-row">
+        {{#each sections.barang.totals_by_unit}}
+          <div class="metric-pill"><strong>{{formatNumber volume 4}}</strong><span>{{satuan}} · {{formatNumber jumlah_ka 0}} KA</span></div>
+        {{/each}}
+        <div class="metric-pill money"><strong>{{formatCurrency sections.barang.total_pendapatan}}</strong><span>Total pendapatan</span></div>
+      </div>
+      <table>
+        <thead><tr><th>Komoditi</th><th>Satuan</th><th class="num">KA</th><th class="num">Volume</th><th class="num">Kumulatif</th><th class="num">Program</th><th class="num">Pencapaian</th><th class="num">Pendapatan</th></tr></thead>
+        <tbody>
+          {{#each sections.barang.items}}
+            <tr><td>{{komoditi}}</td><td>{{satuan}}</td><td class="num">{{formatNumber jumlah_ka 0}}</td><td class="num">{{formatNumber volume 4}}</td><td class="num">{{formatNumber volume_kumulatif 4}}</td><td class="num">{{formatNumber volume_program 4}}</td><td class="num">{{formatNumber volume_pencapaian 2}}%</td><td class="num">{{formatCurrency pendapatan}}</td></tr>
+          {{/each}}
+        </tbody>
+      </table>
+    </section>
+  {{/if}}
+
+  {{#with sections.keuangan}}
+    <section class="data-section">
+      <h3>Keuangan</h3>
+      <div class="kpi-grid finance">
+        <div><span>Target RKAD</span><strong>{{formatCurrency target_rkad}}</strong></div>
+        <div><span>Realisasi RKAD</span><strong>{{formatCurrency realisasi_rkad}}</strong></div>
+        <div><span>Pendapatan</span><strong>{{formatCurrency pendapatan}}</strong></div>
+        <div><span>Pengeluaran</span><strong>{{formatCurrency pengeluaran}}</strong></div>
+        <div><span>Laba/Rugi</span><strong>{{formatCurrency laba_rugi}}</strong></div>
+      </div>
+
+      {{#if transaksi.length}}
+        <h4>Rincian Transaksi</h4>
+        <table><thead><tr><th>Jenis</th><th>Uraian</th><th>Unit Kerja</th><th class="num">Penerimaan</th><th class="num">Pengeluaran</th></tr></thead><tbody>
+          {{#each transaksi}}<tr><td>{{fallback jenis "-"}}</td><td>{{fallback uraian "-"}}</td><td>{{fallback unit_kerja "-"}}</td><td class="num">{{formatCurrency penerimaan}}</td><td class="num">{{formatCurrency pengeluaran}}</td></tr>{{/each}}
+        </tbody></table>
+      {{/if}}
+
+      {{#if spj.length}}
+        <h4>Rincian SPJ</h4>
+        <table><thead><tr><th>No. SPJ</th><th>Tanggal</th><th>Uraian</th><th>Keterangan</th><th class="num">Nominal</th></tr></thead><tbody>
+          {{#each spj}}<tr><td>{{fallback no_spj "-"}}</td><td>{{formatDate tanggal_spj}}</td><td>{{fallback uraian "-"}}</td><td>{{fallback keterangan "-"}}</td><td class="num">{{formatCurrency nominal}}</td></tr>{{/each}}
+        </tbody></table>
+      {{/if}}
+
+      {{#if invoice.length}}
+        <h4>Rincian Invoice</h4>
+        <table><thead><tr><th>No. Invoice</th><th>Tanggal</th><th>Vendor</th><th>Jatuh Tempo</th><th>Status</th><th class="num">Nominal</th></tr></thead><tbody>
+          {{#each invoice}}<tr><td>{{fallback no_invoice "-"}}</td><td>{{formatDate tanggal_invoice}}</td><td>{{fallback vendor "-"}}</td><td>{{formatDate jatuh_tempo}}</td><td>{{fallback status "-"}}</td><td class="num">{{formatCurrency nominal}}</td></tr>{{/each}}
+        </tbody></table>
+      {{/if}}
+    </section>
+  {{/with}}
+
+  {{#if warnings.length}}
+    <div class="inline-warning"><strong>Peringatan:</strong> {{join warnings " · "}}</div>
+  {{/if}}
+</article>

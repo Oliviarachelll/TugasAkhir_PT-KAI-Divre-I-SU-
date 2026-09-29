@@ -11,6 +11,19 @@ export function formatDate(date, options, language = 'id') {
   }
 }
 
+export function formatDateOnly(date, options, language = 'id') {
+  if (!date) return '-';
+  const match = String(date).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return formatDate(date, options, language);
+
+  const [, year, month, day] = match;
+  const parsed = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== `${year}-${month}-${day}`) {
+    return '-';
+  }
+  return parsed.toLocaleDateString(getLocale(language), { ...options, timeZone: 'UTC' });
+}
+
 export function formatDateTime(date, options, language = 'id') {
   if (!date) return '-';
   try {

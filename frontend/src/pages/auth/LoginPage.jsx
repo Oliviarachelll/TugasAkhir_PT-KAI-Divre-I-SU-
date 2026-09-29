@@ -116,8 +116,8 @@ const LoginPage = () => {
     <div className="login-split">
       <div className="login-form-container">
         <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center p-3 shadow-lg">
-            <img src={kaiLogo} alt="KAI Logo" className="w-full h-full object-contain" />
+          <div className="w-28 flex items-center justify-center" style={{ backgroundColor: 'transparent', boxShadow: 'none' }}>
+            <img src={kaiLogo} alt="KAI Logo" className="w-full h-auto object-contain" />
           </div>
         </div>
         <div className="text-center mb-8">

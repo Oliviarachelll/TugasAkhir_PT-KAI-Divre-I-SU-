@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Edit2, PowerOff, Power, Send, AlertCircle, Loader2, X } from 'lucide-react';
+import { Edit2, Send, AlertCircle, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { waCloudApi } from '../../api/waCloud.api';
 import { API_ERROR_TOAST_ID } from '../../api/client';
@@ -27,6 +27,11 @@ const NotifikasiPage = () => {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [logs, setLogs] = useState([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [waStatus, setWaStatus] = useState({ connected: false, queued: 0 });
+  const [belumLapor, setBelumLapor] = useState([]);
+  const [isLoadingBelum, setIsLoadingBelum] = useState(false);
+  const [broadcastUnit, setBroadcastUnit] = useState('SEMUA');
+  const [sendingUnitId, setSendingUnitId] = useState(null);
 
   const fetchTemplates = async () => {
     setIsLoadingTemplates(true);
@@ -53,10 +58,49 @@ const NotifikasiPage = () => {
     }
   };
 
+  const fetchWaStatus = async () => {
+    try {
+      const response = await waCloudApi.getWaStatus();
+      setWaStatus(response.data || { connected: false, queued: 0 });
+    } catch {
+      setWaStatus({ connected: false, queued: 0 });
+    }
+  };
+
+  const fetchBelumLapor = async () => {
+    setIsLoadingBelum(true);
+    try {
+      const response = await waCloudApi.getUnitBelumLapor();
+      setBelumLapor(response.data || []);
+    } catch (error) {
+      console.error('Error fetching belum lapor:', error);
+    } finally {
+      setIsLoadingBelum(false);
+    }
+  };
+
   useEffect(() => {
     fetchTemplates();
     fetchLogs();
+    fetchWaStatus();
+    fetchBelumLapor();
   }, []);
+
+  const handleKirimPerUnit = async (idUnit) => {
+    setSendingUnitId(idUnit);
+    try {
+      const response = await waCloudApi.kirimPerUnit(idUnit);
+      const s = response.results?.success?.length || 0;
+      const f = response.results?.failed?.length || 0;
+      toast.success(t('notifikasi.broadcast_done', { s, f }));
+      fetchLogs();
+      fetchBelumLapor();
+    } catch (error) {
+      toast.error(error?.response?.data?.error || t('notifikasi.send_fail'), { id: API_ERROR_TOAST_ID });
+    } finally {
+      setSendingUnitId(null);
+    }
+  };
 
   const handleBroadcast = async (e) => {
     e.preventDefault();
@@ -73,20 +117,12 @@ const NotifikasiPage = () => {
 
     setIsSubmitting(true);
     try {
-      // Cari bahasa template yang dipilih agar sesuai dengan Meta
-      let templateLanguage = 'id';
-      if (messageType === 'template') {
-        const selectedTemplate = templates.find(t => t.name === templateName);
-        if (selectedTemplate) {
-          templateLanguage = selectedTemplate.language;
-        }
-      }
-
+      // Baileys: tidak ada templateLanguage Meta, kirim via jalur lokal + filter unit
       const response = await waCloudApi.sendBroadcast({
         messageType,
         messageText,
         templateName,
-        templateLanguage
+        unitPenerima: broadcastUnit
       });
       
       const successCount = response.results?.success?.length || 0;
@@ -122,12 +158,12 @@ const NotifikasiPage = () => {
       });
       toast.success(response.message || t('notifikasi.create_success'));
       
-      // Optimistic update agar langsung tampil di tabel tanpa menunggu jeda cache Meta
+      // Template lokal Baileys langsung APPROVED (tanpa review Meta)
       setTemplates(prev => [
         {
           id: response.data?.id || Date.now().toString(),
           name: newTemplateName.toLowerCase().replace(/\s+/g, '_'),
-          status: 'PENDING',
+          status: 'APPROVED',
           trigger_waktu: newTemplateTrigger,
           unit_penerima: newTemplateUnit
         },
@@ -140,7 +176,7 @@ const NotifikasiPage = () => {
       setNewTemplateTrigger('MANUAL');
       setNewTemplateUnit('SEMUA');
       
-      // Tetap fetch di-background untuk sinkronisasi, meski mungkin butuh 30dtk dari Meta
+      // Tetap fetch di-background untuk sinkronisasi lokal
       fetchTemplates();
     } catch (error) {
       toast.error(error?.response?.data?.error || t('notifikasi.create_fail'), { id: API_ERROR_TOAST_ID });
@@ -155,6 +191,20 @@ const NotifikasiPage = () => {
         <div>
           <div className="text-sm text-muted font-medium mb-1">{t('manajemen.title')} <span className="mx-1">&gt;</span> <span className="text-primary">{t('notifikasi.breadcrumb')}</span></div>
         </div>
+        <div className="flex items-center gap-2">
+          <span
+            title="Koneksi Baileys"
+            style={{
+              padding: '4px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: '700',
+              backgroundColor: waStatus.connected ? 'var(--success-bg)' : 'var(--danger-bg)',
+              color: waStatus.connected ? 'var(--success)' : 'var(--danger)',
+              border: `1px solid ${waStatus.connected ? 'var(--success-border)' : 'var(--danger-border)'}`
+            }}
+          >
+            {waStatus.connected ? '● Baileys Terhubung' : '○ Baileys Terputus'}
+          </span>
+          <button onClick={() => { fetchWaStatus(); fetchBelumLapor(); }} className="btn btn-secondary btn-sm">Refresh Status</button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
@@ -166,15 +216,58 @@ const NotifikasiPage = () => {
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
           <p className="text-muted text-sm mb-1 font-medium">{t('notifikasi.sent_today')}</p>
-          <h3 className="text-3xl font-bold">1</h3>
+          <h3 className="text-3xl font-bold">{logs.filter(l => l.status?.includes('Berhasil')).length}</h3>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
           <p className="text-muted text-sm mb-1 font-medium">{t('notifikasi.failed')}</p>
-          <h3 className="text-3xl font-bold">0</h3>
+          <h3 className="text-3xl font-bold">{logs.filter(l => l.status?.includes('0 Berhasil') || l.status?.includes('Gagal')).length}</h3>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
           <p className="text-muted text-sm mb-1 font-medium">{t('notifikasi.pending_units')}</p>
-          <h3 className="text-3xl font-bold">0</h3>
+          <h3 className="text-3xl font-bold">{isLoadingBelum ? '-' : belumLapor.length}</h3>
+        </div>
+      </div>
+
+      <div className="card p-0 mb-6" style={{ padding: 0, marginBottom: '24px' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 className="font-bold text-lg m-0">Unit Belum Lapor Bulan Ini (Baileys)</h3>
+          <button onClick={fetchBelumLapor} disabled={isLoadingBelum} className="btn btn-secondary btn-sm flex items-center gap-2">
+            <Loader2 size={14} className={isLoadingBelum ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </div>
+        <div className="table-wrapper" style={{ border: 'none' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>UNIT</th>
+                <th>PENANGGUNG (WA)</th>
+                <th>AKSI</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoadingBelum ? (
+                <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}><Loader2 className="animate-spin mx-auto" size={20} /></td></tr>
+              ) : belumLapor.length === 0 ? (
+                <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Semua unit sudah lapor. Tidak ada pengingat terkirim.</td></tr>
+              ) : belumLapor.map((u) => (
+                <tr key={u.id_unit}>
+                  <td style={{ fontWeight: '600' }}>{u.nama_unit}</td>
+                  <td>{u.penanggung.map(p => `${p.nama} (${p.no_hp})`).join(', ')}</td>
+                  <td>
+                    <button
+                      onClick={() => handleKirimPerUnit(u.id_unit)}
+                      disabled={sendingUnitId === u.id_unit || !waStatus.connected}
+                      title={!waStatus.connected ? 'Hubungkan Baileys dulu' : 'Kirim pengingat via Baileys'}
+                      className="btn btn-sm flex items-center gap-2"
+                      style={{ backgroundColor: '#2563eb', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}
+                    >
+                      {sendingUnitId === u.id_unit ? <><Loader2 size={14} className="animate-spin" /> Mengirim...</> : <><Send size={14} /> Ingatkan</>}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -398,12 +491,25 @@ const NotifikasiPage = () => {
                   >
                     <option value="">{t('notifikasi.msg_choose_ph')}</option>
                     {templates.filter(t => t.status === 'APPROVED').map(t => (
-                      <option key={t.id} value={t.name}>{t.name} ({t.language})</option>
+                      <option key={t.id} value={t.name}>{t.name}</option>
                     ))}
                   </select>
                   <p className="mt-1.5 text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>{t('notifikasi.msg_hint')}</p>
                 </div>
               )}
+
+              <div>
+                <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>Unit Penerima (Baileys)</label>
+                <select className="form-control" value={broadcastUnit} onChange={(e) => setBroadcastUnit(e.target.value)}>
+                  <option value="SEMUA">Semua Unit</option>
+                  <option value="PUSAT">Pusat</option>
+                  <option value="DAERAH">Daerah</option>
+                  <option value="CABANG">Cabang</option>
+                </select>
+                {!waStatus.connected && (
+                  <p className="mt-1.5 text-xs" style={{ color: 'var(--danger)' }}>Baileys terputus — hubungkan dulu agar pesan terkirim (atau masuk antrian).</p>
+                )}
+              </div>
 
               <div className="pt-4 flex justify-end gap-3 border-t mt-6" style={{ borderColor: 'var(--border)' }}>
                 <button
