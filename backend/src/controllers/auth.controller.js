@@ -1,266 +1,609 @@
-/**
- * Controller: Auth
- * Login, logout, reset password
- */
+'use strict';
+
 const bcrypt = require('bcryptjs');
-const crypto = require('crypto');
 const prisma = require('../config/database');
 const { generateToken } = require('../utils/jwt');
 const { sendSuccess, sendError } = require('../utils/response');
-const whatsappService = require('../whatsapp/baileys.service');
+const {
+  HumanTokenValidationError,
+  generateHumanToken,
+  hashHumanToken,
+} = require('../utils/security-token');
+const {
+  queuePasswordReset,
+  queuePasswordChanged,
+} = require('../services/notification.service');
+const { isValidIndonesianPhone } = require('../whatsapp/baileys.service');
 
 const MAX_LOGIN_ATTEMPTS = 3;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const SECURITY_NOTIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+const DUMMY_PASSWORD_HASH =
+  '$2a$12$dr7SEN3tPaSkb0EaA1SGv.bWg0HKdladks7w/I1UQ5QsAn69mLVve';
+const GENERIC_LOGIN_MESSAGE = 'Email atau kata sandi salah';
+const GENERIC_RESET_REQUEST_MESSAGE =
+  'Jika email terdaftar dan dapat menerima pesan, instruksi reset akan dikirim.';
+const GENERIC_UNLOCK_REQUEST_MESSAGE =
+  'Jika akun memenuhi syarat, permintaan pembukaan kunci telah dikirim.';
+const GENERIC_RESET_TOKEN_MESSAGE = 'Token tidak valid atau kedaluwarsa';
 
-/**
- * POST /api/auth/login
- */
-const login = async (req, res) => {
-  const { email, kata_sandi } = req.body;
+class ResetTokenRaceError extends Error {
+  constructor() {
+    super('Reset token is no longer redeemable');
+    this.name = 'ResetTokenRaceError';
+  }
+}
 
-  const pengguna = await prisma.pengguna.findUnique({
-    where: { email },
-    include: { unit: { select: { nama_unit: true } } },
+function bcryptRounds() {
+  const configured = Number.parseInt(process.env.BCRYPT_ROUNDS, 10);
+  return Number.isInteger(configured) && configured >= 10 && configured <= 14
+    ? configured
+    : 12;
+}
+
+function activeLock(pengguna, now) {
+  if (!pengguna?.terkunci) return false;
+  if (!pengguna.terkunci_sampai) return true;
+  return new Date(pengguna.terkunci_sampai).getTime() > now.getTime();
+}
+
+function disconnectUserSockets(req, idPengguna) {
+  const socketEvents = req?.app?.get?.('socketEvents');
+  if (typeof socketEvents?.disconnectUserSessions !== 'function') return false;
+  return socketEvents.disconnectUserSessions(idPengguna);
+}
+
+function validDateFromClock(clock) {
+  const value = clock();
+  const date = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+  if (Number.isNaN(date.getTime())) throw new Error('Auth clock returned an invalid date');
+  return date;
+}
+
+async function runTransaction(client, callback, options) {
+  if (typeof client.$transaction === 'function') {
+    return client.$transaction(callback, options);
+  }
+  return callback(client);
+}
+
+async function invalidateUnusedResetTokens(tx, userId, usedAt) {
+  return tx.tokenReset.updateMany({
+    where: {
+      id_pengguna: userId,
+      sudah_dipakai: false,
+    },
+    data: {
+      sudah_dipakai: true,
+      used_at: usedAt,
+    },
   });
+}
 
-  if (!pengguna) {
-    return sendError(res, 'Email atau kata sandi salah', 401);
+function createAuthController(dependencies = {}) {
+  const db = dependencies.prismaClient || prisma;
+  const passwordService = dependencies.bcryptService || bcrypt;
+  const issueJwt = dependencies.generateTokenFn || generateToken;
+  const createHumanToken = dependencies.generateHumanTokenFn || generateHumanToken;
+  const digestHumanToken = dependencies.hashHumanTokenFn || hashHumanToken;
+  const enqueuePasswordReset = dependencies.queuePasswordResetFn || queuePasswordReset;
+  const enqueuePasswordChanged = dependencies.queuePasswordChangedFn || queuePasswordChanged;
+  const phoneIsValid = dependencies.isValidPhoneFn || isValidIndonesianPhone;
+  const clock = dependencies.clock || (() => new Date());
+  const logger = dependencies.logger || console;
+
+  const now = () => validDateFromClock(clock);
+  const logRecoveryFailure = (message) => {
+    try {
+      if (typeof logger?.error === 'function') logger.error(message);
+    } catch {
+      // Logging must never make account-recovery responses distinguishable.
+    }
+  };
+
+  const rejectLogin = (res) => sendError(res, GENERIC_LOGIN_MESSAGE, 401);
+  const rejectResetToken = (res) => sendError(res, GENERIC_RESET_TOKEN_MESSAGE, 400);
+
+  async function clearExpiredLock(userId, currentTime) {
+    return db.pengguna.updateMany({
+      where: {
+        id_pengguna: userId,
+        terkunci: true,
+        terkunci_sampai: { lte: currentTime },
+      },
+      data: {
+        terkunci: false,
+        terkunci_sampai: null,
+        percobaan_login: 0,
+      },
+    });
   }
 
-  if (pengguna.terkunci) {
-    return sendError(
-      res,
-      'Akun Anda terkunci karena terlalu banyak percobaan login. Hubungi administrator.',
-      403
-    );
+  async function recordFailedLogin(userId, currentTime) {
+    return runTransaction(db, async (tx) => {
+      const failed = await tx.pengguna.update({
+        where: { id_pengguna: userId },
+        data: { percobaan_login: { increment: 1 } },
+        select: { percobaan_login: true },
+      });
+
+      if (failed.percobaan_login >= MAX_LOGIN_ATTEMPTS) {
+        await tx.pengguna.update({
+          where: { id_pengguna: userId },
+          data: {
+            terkunci: true,
+            terkunci_sampai: new Date(currentTime.getTime() + LOGIN_LOCK_MS),
+          },
+        });
+        return true;
+      }
+      return false;
+    });
   }
 
-  const isPasswordValid = await bcrypt.compare(kata_sandi, pengguna.kata_sandi);
-
-  if (!isPasswordValid) {
-    const percobaan_baru = pengguna.percobaan_login + 1;
-    const terkunci = percobaan_baru >= MAX_LOGIN_ATTEMPTS;
-
-    await prisma.pengguna.update({
-      where: { id_pengguna: pengguna.id_pengguna },
-      data: { percobaan_login: percobaan_baru, terkunci },
+  const login = async (req, res) => {
+    const { email, kata_sandi } = req.body;
+    const pengguna = await db.pengguna.findUnique({
+      where: { email },
+      include: { unit: { select: { nama_unit: true } } },
     });
 
-    const sisaCobaan = MAX_LOGIN_ATTEMPTS - percobaan_baru;
-    const pesan = terkunci
-      ? 'Akun Anda terkunci karena terlalu banyak percobaan login.'
-      : `Email atau kata sandi salah. Sisa percobaan: ${sisaCobaan}`;
+    const passwordMatches = await passwordService.compare(
+      kata_sandi,
+      pengguna?.kata_sandi || DUMMY_PASSWORD_HASH
+    );
+    if (!pengguna) return rejectLogin(res);
 
-    return sendError(res, pesan, 401);
-  }
+    const currentTime = now();
+    if (activeLock(pengguna, currentTime)) return rejectLogin(res);
 
-  // Reset percobaan login saat berhasil
-  await prisma.pengguna.update({
-    where: { id_pengguna: pengguna.id_pengguna },
-    data: { percobaan_login: 0 },
-  });
+    if (pengguna.terkunci) {
+      await clearExpiredLock(pengguna.id_pengguna, currentTime);
+      pengguna.percobaan_login = 0;
+      pengguna.terkunci = false;
+      pengguna.terkunci_sampai = null;
+    }
 
-  const token = generateToken({
-    id_pengguna: pengguna.id_pengguna,
-    email: pengguna.email,
-    peran: pengguna.peran,
-    id_unit: pengguna.id_unit,
-  });
+    if (!passwordMatches) {
+      const wasLocked = await recordFailedLogin(pengguna.id_pengguna, currentTime);
+      if (wasLocked) disconnectUserSockets(req, pengguna.id_pengguna);
+      return rejectLogin(res);
+    }
 
-  return sendSuccess(res, {
-    token,
-    pengguna: {
+    const unlocked = await db.pengguna.updateMany({
+      where: {
+        id_pengguna: pengguna.id_pengguna,
+        OR: [
+          { terkunci: false },
+          { terkunci: true, terkunci_sampai: { lte: currentTime } },
+        ],
+      },
+      data: {
+        percobaan_login: 0,
+        terkunci: false,
+        terkunci_sampai: null,
+      },
+    });
+    if (unlocked.count !== 1) return rejectLogin(res);
+
+    const loginState = await db.pengguna.findUnique({
+      where: { id_pengguna: pengguna.id_pengguna },
+      select: { session_version: true },
+    });
+    if (!loginState) return rejectLogin(res);
+
+    const token = issueJwt({
       id_pengguna: pengguna.id_pengguna,
-      nama: pengguna.nama,
       email: pengguna.email,
       peran: pengguna.peran,
-      no_hp: pengguna.no_hp,
       id_unit: pengguna.id_unit,
-      unit: pengguna.unit,
-    },
-  }, 'Login berhasil');
-};
+      session_version: loginState.session_version,
+    });
 
-/**
- * GET /api/auth/profile
- */
-const getProfile = async (req, res) => {
-  const pengguna = await prisma.pengguna.findUnique({
-    where: { id_pengguna: req.pengguna.id_pengguna },
-    select: {
-      id_pengguna: true,
-      nama: true,
-      email: true,
-      peran: true,
-      no_hp: true,
-      id_unit: true,
-      created_at: true,
-      unit: { select: { id_unit: true, nama_unit: true, jenis_unit: true } },
-    },
-  });
+    return sendSuccess(
+      res,
+      {
+        token,
+        pengguna: {
+          id_pengguna: pengguna.id_pengguna,
+          nama: pengguna.nama,
+          email: pengguna.email,
+          peran: pengguna.peran,
+          no_hp: pengguna.no_hp,
+          id_unit: pengguna.id_unit,
+          unit: pengguna.unit,
+        },
+      },
+      'Login berhasil'
+    );
+  };
 
-  return sendSuccess(res, pengguna, 'Profil berhasil diambil');
-};
+  const getProfile = async (req, res) => {
+    const pengguna = await db.pengguna.findUnique({
+      where: { id_pengguna: req.pengguna.id_pengguna },
+      select: {
+        id_pengguna: true,
+        nama: true,
+        email: true,
+        peran: true,
+        no_hp: true,
+        id_unit: true,
+        created_at: true,
+        unit: { select: { id_unit: true, nama_unit: true, jenis_unit: true } },
+      },
+    });
+    return sendSuccess(res, pengguna, 'Profil berhasil diambil');
+  };
 
-/**
- * POST /api/auth/reset-password/request
- * Kirim token reset password (ke email atau WhatsApp)
- */
-const requestResetPassword = async (req, res) => {
-  const { email } = req.body;
+  const updateWhatsappContact = async (req, res) => {
+    const userId = req.pengguna.id_pengguna;
+    const pengguna = await db.pengguna.findUnique({
+      where: { id_pengguna: userId },
+      select: {
+        id_pengguna: true,
+        kata_sandi: true,
+        no_hp: true,
+      },
+    });
+    if (!pengguna) return sendError(res, 'Sesi tidak valid. Silakan login ulang.', 401);
 
-  const pengguna = await prisma.pengguna.findUnique({ where: { email } });
+    const passwordMatches = await passwordService.compare(
+      req.body.kata_sandi,
+      pengguna.kata_sandi
+    );
+    if (!passwordMatches) return sendError(res, 'Kata sandi tidak sesuai', 400);
 
-  // Selalu kembalikan respons sukses agar tidak bocor info user
-  if (!pengguna) {
-    return sendSuccess(res, null, 'Jika email terdaftar, instruksi reset akan dikirim.');
-  }
+    const changedAt = now();
+    const updated = await runTransaction(db, async (tx) => {
+      const profile = await tx.pengguna.update({
+        where: { id_pengguna: userId },
+        data: { no_hp: req.body.no_hp },
+        select: {
+          id_pengguna: true,
+          nama: true,
+          email: true,
+          peran: true,
+          no_hp: true,
+          id_unit: true,
+          unit: { select: { id_unit: true, nama_unit: true, jenis_unit: true } },
+        },
+      });
 
-  // Hapus token lama yang belum dipakai
-  await prisma.tokenReset.deleteMany({
-    where: { id_pengguna: pengguna.id_pengguna, sudah_dipakai: false },
-  });
+      await invalidateUnusedResetTokens(tx, userId, changedAt);
+      await tx.logAudit.create({
+        data: {
+          id_pengguna: userId,
+          aksi: 'UPDATE_WHATSAPP_CONTACT',
+          tabel_terkait: 'pengguna',
+          id_record_terkait: userId,
+          detail: JSON.stringify({
+            source: 'self_service',
+            contact_type: 'WHATSAPP',
+            replaced_existing: Boolean(pengguna.no_hp),
+          }),
+        },
+      });
 
-  const token = crypto.randomBytes(32).toString('hex');
-  const kedaluwarsa = new Date(Date.now() + 60 * 60 * 1000); // 1 jam
+      return profile;
+    });
 
-  await prisma.tokenReset.create({
-    data: {
-      token,
-      kedaluwarsa_pada: kedaluwarsa,
-      id_pengguna: pengguna.id_pengguna,
-    },
-  });
+    return sendSuccess(res, updated, 'Nomor WhatsApp berhasil diperbarui');
+  };
 
-  // Selalu tampilkan token di console untuk mempermudah testing
-  console.log(`[RESET TOKEN] ${pengguna.email}: ${token}`);
+  const requestResetPassword = async (req, res) => {
+    try {
+      const tokenBundle = createHumanToken();
+      const pengguna = await db.pengguna.findUnique({
+        where: { email: req.body.email },
+        select: {
+          id_pengguna: true,
+          nama: true,
+          no_hp: true,
+        },
+      });
 
-  // Kirim token via WhatsApp jika no_hp tersedia
-  if (pengguna.no_hp) {
-    whatsappService
-      .kirimTokenReset(pengguna.no_hp, pengguna.nama, token)
-      .catch((err) => console.error('[WA] Gagal kirim token reset:', err.message));
-  }
+      if (pengguna && pengguna.no_hp && phoneIsValid(pengguna.no_hp)) {
+        const issuedAt = now();
+        const expiresAt = new Date(issuedAt.getTime() + RESET_TOKEN_TTL_MS);
 
-  return sendSuccess(res, null, 'Instruksi reset kata sandi telah dikirim.');
-};
+        await runTransaction(db, async (tx) => {
+          await invalidateUnusedResetTokens(tx, pengguna.id_pengguna, issuedAt);
+          const tokenRecord = await tx.tokenReset.create({
+            data: {
+              token: tokenBundle.tokenDigest,
+              tujuan: 'RESET_PASSWORD',
+              sudah_dipakai: false,
+              attempt_count: 0,
+              kedaluwarsa_pada: expiresAt,
+              id_pengguna: pengguna.id_pengguna,
+            },
+            select: { id_token_reset: true },
+          });
 
-/**
- * POST /api/auth/request-unlock-ticket
- * User is locked out, requests IT to send reset token
- */
-const requestUnlockTicket = async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
-    return sendError(res, 'Email wajib diisi', 400);
-  }
-
-  const pengguna = await prisma.pengguna.findUnique({
-    where: { email },
-    include: { unit: true }
-  });
-
-  if (!pengguna) {
-    // Return success to avoid email enumeration
-    return sendSuccess(res, null, 'Jika email valid, permintaan telah dikirim ke IT.');
-  }
-
-  // Create a helpdesk ticket for IT
-  await prisma.permintaanBantuan.create({
-    data: {
-      jenis: 'PERMINTAAN_AKSES',
-      deskripsi: `Akun atas nama ${pengguna.nama} (${pengguna.unit?.nama_unit || 'Unknown Unit'}) terkunci karena 3x percobaan login gagal. Mohon berikan token reset kata sandi.`,
-      status: 'MENUNGGU',
-      id_pengguna_pengaju: pengguna.id_pengguna,
+          await enqueuePasswordReset({
+            tx,
+            dedupeKey: `password-reset:${tokenRecord.id_token_reset}`,
+            recipientName: pengguna.nama,
+            recipientPhone: pengguna.no_hp,
+            token: tokenBundle.plainToken,
+            expiresAt,
+            metadata: { tokenResetId: tokenRecord.id_token_reset },
+          });
+        });
+      }
+    } catch (error) {
+      // Deliberately return the same response for unknown users, invalid contact
+      // data, and internal delivery setup failures to prevent account discovery.
+      logRecoveryFailure('[Auth] Password reset request could not be queued.');
     }
-  });
 
-  return sendSuccess(res, null, 'Permintaan telah dikirim ke IT. Silakan tunggu Token via WA.');
-};
+    return sendSuccess(res, null, GENERIC_RESET_REQUEST_MESSAGE);
+  };
 
-/**
- * POST /api/auth/reset-password
- */
-const resetPassword = async (req, res) => {
-  const { kata_sandi_baru } = req.body;
-  const token = req.body.token?.replace(/\s+/g, '');
-  
-  console.log('[DEBUG] Token diterima di backend:', req.body.token, '-> Sesudah strip spasi:', token);
+  const requestUnlockTicket = async (req, res) => {
+    try {
+      const currentTime = now();
+      await runTransaction(
+        db,
+        async (tx) => {
+          const pengguna = await tx.pengguna.findUnique({
+            where: { email: req.body.email },
+            select: {
+              id_pengguna: true,
+              terkunci: true,
+              terkunci_sampai: true,
+            },
+          });
+          if (!pengguna) return;
 
-  const tokenRecord = await prisma.tokenReset.findUnique({ 
-    where: { token },
-    include: { pengguna: { select: { no_hp: true } } }
-  });
+          if (!activeLock(pengguna, currentTime)) {
+            if (pengguna.terkunci) {
+              await tx.pengguna.updateMany({
+                where: {
+                  id_pengguna: pengguna.id_pengguna,
+                  terkunci: true,
+                  terkunci_sampai: { lte: currentTime },
+                },
+                data: {
+                  terkunci: false,
+                  terkunci_sampai: null,
+                  percobaan_login: 0,
+                },
+              });
+            }
+            return;
+          }
 
-  if (!tokenRecord) {
-    return sendError(res, 'Token tidak valid', 400);
-  }
+          const existingTicket = await tx.permintaanBantuan.findFirst({
+            where: {
+              id_pengguna_pengaju: pengguna.id_pengguna,
+              jenis: 'PERMINTAAN_AKSES',
+              status: { in: ['MENUNGGU', 'DIPROSES'] },
+            },
+            select: { id_permintaan: true },
+          });
+          if (existingTicket) return;
 
-  if (tokenRecord.sudah_dipakai) {
-    return sendError(res, 'Token sudah digunakan', 400);
-  }
+          await tx.permintaanBantuan.create({
+            data: {
+              jenis: 'PERMINTAAN_AKSES',
+              deskripsi: 'Permintaan pembukaan akun yang sedang terkunci.',
+              status: 'MENUNGGU',
+              id_pengguna_pengaju: pengguna.id_pengguna,
+            },
+          });
+        },
+        { isolationLevel: 'Serializable' }
+      );
+    } catch (error) {
+      // The response remains indistinguishable even if a concurrent request won.
+      logRecoveryFailure('[Auth] Unlock request could not be processed.');
+    }
 
-  if (new Date() > tokenRecord.kedaluwarsa_pada) {
-    return sendError(res, 'Token sudah kedaluwarsa', 400);
-  }
+    return sendSuccess(res, null, GENERIC_UNLOCK_REQUEST_MESSAGE);
+  };
 
-  const hashed = await bcrypt.hash(kata_sandi_baru, parseInt(process.env.BCRYPT_ROUNDS) || 12);
+  const resetPassword = async (req, res) => {
+    let tokenDigest;
+    try {
+      tokenDigest = digestHumanToken(req.body.token);
+    } catch (error) {
+      if (error instanceof HumanTokenValidationError || error?.code === 'INVALID_HUMAN_TOKEN') {
+        return rejectResetToken(res);
+      }
+      throw error;
+    }
 
-  await prisma.$transaction([
-    prisma.pengguna.update({
-      where: { id_pengguna: tokenRecord.id_pengguna },
-      data: { kata_sandi: hashed, percobaan_login: 0, terkunci: false },
-    }),
-    prisma.tokenReset.update({
-      where: { id_token_reset: tokenRecord.id_token_reset },
-      data: { sudah_dipakai: true },
-    }),
-  ]);
+    const [tokenRecord, passwordHash] = await Promise.all([
+      db.tokenReset.findUnique({
+        where: { token: tokenDigest },
+        select: {
+          id_token_reset: true,
+          id_pengguna: true,
+          tujuan: true,
+          sudah_dipakai: true,
+          kedaluwarsa_pada: true,
+          pengguna: {
+            select: {
+              id_pengguna: true,
+              nama: true,
+              no_hp: true,
+            },
+          },
+        },
+      }),
+      passwordService.hash(req.body.kata_sandi_baru, bcryptRounds()),
+    ]);
 
-  // Notifikasi WhatsApp jika password berhasil direset
-  if (tokenRecord.pengguna.no_hp) {
-    const pesan =
-      '✅ *Kata sandi berhasil direset*\n\n' +
-      'Halo, kata sandi akun Anda telah berhasil diubah.\n' +
-      'Jika ini bukan Anda, segera hubungi admin.';
+    const currentTime = now();
+    const recordIsUsable = Boolean(
+      tokenRecord &&
+        tokenRecord.tujuan === 'RESET_PASSWORD' &&
+        !tokenRecord.sudah_dipakai &&
+        new Date(tokenRecord.kedaluwarsa_pada).getTime() > currentTime.getTime()
+    );
 
-    whatsappService
-      .kirimPesan(tokenRecord.pengguna.no_hp, pesan)
-      .catch((err) => console.error('[WA] Gagal kirim notif reset:', err.message));
-  }
+    if (!recordIsUsable) {
+      if (tokenRecord) {
+        await db.tokenReset.updateMany({
+          where: { id_token_reset: tokenRecord.id_token_reset },
+          data: { attempt_count: { increment: 1 } },
+        });
+      }
+      return rejectResetToken(res);
+    }
 
-  return sendSuccess(res, null, 'Kata sandi berhasil direset. Silakan login.');
-};
+    try {
+      await runTransaction(db, async (tx) => {
+        const consumed = await tx.tokenReset.updateMany({
+          where: {
+            id_token_reset: tokenRecord.id_token_reset,
+            token: tokenDigest,
+            tujuan: 'RESET_PASSWORD',
+            sudah_dipakai: false,
+            kedaluwarsa_pada: { gt: currentTime },
+          },
+          data: {
+            sudah_dipakai: true,
+            used_at: currentTime,
+            attempt_count: { increment: 1 },
+          },
+        });
+        if (consumed.count !== 1) throw new ResetTokenRaceError();
 
-/**
- * POST /api/auth/ganti-password
- */
-const gantiPassword = async (req, res) => {
-  const { kata_sandi_lama, kata_sandi_baru } = req.body;
+        const updated = await tx.pengguna.update({
+          where: { id_pengguna: tokenRecord.id_pengguna },
+          data: {
+            kata_sandi: passwordHash,
+            session_version: { increment: 1 },
+            percobaan_login: 0,
+            terkunci: false,
+            terkunci_sampai: null,
+          },
+          select: {
+            id_pengguna: true,
+            nama: true,
+            no_hp: true,
+            session_version: true,
+          },
+        });
+        await invalidateUnusedResetTokens(tx, updated.id_pengguna, currentTime);
 
-  const pengguna = await prisma.pengguna.findUnique({
-    where: { id_pengguna: req.pengguna.id_pengguna },
-  });
+        if (updated.no_hp && phoneIsValid(updated.no_hp)) {
+          await enqueuePasswordChanged({
+            tx,
+            dedupeKey: `password-changed:reset:${tokenRecord.id_token_reset}`,
+            recipientName: updated.nama,
+            recipientPhone: updated.no_hp,
+            expiresAt: new Date(currentTime.getTime() + SECURITY_NOTIFICATION_TTL_MS),
+            metadata: {
+              source: 'password_reset',
+              sessionVersion: updated.session_version,
+            },
+          });
+        }
+      });
+    } catch (error) {
+      if (error instanceof ResetTokenRaceError) return rejectResetToken(res);
+      throw error;
+    }
 
-  const isValid = await bcrypt.compare(kata_sandi_lama, pengguna.kata_sandi);
-  if (!isValid) {
-    return sendError(res, 'Kata sandi lama tidak sesuai', 400);
-  }
+    disconnectUserSockets(req, tokenRecord.id_pengguna);
+    return sendSuccess(res, null, 'Kata sandi berhasil direset. Silakan login.');
+  };
 
-  const hashed = await bcrypt.hash(kata_sandi_baru, parseInt(process.env.BCRYPT_ROUNDS) || 12);
+  const gantiPassword = async (req, res) => {
+    const pengguna = await db.pengguna.findUnique({
+      where: { id_pengguna: req.pengguna.id_pengguna },
+      select: {
+        id_pengguna: true,
+        nama: true,
+        no_hp: true,
+        kata_sandi: true,
+      },
+    });
+    if (!pengguna) return sendError(res, 'Sesi tidak valid. Silakan login ulang.', 401);
 
-  await prisma.pengguna.update({
-    where: { id_pengguna: req.pengguna.id_pengguna },
-    data: { kata_sandi: hashed },
-  });
+    const passwordMatches = await passwordService.compare(
+      req.body.kata_sandi_lama,
+      pengguna.kata_sandi
+    );
+    if (!passwordMatches) return sendError(res, 'Kata sandi lama tidak sesuai', 400);
 
-  return sendSuccess(res, null, 'Kata sandi berhasil diubah');
-};
+    const passwordHash = await passwordService.hash(
+      req.body.kata_sandi_baru,
+      bcryptRounds()
+    );
+    const changedAt = now();
+
+    await runTransaction(db, async (tx) => {
+      const updated = await tx.pengguna.update({
+        where: { id_pengguna: pengguna.id_pengguna },
+        data: {
+          kata_sandi: passwordHash,
+          session_version: { increment: 1 },
+          percobaan_login: 0,
+          terkunci: false,
+          terkunci_sampai: null,
+        },
+        select: {
+          id_pengguna: true,
+          nama: true,
+          no_hp: true,
+          session_version: true,
+        },
+      });
+      await invalidateUnusedResetTokens(tx, updated.id_pengguna, changedAt);
+
+      if (updated.no_hp && phoneIsValid(updated.no_hp)) {
+        await enqueuePasswordChanged({
+          tx,
+          dedupeKey: `password-changed:user:${updated.id_pengguna}:session:${updated.session_version}`,
+          recipientName: updated.nama,
+          recipientPhone: updated.no_hp,
+          expiresAt: new Date(changedAt.getTime() + SECURITY_NOTIFICATION_TTL_MS),
+          metadata: {
+            source: 'self_service',
+            sessionVersion: updated.session_version,
+          },
+        });
+      }
+    });
+
+    disconnectUserSockets(req, pengguna.id_pengguna);
+    return sendSuccess(
+      res,
+      null,
+      'Kata sandi berhasil diubah. Silakan login kembali.'
+    );
+  };
+
+  return {
+    login,
+    getProfile,
+    updateWhatsappContact,
+    requestResetPassword,
+    requestUnlockTicket,
+    resetPassword,
+    gantiPassword,
+  };
+}
+
+const controllers = createAuthController();
 
 module.exports = {
-  login,
-  getProfile,
-  requestResetPassword,
-  requestUnlockTicket,
-  resetPassword,
-  gantiPassword,
+  ...controllers,
+  MAX_LOGIN_ATTEMPTS,
+  LOGIN_LOCK_MS,
+  RESET_TOKEN_TTL_MS,
+  DUMMY_PASSWORD_HASH,
+  GENERIC_LOGIN_MESSAGE,
+  GENERIC_RESET_REQUEST_MESSAGE,
+  GENERIC_UNLOCK_REQUEST_MESSAGE,
+  GENERIC_RESET_TOKEN_MESSAGE,
+  ResetTokenRaceError,
+  activeLock,
+  disconnectUserSockets,
+  createAuthController,
 };

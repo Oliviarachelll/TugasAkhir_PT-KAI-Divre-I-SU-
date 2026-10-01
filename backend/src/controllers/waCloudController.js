@@ -1,241 +1,377 @@
+'use strict';
+
+const QRCode = require('qrcode');
 const prisma = require('../config/database');
 const whatsappService = require('../whatsapp/baileys.service');
 const reminderService = require('../services/reminder.service');
+const {
+  NOTIFICATION_TYPES,
+  NOTIFICATION_STATUSES,
+  getNotificationQueueStats,
+} = require('../services/notification.service');
+const {
+  getBusinessDate,
+  startOfBusinessDayUtc,
+} = require('../services/business-time');
+const { sendSuccess, sendError } = require('../utils/response');
+const { buildPaginationMeta } = require('../utils/pagination');
 
-/**
- * DEPRECATED (Meta Cloud API): BSUID/webhook tidak lagi dipakai setelah migrasi ke Baileys.
- * Fungsi dipertahankan agar tidak merusak import lama, tapi selalu melempar.
- */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const TERMINAL_STATUSES = new Set(['ACCEPTED', 'DELIVERED', 'FAILED', 'EXPIRED']);
+
 function resolveContactId() {
-  throw new Error('Meta webhook deprecated: gunakan Baileys (ENABLE_WHATSAPP=true)');
+  throw new Error('Meta webhook deprecated: gunakan notification outbox');
 }
 
-/**
- * Broadcast message via Baileys (migrasi dari Meta WhatsApp Cloud API).
- * Kontrak request tetap sama agar frontend lama tidak jebol:
- * { messageType: 'text'|'template', messageText, templateName, unitPenerima }
- */
+function handleControllerError(res, error, fallbackMessage) {
+  const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500;
+  const message = statusCode < 500 && error?.message ? error.message : fallbackMessage;
+  return sendError(res, message, statusCode);
+}
+
+function sendQueueOutcome(res, result, successMessage) {
+  const accepted = Number(result.queued || 0) + Number(result.duplicate || 0);
+  if (accepted === 0) {
+    if (Number(result.failed || 0) > 0) {
+      return sendError(
+        res,
+        'Semua notifikasi gagal diantrikan',
+        503,
+        result
+      );
+    }
+    return sendError(
+      res,
+      'Tidak ada penerima valid untuk diantrikan',
+      422,
+      result
+    );
+  }
+
+  const partial = Number(result.failed || 0) > 0 || Number(result.skipped || 0) > 0;
+  return sendSuccess(
+    res,
+    result,
+    partial ? `${successMessage} dengan sebagian penerima dilewati` : successMessage,
+    partial ? 207 : 202
+  );
+}
+
+function redactPhone(phone) {
+  if (typeof phone !== 'string' || phone.length === 0) return null;
+  if (phone.length <= 6) return '*'.repeat(phone.length);
+  return `${phone.slice(0, 2)}${'*'.repeat(Math.max(3, phone.length - 6))}${phone.slice(-4)}`;
+}
+
 const sendBroadcast = async (req, res) => {
   try {
-    const { messageType, messageText, templateName, unitPenerima } = req.body;
-
-    const results = await reminderService.broadcastBaileys({
-      messageType,
-      messageText,
-      templateName,
-      unitPenerima,
+    const result = await reminderService.broadcastBaileys({
+      ...req.body,
+      source: 'manual',
     });
-
-    if (results.success.length === 0 && results.failed.length === 0) {
-      return res.status(400).json({ error: 'Tidak ada unit dengan nomor HP yang valid di database.' });
-    }
-
-    // Kompatibilitas: frontend lama membaca response.results
-    res.status(200).json({
-      message: 'Broadcast via Baileys selesai diproses',
-      results,
-    });
-
+    return sendQueueOutcome(res, result, 'Broadcast berhasil diantrikan');
   } catch (error) {
-    console.error(`[WA-Baileys] Broadcast error: ${error.message}`);
-    const status = error.message.includes('tidak ditemukan') || error.message.includes('kosong') ? 400 : 500;
-    res.status(status).json({ error: error.message });
+    return handleControllerError(res, error, 'Gagal mengantrikan broadcast');
   }
 };
 
-/**
- * Webhook Verification for Meta — DEPRECATED setelah migrasi Baileys.
- * Selalu 410 agar integrasi lama jelas-jelas dimatikan.
- */
-const verifyWebhook = (req, res) => {
-  return res.status(410).json({ error: 'Meta webhook deprecated: gunakan Baileys (ENABLE_WHATSAPP=true)' });
-};
+const verifyWebhook = (req, res) => sendError(
+  res,
+  'Meta webhook deprecated: gunakan notification outbox',
+  410
+);
 
-/**
- * Receive Webhook Events from Meta — DEPRECATED setelah migrasi Baileys.
- */
-const handleWebhook = async (req, res) => {
-  return res.status(410).json({ error: 'Meta webhook deprecated: gunakan Baileys (ENABLE_WHATSAPP=true)' });
-};
+const handleWebhook = async (req, res) => sendError(
+  res,
+  'Meta webhook deprecated: gunakan notification outbox',
+  410
+);
 
-/**
- * Create a new message template — lokal saja (tidak lagi ke Meta Management API).
- */
 const createTemplate = async (req, res) => {
   try {
-    const { name, body, trigger, unit } = req.body;
-    
-    if (!name || !body) {
-      return res.status(400).json({ error: 'Nama template dan isi pesan (body) wajib diisi.' });
-    }
-
-    const templateName = name.toLowerCase().replace(/\s+/g, '_');
-
-    // Save to local database
+    const { name, body, trigger, unit, tipe_notifikasi } = req.body;
+    const templateName = name.toLocaleLowerCase('id-ID').replace(/\s+/g, '_');
     const template = await prisma.konfigurasiTemplate.upsert({
       where: { nama_template: templateName },
       update: {
         isi_pesan: body,
-        trigger_waktu: trigger || 'MANUAL',
-        unit_penerima: unit || 'SEMUA'
+        trigger_waktu: trigger,
+        unit_penerima: unit,
+        tipe_notifikasi,
       },
       create: {
         nama_template: templateName,
         isi_pesan: body,
-        trigger_waktu: trigger || 'MANUAL',
-        unit_penerima: unit || 'SEMUA'
-      }
+        trigger_waktu: trigger,
+        unit_penerima: unit,
+        tipe_notifikasi,
+      },
     });
 
-    return res.status(200).json({
-      message: 'Template berhasil dibuat dan disimpan ke database lokal (Baileys).',
-      data: {
-        id: template.id_konfig.toString(),
-        name: template.nama_template,
-        status: 'APPROVED',
-        category: 'LOCAL',
-        language: 'id'
-      }
-    });
-
+    return sendSuccess(res, {
+      id: String(template.id_konfig),
+      name: template.nama_template,
+      status: 'APPROVED',
+      category: 'LOCAL',
+      language: 'id',
+      trigger_waktu: template.trigger_waktu,
+      unit_penerima: template.unit_penerima,
+      tipe_notifikasi: template.tipe_notifikasi,
+    }, 'Template notifikasi berhasil disimpan', 201);
   } catch (error) {
-    console.error('Error saat create template lokal:', error);
-    return res.status(500).json({ error: 'Terjadi kesalahan pada server saat membuat template.' });
+    return handleControllerError(res, error, 'Gagal menyimpan template notifikasi');
   }
 };
 
-/**
- * Fetch list of message templates — lokal saja (Baileys, tanpa Meta).
- */
 const getTemplates = async (req, res) => {
   try {
-    // Fetch local configurations ONLY (Baileys tidak butuh approval Meta)
-    const configs = await prisma.konfigurasiTemplate.findMany({ orderBy: { created_at: 'desc' } });
-
-    // Map to match frontend expected structure
-    const mappedData = configs.map(localConfig => {
-      return {
-        id: localConfig.id_konfig.toString(),
-        name: localConfig.nama_template,
-        status: 'APPROVED', // lokal selalu siap kirim via Baileys
-        category: 'LOCAL',
-        language: 'id',
-        trigger_waktu: localConfig.trigger_waktu,
-        unit_penerima: localConfig.unit_penerima,
-        components: [
-          {
-            type: 'BODY',
-            text: localConfig.isi_pesan || ''
-          }
-        ]
-      };
+    const configs = await prisma.konfigurasiTemplate.findMany({
+      orderBy: { created_at: 'desc' },
     });
-
-    return res.status(200).json({
-      data: mappedData
-    });
-
+    const templates = configs.map((config) => ({
+      id: String(config.id_konfig),
+      name: config.nama_template,
+      status: 'APPROVED',
+      category: 'LOCAL',
+      language: 'id',
+      trigger_waktu: config.trigger_waktu,
+      unit_penerima: config.unit_penerima,
+      tipe_notifikasi: config.tipe_notifikasi,
+      components: [{ type: 'BODY', text: config.isi_pesan || '' }],
+    }));
+    return sendSuccess(res, templates);
   } catch (error) {
-    console.error('Error saat fetch templates lokal:', error);
-    return res.status(500).json({ error: 'Terjadi kesalahan pada server saat mengambil template.' });
+    return handleControllerError(res, error, 'Gagal mengambil template notifikasi');
   }
 };
 
-/**
- * Fetch logs of previous broadcasts
- */
 const getLogs = async (req, res) => {
   try {
-    const logs = await prisma.logNotifikasi.findMany({
-      orderBy: { waktu: 'desc' },
-      take: 50 // Limit to last 50 logs
-    });
-    
-    return res.status(200).json({
-      data: logs
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 20;
+    const skip = (page - 1) * limit;
+    const where = {
+      ...(req.query.status ? { status: req.query.status } : {}),
+      ...(req.query.jenis ? { jenis: req.query.jenis } : {}),
+    };
+    const [rows, total] = await prisma.$transaction([
+      prisma.notificationJob.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          dedupe_key: true,
+          jenis: true,
+          recipient_name: true,
+          recipient_phone: true,
+          status: true,
+          attempts: true,
+          max_attempts: true,
+          next_attempt_at: true,
+          provider_message_id: true,
+          last_error: true,
+          accepted_at: true,
+          delivered_at: true,
+          created_at: true,
+          updated_at: true,
+        },
+      }),
+      prisma.notificationJob.count({ where }),
+    ]);
+
+    const items = rows.map((row) => ({
+      id: row.id,
+      dedupe_key: row.dedupe_key,
+      jenis: row.jenis,
+      recipient: {
+        name: row.recipient_name,
+        phone: redactPhone(row.recipient_phone),
+      },
+      status: {
+        code: row.status,
+        terminal: TERMINAL_STATUSES.has(row.status),
+        attempts: row.attempts,
+        max_attempts: row.max_attempts,
+        next_attempt_at: row.next_attempt_at,
+        accepted_at: row.accepted_at,
+        delivered_at: row.delivered_at,
+        provider_message_id: row.provider_message_id,
+        last_error: row.last_error,
+      },
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    }));
+
+    return sendSuccess(res, {
+      items,
+      pagination: buildPaginationMeta(total, page, limit),
     });
   } catch (error) {
-    console.error('Error saat mengambil log notifikasi:', error);
-    return res.status(500).json({ error: 'Gagal mengambil log pengiriman' });
+    return handleControllerError(res, error, 'Gagal mengambil log notifikasi');
   }
 };
 
-/**
- * Status koneksi Baileys untuk UI admin (ganti ketergantungan Meta).
- */
-const getWaStatus = async (req, res) => {
-  const s = whatsappService.getStatus();
-  return res.status(200).json({
-    data: {
-      channel: 'baileys',
-      connected: s.connected,
-      queued: s.queued,
-    },
-  });
+const getNotificationMetrics = async (req, res) => {
+  try {
+    const now = new Date();
+    const businessDate = getBusinessDate(now);
+    const start = startOfBusinessDayUtc(now);
+    const end = new Date(start.getTime() + DAY_MS);
+    const createdToday = { created_at: { gte: start, lt: end } };
+    const [statusGroups, typeGroups, acceptedToday, deliveredToday] = await Promise.all([
+      prisma.notificationJob.groupBy({
+        by: ['status'],
+        where: createdToday,
+        _count: { _all: true },
+      }),
+      prisma.notificationJob.groupBy({
+        by: ['jenis'],
+        where: createdToday,
+        _count: { _all: true },
+      }),
+      prisma.notificationJob.count({
+        where: { accepted_at: { gte: start, lt: end } },
+      }),
+      prisma.notificationJob.count({
+        where: { delivered_at: { gte: start, lt: end } },
+      }),
+    ]);
+
+    const byStatus = Object.fromEntries(
+      Object.values(NOTIFICATION_STATUSES).map((status) => [status, 0])
+    );
+    const byType = Object.fromEntries(
+      Object.values(NOTIFICATION_TYPES).map((type) => [type, 0])
+    );
+    for (const group of statusGroups) byStatus[group.status] = group._count?._all || 0;
+    for (const group of typeGroups) byType[group.jenis] = group._count?._all || 0;
+
+    return sendSuccess(res, {
+      business_date: businessDate,
+      timezone: 'Asia/Jakarta',
+      range: { start, end },
+      created: Object.values(byStatus).reduce((sum, count) => sum + count, 0),
+      accepted: acceptedToday,
+      delivered: deliveredToday,
+      by_status: byStatus,
+      by_type: byType,
+    });
+  } catch (error) {
+    return handleControllerError(res, error, 'Gagal mengambil metrik notifikasi');
+  }
 };
 
-/**
- * Daftar unit yang belum lapor bulan berjalan (sumber panel pengingat).
- */
+const getPairingQr = async (req, res) => {
+  res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+
+  try {
+    const pairing = whatsappService.getPairingQr();
+    if (!pairing) {
+      return sendSuccess(res, {
+        available: false,
+        image_data_url: null,
+        expires_at: null,
+      }, 'QR pairing belum tersedia');
+    }
+
+    const imageDataUrl = await QRCode.toDataURL(pairing.value, {
+      type: 'image/png',
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 320,
+      color: { dark: '#111827', light: '#FFFFFF' },
+    });
+    return sendSuccess(res, {
+      available: true,
+      image_data_url: imageDataUrl,
+      expires_at: pairing.expiresAt.toISOString(),
+    }, 'QR pairing tersedia');
+  } catch (error) {
+    return handleControllerError(res, error, 'Gagal membuat QR pairing');
+  }
+};
+
+const getWaStatus = async (req, res) => {
+  try {
+    const transportStatus = whatsappService.getStatus();
+    const queueStatus = await getNotificationQueueStats();
+    return sendSuccess(res, {
+      channel: 'baileys',
+      connected: transportStatus.connected,
+      queued: queueStatus.pending + queueStatus.retry + queueStatus.processing,
+      transport: {
+        state: transportStatus.state,
+        connected: transportStatus.connected,
+        enabled: transportStatus.enabled,
+        retry_scheduled: transportStatus.retryScheduled,
+        pairing_required: transportStatus.pairingRequired,
+        pairing_web_enabled: transportStatus.webPairingEnabled,
+        pairing_qr_available: transportStatus.pairingQrAvailable,
+        terminal_reason: transportStatus.terminalReason,
+      },
+      queue: queueStatus,
+    });
+  } catch (error) {
+    return handleControllerError(res, error, 'Gagal mengambil status notifikasi');
+  }
+};
+
 const getUnitBelumLapor = async (req, res) => {
   try {
     const data = await reminderService.cariUnitBelumLapor();
-    return res.status(200).json({ data });
+    return sendSuccess(res, data);
   } catch (error) {
-    console.error('Error getUnitBelumLapor:', error);
-    return res.status(500).json({ error: 'Gagal mengambil unit belum lapor' });
+    return handleControllerError(res, error, 'Gagal mengambil unit belum lapor');
   }
 };
 
-/**
- * Kirim pengingat manual ke 1 unit via Baileys.
- * POST /wacloud/kirim-unit/:id_unit  body opsional { tenggat }
- */
 const kirimPerUnit = async (req, res) => {
   try {
-    const idUnit = parseInt(req.params.id_unit, 10);
-    if (Number.isNaN(idUnit)) {
-      return res.status(400).json({ error: 'id_unit tidak valid' });
-    }
     const unit = await prisma.unit.findUnique({
-      where: { id_unit: idUnit },
+      where: { id_unit: req.params.id_unit },
       include: {
         pengguna: {
-          where: { peran: 'USER_UNIT', no_hp: { not: null } },
-          select: { nama: true, no_hp: true },
+          where: { peran: 'USER_UNIT' },
+          select: { id_pengguna: true, nama: true, no_hp: true },
         },
       },
     });
-    if (!unit) return res.status(404).json({ error: 'Unit tidak ditemukan' });
+    if (!unit) return sendError(res, 'Unit tidak ditemukan', 404);
 
-    const target = {
+    const result = await reminderService.kirimPengingatUnit({
       id_unit: unit.id_unit,
       nama_unit: unit.nama_unit,
-      penanggung: unit.pengguna.filter((p) => p.no_hp && p.no_hp.trim() !== ''),
-    };
-    if (target.penanggung.length === 0) {
-      return res.status(400).json({ error: 'Unit tidak punya penanggung dengan no_hp valid' });
-    }
-
-    const hasil = await reminderService.kirimPengingatUnit(target, {
-      tenggat: req.body?.tenggat,
-      skipAntiSpam: true, // manual admin selalu dikirim
+      jenis_unit: unit.jenis_unit,
+      contacts: unit.pengguna,
+    }, {
+      tenggat: req.body.tenggat,
+      force: req.body.force,
+      requestKey: req.body.requestKey,
+      source: 'manual',
     });
-    return res.status(200).json({ message: 'Pengingat unit diproses via Baileys', results: hasil });
+    return sendQueueOutcome(res, result, 'Pengingat unit berhasil diantrikan');
   } catch (error) {
-    console.error('Error kirimPerUnit:', error);
-    return res.status(500).json({ error: 'Gagal mengirim pengingat unit' });
+    return handleControllerError(res, error, 'Gagal mengantrikan pengingat unit');
   }
 };
 
 module.exports = {
+  resolveContactId,
+  redactPhone,
+  sendQueueOutcome,
   sendBroadcast,
   verifyWebhook,
   handleWebhook,
   createTemplate,
   getTemplates,
   getLogs,
+  getNotificationMetrics,
+  getPairingQr,
   getWaStatus,
   getUnitBelumLapor,
-  kirimPerUnit
+  kirimPerUnit,
 };

@@ -1,43 +1,35 @@
-/**
- * Middleware: Zod Request Validation
- * Validasi request body / params / query dengan Zod schema
- */
+'use strict';
+
 const { sendError } = require('../utils/response');
 
-/**
- * Validasi request body
- * @param {import('zod').ZodSchema} schema - Zod schema
- */
+function formatValidationErrors(zodError) {
+  return zodError.errors.map((error) => ({
+    field: error.path.join('.'),
+    message: error.message,
+  }));
+}
+
 const validateBody = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
   if (!result.success) {
-    const errors = result.error.errors.map((e) => ({
-      field: e.path.join('.'),
-      message: e.message,
-    }));
-    console.error("ZOD VALIDATION ERROR:", JSON.stringify(errors, null, 2));
-    console.error("PAYLOAD RECEIVED:", req.body);
-    return sendError(res, 'Validasi gagal', 422, errors);
+    return sendError(res, 'Validasi gagal', 422, formatValidationErrors(result.error));
   }
-  req.body = result.data; // data sudah diparse & dibersihkan
-  next();
+  req.body = result.data;
+  return next();
 };
 
-/**
- * Validasi query params
- * @param {import('zod').ZodSchema} schema - Zod schema
- */
 const validateQuery = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.query);
   if (!result.success) {
-    const errors = result.error.errors.map((e) => ({
-      field: e.path.join('.'),
-      message: e.message,
-    }));
-    return sendError(res, 'Query parameter tidak valid', 422, errors);
+    return sendError(
+      res,
+      'Query parameter tidak valid',
+      422,
+      formatValidationErrors(result.error)
+    );
   }
   req.query = result.data;
-  next();
+  return next();
 };
 
-module.exports = { validateBody, validateQuery };
+module.exports = { formatValidationErrors, validateBody, validateQuery };

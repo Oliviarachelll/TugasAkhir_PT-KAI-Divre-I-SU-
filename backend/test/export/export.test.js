@@ -136,6 +136,10 @@ test('export query is unpaginated and applies server-side filters', async () => 
   assert.equal(reportQuery.where.status, 'DISETUJUI');
   assert.equal(reportQuery.where.tanggal.gte.toISOString(), '2026-09-01T00:00:00.000Z');
   assert.equal(reportQuery.where.tanggal.lt.toISOString(), '2026-10-01T00:00:00.000Z');
+  assert.equal(reportQuery.select.id_laporan, true);
+  assert.equal(reportQuery.select.token_revisi, undefined);
+  assert.equal(reportQuery.select.token_revisi_exp, undefined);
+  assert.equal(reportQuery.include, undefined);
   assert.equal(model.meta.record_count, 0);
 });
 
@@ -377,7 +381,8 @@ test('aborted data loading does not start realization queries', async () => {
     laporan: {
       findMany: async (query) => {
         reportQueries += 1;
-        assert.ok(query.include, 'query pertama harus query laporan utama');
+        assert.equal(query.select?.id_laporan, true, 'query pertama harus query laporan utama');
+        assert.equal(query.select?.token_revisi, undefined);
         abortController.abort();
         return [rawReport];
       },

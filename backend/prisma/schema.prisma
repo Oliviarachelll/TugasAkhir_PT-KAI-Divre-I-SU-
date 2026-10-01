@@ -69,6 +69,35 @@ enum KategoriTarget {
   OPERASIONAL
 }
 
+enum StatusNotifikasi {
+  PENDING
+  PROCESSING
+  RETRY
+  ACCEPTED
+  DELIVERED
+  FAILED
+  EXPIRED
+}
+
+enum JenisNotifikasi {
+  PASSWORD_RESET
+  PASSWORD_CHANGED
+  REPORT_APPROVED
+  REPORT_REJECTED
+  REPORT_REVISION_REQUESTED
+  REPORT_RESUBMITTED
+  REQUEST_STATUS
+  DEADLINE_REMINDER
+  REVISION_REMINDER
+  CUSTOM_BROADCAST
+}
+
+enum TipeTemplateNotifikasi {
+  DEADLINE
+  REVISI
+  BROADCAST
+}
+
 // ============================================================
 // TABEL: Unit
 // ============================================================
@@ -104,6 +133,8 @@ model Pengguna {
   bsuid            String?       @db.VarChar(100)
   percobaan_login  Int           @default(0)
   terkunci         Boolean       @default(false)
+  session_version  Int           @default(0)
+  terkunci_sampai  DateTime?
 
   // Foreign Key
   id_unit Int
@@ -128,9 +159,12 @@ model Pengguna {
 // ============================================================
 
 model TokenReset {
-  id_token_reset  Int      @id @default(autoincrement())
-  token           String   @unique @db.VarChar(255)
-  sudah_dipakai   Boolean  @default(false)
+  id_token_reset   Int      @id @default(autoincrement())
+  token            String   @unique @db.VarChar(64)
+  tujuan           String   @default("RESET_PASSWORD") @db.VarChar(50)
+  sudah_dipakai    Boolean  @default(false)
+  used_at          DateTime?
+  attempt_count    Int      @default(0)
   kedaluwarsa_pada DateTime
 
   // Foreign Key
@@ -139,6 +173,7 @@ model TokenReset {
 
   created_at DateTime @default(now())
 
+  @@index([id_pengguna, sudah_dipakai, kedaluwarsa_pada])
   @@map("token_reset")
 }
 
@@ -217,6 +252,7 @@ model Laporan {
 
   // Satu unit hanya boleh punya satu laporan per tanggal (sinkron seed/guard).
   @@unique([tanggal, id_unit])
+  @@index([status, updated_at])
   @@map("laporan")
 }
 
@@ -436,9 +472,40 @@ model KonfigurasiTemplate {
   isi_pesan        String?  @db.Text
   trigger_waktu    String   @default("MANUAL")
   unit_penerima    String   @default("SEMUA")
+  tipe_notifikasi  TipeTemplateNotifikasi @default(BROADCAST)
   created_at       DateTime @default(now())
 
   @@map("konfigurasi_template")
+}
+
+// ============================================================
+// TABEL: Antrean Pengiriman Notifikasi
+// ============================================================
+
+model NotificationJob {
+  id                  Int               @id @default(autoincrement())
+  dedupe_key          String            @unique @db.VarChar(191)
+  jenis               JenisNotifikasi
+  recipient_name      String?           @db.VarChar(100)
+  recipient_phone     String            @db.VarChar(30)
+  payload_encrypted   String            @db.LongText
+  status              StatusNotifikasi  @default(PENDING)
+  attempts            Int               @default(0)
+  max_attempts        Int               @default(5)
+  next_attempt_at     DateTime          @default(now())
+  expires_at          DateTime?
+  locked_at           DateTime?
+  lock_owner          String?           @db.VarChar(100)
+  provider_message_id String?           @db.VarChar(191)
+  last_error          String?           @db.Text
+  accepted_at         DateTime?
+  delivered_at        DateTime?
+  created_at          DateTime          @default(now())
+  updated_at          DateTime          @updatedAt
+
+  @@index([status, next_attempt_at])
+  @@index([recipient_phone, created_at])
+  @@map("notification_job")
 }
 
 // ============================================================

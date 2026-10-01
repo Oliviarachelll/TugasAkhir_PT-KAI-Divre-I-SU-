@@ -53,9 +53,13 @@ const AppRouter = () => {
           <Route path="/target" element={<TargetPage />} />
         </Route>
 
+        {/* Notification operations: Admin Global & IT */}
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN_GLOBAL', 'IT']} />}>
+          <Route path="/notifikasi" element={<NotifikasiPage />} />
+        </Route>
+
         {/* Shared Routes: Admin */}
         <Route element={<ProtectedRoute allowedRoles={['ADMIN_GLOBAL']} />}>
-          <Route path="/notifikasi" element={<NotifikasiPage />} />
           <Route path="/analitik" element={<AnalitikPage />} />
         </Route>
 

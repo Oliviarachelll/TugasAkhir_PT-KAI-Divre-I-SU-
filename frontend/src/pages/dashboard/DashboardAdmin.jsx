@@ -93,14 +93,23 @@ const DashboardAdmin = () => {
     const unitMap = {};
     filteredLaporan.forEach(l => {
       const namaUnit = l.unit?.nama_unit || `Unit ID: ${l.id_unit}`;
-      if (!unitMap[namaUnit]) unitMap[namaUnit] = 0;
-      unitMap[namaUnit]++;
+      if (!unitMap[namaUnit]) unitMap[namaUnit] = { value: 0, id_unit: l.id_unit };
+      unitMap[namaUnit].value++;
+      // simpan id_unit terakhir yang valid
+      if (l.id_unit) unitMap[namaUnit].id_unit = l.id_unit;
     });
     
     return Object.entries(unitMap)
-      .map(([name, value]) => ({ name, value }))
+      .map(([name, { value, id_unit }]) => ({ name, value, id_unit }))
       .sort((a, b) => b.value - a.value);
   }, [filteredLaporan]);
+
+  const handleBarClick = (data) => {
+    const payload = data?.activePayload?.[0]?.payload || data?.payload || data;
+    if (payload?.id_unit) {
+      navigate(`/laporan/review?unit=${payload.id_unit}`);
+    }
+  };
 
   const handleExport = async (format) => {
     if (exportStartDate && exportEndDate && exportStartDate > exportEndDate) {
@@ -164,16 +173,16 @@ const DashboardAdmin = () => {
               <h3 className="section-title mb-4">{t('admin.volume_per_unit')}</h3>
               <div style={{ width: '100%', height: 320 }}>
                 <ResponsiveContainer>
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 30 }}>
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 10 }} onClick={handleBarClick}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} angle={-30} textAnchor="end" />
-                    <YAxis stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} />
-                    <Tooltip 
+                    <XAxis dataKey="name" stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} interval={0} tick={{ textAnchor: 'middle' }} height={50} />
+                    <YAxis stroke="var(--chart-axis)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <Tooltip
                       cursor={{ fill: 'var(--chart-grid)' }}
-                      contentStyle={{ backgroundColor: 'var(--chart-card)', borderColor: 'var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}
+                      contentStyle={{ backgroundColor: 'var(--chart-card)', borderColor: 'var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', cursor: 'pointer' }}
                       itemStyle={{ color: 'var(--text-primary)', fontWeight: '500' }}
                     />
-                    <Bar dataKey="value" name={t('admin.chart_legend')} fill="var(--chart-bar-primary)" radius={[6, 6, 0, 0]} barSize={40} />
+                    <Bar dataKey="value" name={t('admin.chart_legend')} fill="var(--chart-bar-primary)" radius={[6, 6, 0, 0]} barSize={40} onClick={handleBarClick} style={{ cursor: 'pointer' }} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

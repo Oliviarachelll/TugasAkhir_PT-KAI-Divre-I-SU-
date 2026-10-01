@@ -55,6 +55,7 @@ const Sidebar = ({ className, isOpen, onClose, isCollapsed, toggleCollapse }) =>
       { path: '/dashboard/it', label: t('menu.dashboard'), icon: LayoutDashboard },
       { path: '/monitoring', label: t('menu.manajemen'), icon: Building2 },
       { path: '/helpdesk', label: t('menu.helpdesk'), icon: Headset },
+      { path: '/notifikasi', label: t('menu.notifikasi'), icon: Bell },
       { path: '/settings', label: t('menu.settings'), icon: Settings },
     ]
   };

@@ -6,11 +6,13 @@ const usePermintaanStore = create((set, get) => ({
   isLoading: false,
   error: null,
   pagination: null,
+  lastQuery: {},
 
   fetchPermintaan: async (params = {}) => {
-    set({ isLoading: true, error: null });
+    const query = { ...params };
+    set({ isLoading: true, error: null, lastQuery: query });
     try {
-      const { data, pagination } = await getPermintaan(params);
+      const { data, pagination } = await getPermintaan(query);
       set({ permintaanList: data || [], pagination, isLoading: false });
     } catch (error) {
       set({ 
@@ -40,8 +42,8 @@ const usePermintaanStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await tanggapiPermintaan(id, data);
-      await get().fetchPermintaan();
-      return response.data;
+      await get().fetchPermintaan(get().lastQuery);
+      return response;
     } catch (error) {
       set({ 
         error: error.response?.data?.message || 'Gagal menanggapi permintaan',

@@ -165,7 +165,7 @@ const InputLaporan = () => {
   useEffect(() => {
     (async () => {
       if (isEditMode) return; // mode edit/resubmit
-      await fetchLaporan({ limit: 1000 });
+      await fetchLaporan({ limit: 500 });
       const list = useLaporanStore.getState().laporanList || [];
       const myUnit = draftLaporan.id_unit || user?.id_unit;
       const existing = list.find(

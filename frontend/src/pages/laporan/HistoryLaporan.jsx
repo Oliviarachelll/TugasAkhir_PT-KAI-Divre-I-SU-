@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 
 import useAuthStore from '../../store/auth.store';
 import useLaporanStore from '../../store/laporan.store';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { formatDateOnly } from '../../utils/format';
 import { unitApi } from '../../api/unit.api';
@@ -15,11 +15,12 @@ const HistoryLaporan = () => {
   const isAdmin = user?.peran === 'ADMIN_GLOBAL';
   const canFilterUnit = ['IT', 'ADMIN_GLOBAL'].includes(user?.peran);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { laporanList, fetchLaporan, isLoading, loadDraftFromLaporan } = useLaporanStore();
   const { t, i18n } = useTranslation();
   const lang = i18n.language;
 
-  const [filterUnit, setFilterUnit] = useState('ALL');
+  const [filterUnit, setFilterUnit] = useState(() => searchParams.get('unit') || 'ALL');
   const [filterStatus, setFilterStatus] = useState('ALL_STATUS');
   const [filterBulan, setFilterBulan] = useState('');
   const [units, setUnits] = useState([]);

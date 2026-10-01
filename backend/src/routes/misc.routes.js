@@ -28,11 +28,43 @@ komoditiRouter.delete('/:id', authorize('IT'), deleteKomoditi);
 // === PERMINTAAN BANTUAN ===
 const permintaanRouter = require('express').Router();
 const { getAllPermintaan, createPermintaan, tanggapiPermintaan } = require('../controllers/permintaan.controller');
+const { validateBody, validateQuery } = require('../middlewares/validate.middleware');
+const { sendError } = require('../utils/response');
+const {
+  createPermintaanSchema,
+  tanggapiPermintaanSchema,
+  permintaanIdParamsSchema,
+  permintaanListQuerySchema,
+} = require('../schemas/permintaan.schema');
+
+const validatePermintaanParams = (schema) => (req, res, next) => {
+  const result = schema.safeParse(req.params);
+  if (!result.success) {
+    const errors = result.error.errors.map((error) => ({
+      field: error.path.join('.'),
+      message: error.message,
+    }));
+    return sendError(res, 'Parameter URL tidak valid', 422, errors);
+  }
+  req.params = result.data;
+  return next();
+};
 
 permintaanRouter.use(authenticate);
-permintaanRouter.get('/', getAllPermintaan);
-permintaanRouter.post('/', createPermintaan);
-permintaanRouter.patch('/:id/tanggapi', authorize('IT', 'ADMIN_GLOBAL'), tanggapiPermintaan);
+permintaanRouter.get('/', validateQuery(permintaanListQuerySchema), getAllPermintaan);
+permintaanRouter.post(
+  '/',
+  authorize('USER_UNIT'),
+  validateBody(createPermintaanSchema),
+  createPermintaan
+);
+permintaanRouter.patch(
+  '/:id/tanggapi',
+  authorize('IT', 'ADMIN_GLOBAL'),
+  validatePermintaanParams(permintaanIdParamsSchema),
+  validateBody(tanggapiPermintaanSchema),
+  tanggapiPermintaan
+);
 
 // === AUDIT LOG ===
 const auditRouter = require('express').Router();

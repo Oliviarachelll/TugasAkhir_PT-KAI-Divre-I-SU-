@@ -584,7 +584,15 @@ const getExportData = async (requestedFilters, pengguna, prismaClient = prisma, 
   throwIfExportAborted(signal);
   const reports = await prismaClient.laporan.findMany({
     where,
-    include: {
+    select: {
+      id_laporan: true,
+      tanggal: true,
+      status_internal: true,
+      status: true,
+      kotak_detail: true,
+      id_unit: true,
+      created_at: true,
+      updated_at: true,
       pengguna: { select: { id_pengguna: true, nama: true } },
       unit: { select: { id_unit: true, nama_unit: true, jenis_unit: true } },
       laporan_kna: true,

@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, X, MessageSquare, CheckCircle, Info } from 'lucide-react';
+import { X, CheckCircle, Info, Loader2, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 import usePermintaanStore from '../../store/permintaan.store';
 import useAuthStore from '../../store/auth.store';
 import { formatDateTime } from '../../utils/format';
 import { API_ERROR_TOAST_ID } from '../../api/client';
+
+const PAGE_SIZE = 20;
 
 const HelpdeskIT = () => {
   const { t, i18n } = useTranslation();
@@ -19,54 +21,82 @@ const HelpdeskIT = () => {
   ];
 
   const { user } = useAuthStore();
-  const { permintaanList, fetchPermintaan, updateTanggapan, isLoading } = usePermintaanStore();
-  
+  const {
+    permintaanList,
+    pagination,
+    error,
+    fetchPermintaan,
+    updateTanggapan,
+    isLoading,
+  } = usePermintaanStore();
+
   const [activeTab, setActiveTab] = useState('ALL');
+  const [page, setPage] = useState(1);
   const [selectedTicket, setSelectedTicket] = useState(null);
-  const [generatedToken, setGeneratedToken] = useState('XX-XXXXXX');
-  const [isSending, setIsSending] = useState(false);
-  const [sendSuccess, setSendSuccess] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [deliveryState, setDeliveryState] = useState(null);
 
   useEffect(() => {
-    fetchPermintaan();
-  }, [fetchPermintaan]);
+    fetchPermintaan({
+      page,
+      limit: PAGE_SIZE,
+      ...(activeTab !== 'ALL' ? { unitCategory: activeTab } : {}),
+    });
+  }, [activeTab, fetchPermintaan, page]);
 
-  const handleGenerateToken = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let token = '';
-    for (let i = 0; i < 8; i++) {
-      token += chars.charAt(Math.floor(Math.random() * chars.length));
+  const showDeliveryOutcome = (state) => {
+    if (state === 'queued' || state === 'requeued') {
+      toast.success(t('helpdesk_it.delivery_queued'));
+      return;
     }
-    const formattedToken = `${token.substring(0, 2)}-${token.substring(2)}`;
-    setGeneratedToken(formattedToken);
-    setSendSuccess(false);
-  };
-
-  const handleKirimWA = () => {
-    if (generatedToken === 'XX-XXXXXX') return;
-    setIsSending(true);
-    setTimeout(() => {
-      setIsSending(false);
-      setSendSuccess(true);
-    }, 1500);
+    if (state === 'duplicate') {
+      toast(t('helpdesk_it.delivery_duplicate'), { icon: 'ℹ️' });
+      return;
+    }
+    if (state === 'skipped') {
+      toast(t('helpdesk_it.delivery_skipped'), { icon: '⚠️' });
+      return;
+    }
+    toast.error(t('helpdesk_it.delivery_unknown'));
   };
 
   const handleUpdateStatus = async (id, status) => {
+    setIsUpdating(true);
     try {
-      const payload = { status };
-      if (status === 'SELESAI' && generatedToken !== 'XX-XXXXXX') {
-        payload.token = generatedToken; // Send exact token as generated
-      }
-      await updateTanggapan(id, payload);
-      toast.success(t('helpdesk_it.marked', { status }));
-      if (status === 'SELESAI') {
+      const response = await updateTanggapan(id, { status });
+      const updatedTicket = response?.data;
+      const nextDeliveryState = updatedTicket?.delivery?.state || 'unknown';
+      setDeliveryState(nextDeliveryState);
+
+      if (['SELESAI', 'DITOLAK'].includes(status)) {
+        showDeliveryOutcome(nextDeliveryState);
         setSelectedTicket(null);
       } else {
-        setSelectedTicket(prev => prev ? { ...prev, status } : null);
+        toast.success(t('helpdesk_it.marked', { status }));
+        setSelectedTicket((previous) => previous ? {
+          ...previous,
+          status: updatedTicket?.status || status,
+        } : null);
       }
-    } catch (error) {
+      return updatedTicket;
+    } catch {
       toast.error(t('helpdesk_it.update_fail'), { id: API_ERROR_TOAST_ID });
+      return null;
+    } finally {
+      setIsUpdating(false);
     }
+  };
+
+  const handleSelectTicket = async (ticket) => {
+    setDeliveryState(null);
+    if (ticket.status !== 'MENUNGGU') {
+      setSelectedTicket(ticket);
+      return;
+    }
+
+    setSelectedTicket(ticket);
+    const updated = await handleUpdateStatus(ticket.id, 'DIPROSES');
+    if (!updated) setSelectedTicket(null);
   };
 
   const tickets = permintaanList.map(p => ({
@@ -80,18 +110,6 @@ const HelpdeskIT = () => {
     jenis: p.jenis
   }));
 
-  const matchTab = (unitName, tabId) => {
-    if (tabId === 'ALL') return true;
-    const unitLower = (unitName || '').toLowerCase();
-    if (tabId === 'KNA' && (unitLower.includes('kna') || unitLower.includes('kontrak'))) return true;
-    if (tabId === 'BARANG' && unitLower.includes('barang')) return true;
-    if (tabId === 'PENUMPANG' && unitLower.includes('penumpang')) return true;
-    if (tabId === 'KEUANGAN' && unitLower.includes('keuangan')) return true;
-    return false;
-  };
-
-  const filteredTickets = tickets.filter(ticket => matchTab(ticket.unit, activeTab));
-
   const pageTitle = user?.peran === 'ADMIN_GLOBAL' ? t('helpdesk_it.title_revision') : t('helpdesk_it.title_system');
 
   return (
@@ -103,32 +121,30 @@ const HelpdeskIT = () => {
       </div>
 
       <div className="tabs mb-4" style={{ display: 'flex', gap: '24px', borderBottom: '1px solid var(--border)', marginBottom: '24px', overflowX: 'auto' }}>
-        {unitTabs.map(tab => {
-          const count = tickets.filter(tk => matchTab(tk.unit, tab.id)).length;
-            
-          return (
-            <button 
-              key={tab.id}
-              className={`tab-item ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setSelectedTicket(null);
-              }}
-              style={{ 
-                padding: '12px 4px', 
-                background: 'transparent', 
-                border: 'none', 
-                color: activeTab === tab.id ? '#1e293b' : '#94a3b8',
-                borderBottom: activeTab === tab.id ? '2px solid #1e293b' : '2px solid transparent',
-                fontWeight: activeTab === tab.id ? 600 : 500,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {tab.label} ({count})
-            </button>
-          );
-        })}
+        {unitTabs.map((tab) => (
+          <button
+            type="button"
+            key={tab.id}
+            className={`tab-item ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab(tab.id);
+              setPage(1);
+              setSelectedTicket(null);
+            }}
+            style={{
+              padding: '12px 4px',
+              background: 'transparent',
+              border: 'none',
+              color: activeTab === tab.id ? '#1e293b' : '#94a3b8',
+              borderBottom: activeTab === tab.id ? '2px solid #1e293b' : '2px solid transparent',
+              fontWeight: activeTab === tab.id ? 600 : 500,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: selectedTicket ? '1.5fr 1fr' : '1fr', gap: '24px' }}>
@@ -150,9 +166,26 @@ const HelpdeskIT = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {isLoading && tickets.length === 0 ? (
+                  {error ? (
+                    <tr>
+                      <td colSpan={selectedTicket ? 5 : 7} style={{ textAlign: 'center', padding: '32px' }}>
+                        <div role="alert" className="text-red-600 mb-3">{error}</div>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => fetchPermintaan({
+                            page,
+                            limit: PAGE_SIZE,
+                            ...(activeTab !== 'ALL' ? { unitCategory: activeTab } : {}),
+                          })}
+                        >
+                          {t('helpdesk_it.retry')}
+                        </button>
+                      </td>
+                    </tr>
+                  ) : isLoading ? (
                     <tr><td colSpan={selectedTicket ? 5 : 7} style={{ textAlign: 'center', padding: '32px' }}>{t('helpdesk_it.loading')}</td></tr>
-                  ) : filteredTickets.map(ticket => (
+                  ) : tickets.map((ticket) => (
                     <tr key={ticket.id} style={{ background: selectedTicket?.id === ticket.id ? '#f8fafc' : 'transparent' }}>
                       <td style={{ fontWeight: 500 }}>{ticket.displayId}</td>
                       <td>
@@ -182,21 +215,19 @@ const HelpdeskIT = () => {
                         <button 
                           className="btn btn-secondary btn-sm"
                           style={{ backgroundColor: '#ffffff', color: '#1e293b', border: '1px solid #cbd5e1' }}
-                          onClick={() => {
-                            if (ticket.status === 'MENUNGGU') {
-                              handleUpdateStatus(ticket.id, 'DIPROSES');
-                            }
-                            setSelectedTicket(ticket);
-                            setGeneratedToken('XX-XXXXXX');
-                            setSendSuccess(false);
-                          }}
+                          onClick={() => handleSelectTicket(ticket)}
+                          disabled={isUpdating}
                         >
-                          {ticket.status === 'DIPROSES' ? t('helpdesk_it.in_progress') : ticket.status === 'SELESAI' ? t('helpdesk_it.view') : t('helpdesk_it.handle')}
+                          {ticket.status === 'DIPROSES'
+                            ? t('helpdesk_it.in_progress')
+                            : ['SELESAI', 'DITOLAK'].includes(ticket.status)
+                              ? t('helpdesk_it.view')
+                              : t('helpdesk_it.handle')}
                         </button>
                       </td>
                     </tr>
                   ))}
-                  {filteredTickets.length === 0 && !isLoading && (
+                  {tickets.length === 0 && !isLoading && !error && (
                     <tr>
                       <td colSpan={selectedTicket ? 5 : 7} style={{ textAlign: 'center', padding: '32px' }}>
                         <div className="text-muted">{t('helpdesk_it.empty')}</div>
@@ -206,8 +237,43 @@ const HelpdeskIT = () => {
                 </tbody>
               </table>
             </div>
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <span className="text-sm text-muted">
+                {t('helpdesk_it.total_tickets', { count: pagination?.total || 0 })}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={!pagination?.hasPrevPage || isLoading}
+                  onClick={() => {
+                    setSelectedTicket(null);
+                    setPage((current) => Math.max(1, current - 1));
+                  }}
+                >
+                  {t('helpdesk_it.previous')}
+                </button>
+                <span className="text-sm text-muted">
+                  {t('helpdesk_it.page_of', {
+                    page: pagination?.page || page,
+                    total: Math.max(1, pagination?.totalPages || 0),
+                  })}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  disabled={!pagination?.hasNextPage || isLoading}
+                  onClick={() => {
+                    setSelectedTicket(null);
+                    setPage((current) => current + 1);
+                  }}
+                >
+                  {t('helpdesk_it.next')}
+                </button>
+              </div>
+            </div>
           </div>
-          
+
           {!selectedTicket && (
             <div className="mt-4 p-3 bg-blue-50 text-blue-800 rounded text-sm flex items-center gap-2">
               <Info className="w-4 h-4" />
@@ -221,8 +287,13 @@ const HelpdeskIT = () => {
           <div className="card" style={{ padding: '24px', height: 'fit-content' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '20px' }}>
               <h3 className="font-bold text-lg m-0 text-slate-800">{t('helpdesk_it.panel_title', { id: selectedTicket.displayId })}</h3>
-              <button className="text-slate-400 hover:text-slate-600 p-1" onClick={() => setSelectedTicket(null)}>
-                <X size={20} />
+              <button
+                type="button"
+                className="text-slate-400 hover:text-slate-600 p-1"
+                onClick={() => setSelectedTicket(null)}
+                aria-label={t('helpdesk_it.close_panel')}
+              >
+                <X size={20} aria-hidden="true" />
               </button>
             </div>
 
@@ -238,52 +309,64 @@ const HelpdeskIT = () => {
               </div>
               
               <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
-                <label className="text-sm font-semibold text-slate-700 mb-3 block">{t('helpdesk_it.solution_label')}</label>
-                
-                <div 
-                  style={{ padding: '24px', background: 'linear-gradient(to right, #f8fafc, #f1f5f9)', border: '1px solid #cbd5e1', borderRadius: '8px', textAlign: 'center', marginBottom: '20px' }}
+                <p className="text-sm font-semibold text-slate-700 mb-3">{t('helpdesk_it.solution_label')}</p>
+                <div
+                  role="note"
+                  style={{ padding: '16px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', color: '#1e3a8a', fontSize: '14px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}
                 >
-                  <div className="text-3xl font-mono font-bold tracking-widest text-slate-800 mb-3" style={{ letterSpacing: '4px' }}>
-                    {generatedToken}
-                  </div>
-                  <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
-                    <span>{t('helpdesk_it.valid_hour')}</span>
-                    <span>•</span>
-                    <button className="text-primary hover:text-brand-600 flex items-center gap-1 font-medium" onClick={handleGenerateToken}>
-                      <RefreshCw size={14} /> {t('helpdesk_it.regenerate')}
-                    </button>
-                  </div>
+                  <Info size={18} className="flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <span>
+                    {['PERMINTAAN_AKSES', 'KLARIFIKASI_DATA'].includes(selectedTicket.jenis)
+                      ? t('helpdesk_it.secure_token_info')
+                      : t('helpdesk_it.status_notification_info')}
+                  </span>
                 </div>
-
-                <div className="flex flex-col gap-3">
-                  <button 
-                    className="btn btn-primary w-full flex justify-center items-center gap-2" 
-                    onClick={handleKirimWA}
-                    disabled={isSending || generatedToken === 'XX - XXXXXX' || selectedTicket.status === 'SELESAI'}
-                  >
-                    <MessageSquare size={16} />
-                    {isSending ? t('helpdesk_it.sending') : sendSuccess ? t('helpdesk_it.resend') : t('helpdesk_it.send_token')}
-                  </button>
-                </div>
-
-                {sendSuccess && (
-                  <div style={{ padding: '12px 16px', background: '#dcfce7', border: '1px solid #bbf7d0', borderRadius: '6px', color: '#166534', fontSize: '14px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#166534' }}></div>
-                    {t('helpdesk_it.sent_to', { user: selectedTicket.user })}
-                  </div>
+                {deliveryState && (
+                  <p className="mt-3 text-xs text-slate-500" role="status">
+                    {t('helpdesk_it.delivery_state', { state: deliveryState })}
+                  </p>
                 )}
               </div>
             </div>
 
             <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px', display: 'flex', gap: '12px' }}>
-              <button 
-                className="btn w-full flex justify-center items-center gap-2" 
-                style={{ background: (selectedTicket.status === 'SELESAI' || (generatedToken !== 'XX-XXXXXX' && !sendSuccess)) ? '#94a3b8' : '#10b981', color: 'white', cursor: (selectedTicket.status === 'SELESAI' || (generatedToken !== 'XX-XXXXXX' && !sendSuccess)) ? 'not-allowed' : 'pointer' }} 
+              {!['SELESAI', 'DITOLAK'].includes(selectedTicket.status) && (
+                <button
+                  type="button"
+                  className="btn w-full flex justify-center items-center gap-2"
+                  style={{ background: isUpdating ? '#94a3b8' : '#dc2626', color: 'white' }}
+                  onClick={() => {
+                    if (window.confirm(t('helpdesk_it.reject_confirm'))) {
+                      handleUpdateStatus(selectedTicket.id, 'DITOLAK');
+                    }
+                  }}
+                  disabled={isUpdating}
+                >
+                  <Ban size={16} aria-hidden="true" />
+                  {t('helpdesk_it.reject')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn w-full flex justify-center items-center gap-2"
+                style={{
+                  background: ['SELESAI', 'DITOLAK'].includes(selectedTicket.status) || isUpdating ? '#94a3b8' : '#10b981',
+                  color: 'white',
+                  cursor: ['SELESAI', 'DITOLAK'].includes(selectedTicket.status) || isUpdating ? 'not-allowed' : 'pointer',
+                }}
                 onClick={() => handleUpdateStatus(selectedTicket.id, 'SELESAI')}
-                disabled={selectedTicket.status === 'SELESAI' || (generatedToken !== 'XX-XXXXXX' && !sendSuccess)}
+                disabled={['SELESAI', 'DITOLAK'].includes(selectedTicket.status) || isUpdating}
               >
-                <CheckCircle size={16} />
-                {selectedTicket.status === 'SELESAI' ? t('helpdesk_it.already_done') : (generatedToken !== 'XX-XXXXXX' && !sendSuccess) ? t('helpdesk_it.must_send_first') : t('helpdesk_it.done_close')}
+                {isUpdating ? (
+                  <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                ) : (
+                  <CheckCircle size={16} aria-hidden="true" />
+                )}
+                {['SELESAI', 'DITOLAK'].includes(selectedTicket.status)
+                  ? t('helpdesk_it.terminal_status', { status: selectedTicket.status })
+                  : isUpdating
+                    ? t('helpdesk_it.updating')
+                    : t('helpdesk_it.done_close')}
               </button>
             </div>
           </div>
