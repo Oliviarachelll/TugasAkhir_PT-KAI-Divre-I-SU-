@@ -2,6 +2,9 @@
 
 Dokumen ini memandu langkah demi langkah menjalankan Sistem Informasi RACHE secara lokal dari nol sampai bisa login.
 
+> Untuk rekan yang melakukan pull implementasi export, keamanan, dan WhatsApp,
+> gunakan urutan terbaru di `08_Panduan_Handoff_Setelah_Pull.md`.
+
 Hasil akhir yang diharapkan:
 
 - Backend (API) jalan di `http://localhost:5000`
@@ -14,7 +17,7 @@ Hasil akhir yang diharapkan:
 
 Pastikan sudah terinstal:
 
-- **Node.js versi 18 ke atas** (disarankan versi LTS, mis. 20/22). Cek dengan:
+- **Node.js versi 22.13.0 atau lebih baru** agar kompatibel dengan Vite 8 dan runtime export Puppeteer. Cek dengan:
   ```bash
   node -v
   npm -v

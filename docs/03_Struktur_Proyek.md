@@ -35,4 +35,7 @@ Berisi panduan penggunaan dan dokumentasi arsitektur sistem.
 - `01_Akun_dan_Akses.md`: Referensi sandi dan email default.
 - `02_Dokumentasi_Web.md`: Penjelasan tech stack, desain UI, dan alur autentikasi.
 - `03_Struktur_Proyek.md`: Penjelasan hierarki folder.
-- `04_Roadmap_Pengembangan.md`: (Akan datang) Tahapan mengintegrasikan Baileys WhatsApp dan sistem Socket.io.
+- `05_Tutorial_Setup.md`: Setup dasar aplikasi lokal.
+- `07_Export_PDF_Excel.md`: Kontrak, otorisasi, runtime, dan validasi export.
+- `08_Panduan_Handoff_Setelah_Pull.md`: Urutan pull, database, export, pairing WhatsApp, dan uji end-to-end.
+- `backend/docs/whatsapp-notifications.md`: Arsitektur keamanan durable outbox dan operasional Baileys.
