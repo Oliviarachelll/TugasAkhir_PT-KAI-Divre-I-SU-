@@ -85,7 +85,7 @@ const HistoryLaporan = () => {
     try {
       const response = await exportApi.downloadLaporan(format, filters);
       const extension = format === 'xlsx' ? 'xlsx' : 'pdf';
-      saveBlobResponse(response, `RACHE_Laporan.${extension}`);
+      saveBlobResponse(response, `KAI_Laporan.${extension}`);
       const recordCount = response.headers?.['x-export-record-count'];
       toast.success(t('export.success', { count: recordCount ?? 0 }));
     } catch (error) {

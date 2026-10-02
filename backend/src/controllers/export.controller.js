@@ -21,7 +21,7 @@ const buildFilename = (format, model) => {
       : filters.tanggal_mulai || filters.tanggal_akhir || 'semua-tanggal');
   const unit = filters.id_unit ? `unit-${filters.id_unit}` : 'semua-unit';
   const status = filters.status ? filters.status.toLowerCase() : 'semua-status';
-  return `RACHE_Laporan_${period}_${unit}_${status}.${format}`;
+  return `KAI_Laporan_${period}_${unit}_${status}.${format}`;
 };
 
 const writeAuditLog = async ({ req, format, model, filename }) => {

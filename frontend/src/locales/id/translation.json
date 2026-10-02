@@ -75,7 +75,7 @@
     "close_menu": "Tutup menu navigasi"
   },
   "auth": {
-    "subtitle": "Sistem Laporan Operasional RACHE",
+    "subtitle": "Sistem Laporan Operasional",
     "company": "PT KAI Divre 1 SUMUT",
     "email": "Email",
     "email_ph": "Email...",
@@ -118,7 +118,22 @@
     "token_hint": "Token terdiri dari 16 karakter dalam empat kelompok.",
     "password_min": "Password minimal {{count}} karakter.",
     "password_max_bytes": "Password maksimal {{count}} byte dalam UTF-8.",
-    "footer": "PT KAI Divre 1 SUMUT"
+    "footer": "PT KAI Divre 1 SUMUT",
+    "forgot_password": "Lupa Password?",
+    "forgot_password_desc": "Pilih minta token baru atau masukkan token yang telah Anda terima.",
+    "tab_request_token": "1. Minta Token",
+    "tab_input_token": "2. Input Token & Reset",
+    "request_token_info": "Sistem akan mengirimkan token verifikasi pemulihan ke kontak WhatsApp atau email terdaftar Anda.",
+    "input_token_info": "Masukkan token pemulihan 16 karakter dari IT atau WhatsApp dan tentukan kata sandi baru Anda.",
+    "proceed_to_token": "Sudah dapat token? Masukkan di sini →",
+    "account_locked_help": "Akun Terkunci?",
+    "unlock_desc_help": "Kirim permohonan ke IT jika akun terblokir karena salah percobaan login berulang kali.",
+    "send_unlock_request": "Kirim Tiket Buka Kunci",
+    "show_password": "Lihat password",
+    "hide_password": "Tutup password",
+    "password_match": "Password cocok",
+    "password_not_match": "Password belum cocok",
+    "back_to_sign_in": "Kembali ke Halaman Login"
   },
   "dashboard": {
     "title": "Dasbor Pengguna",

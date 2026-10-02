@@ -407,13 +407,13 @@ const renderExcel = async (model, { signal } = {}) => {
   if (signal?.aborted) throw new ExportConcurrencyError('EXPORT_REQUEST_ABORTED', 499);
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'RACHE - PT KAI Divre I Sumatera Utara';
+  workbook.creator = 'PT Kereta Api Indonesia (Persero) Divre I Sumatera Utara';
   workbook.lastModifiedBy = model.meta.generated_by.nama;
   workbook.created = new Date(model.meta.generated_at);
   workbook.modified = new Date(model.meta.generated_at);
   workbook.company = 'PT Kereta Api Indonesia (Persero)';
   workbook.subject = `Ekspor ${model.meta.record_count} laporan operasional`;
-  workbook.title = 'Ekspor Laporan Operasional RACHE';
+  workbook.title = 'Ekspor Laporan Operasional PT KAI';
   workbook.description = `Schema ${model.schema_version}; template ${model.template_version}`;
   workbook.calcProperties.fullCalcOnLoad = true;
 

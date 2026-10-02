@@ -75,7 +75,7 @@
     "close_menu": "Close navigation menu"
   },
   "auth": {
-    "subtitle": "RACHE Operational Reporting System",
+    "subtitle": "Operational Reporting System",
     "company": "PT KAI Regional Division 1 SUMUT",
     "email": "Email",
     "email_ph": "Email...",
@@ -118,7 +118,22 @@
     "token_hint": "The token contains 16 characters in four groups.",
     "password_min": "Password must contain at least {{count}} characters.",
     "password_max_bytes": "Password must not exceed {{count}} UTF-8 bytes.",
-    "footer": "PT KAI Regional Division 1 SUMUT"
+    "footer": "PT KAI Regional Division 1 SUMUT",
+    "forgot_password": "Forgot Password?",
+    "forgot_password_desc": "Choose to request a new token or enter a token you have already received.",
+    "tab_request_token": "1. Request Token",
+    "tab_input_token": "2. Enter Token & Reset",
+    "request_token_info": "The system will send a password recovery token to your registered WhatsApp / email.",
+    "input_token_info": "Enter the 16-character recovery token received from IT or WhatsApp and set your new password.",
+    "proceed_to_token": "Received a token? Enter it here →",
+    "account_locked_help": "Account Locked?",
+    "unlock_desc_help": "Send an IT support ticket if your account is locked due to excessive failed attempts.",
+    "send_unlock_request": "Send Unlock Request",
+    "show_password": "Show password",
+    "hide_password": "Hide password",
+    "password_match": "Passwords match",
+    "password_not_match": "Passwords do not match",
+    "back_to_sign_in": "Back to Sign In"
   },
   "dashboard": {
     "title": "User Dashboard",
