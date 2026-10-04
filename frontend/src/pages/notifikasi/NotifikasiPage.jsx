@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AlertCircle, Edit2, Loader2, MessageSquare, QrCode, RefreshCw, Send, ShieldCheck, Smartphone, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { waCloudApi } from '../../api/waCloud.api';
+import { unitApi } from '../../api/unit.api';
 import { API_ERROR_TOAST_ID } from '../../api/client';
 import { formatDateTime } from '../../utils/format';
 
@@ -151,6 +152,8 @@ const NotifikasiPage = () => {
 
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
   const [customUnit, setCustomUnit] = useState(null);
+  const [customTarget, setCustomTarget] = useState('ALL');
+  const [allUnits, setAllUnits] = useState([]);
   const [customText, setCustomText] = useState('');
   const [isSendingCustom, setIsSendingCustom] = useState(false);
 
@@ -274,14 +277,23 @@ const NotifikasiPage = () => {
     }
   }, []);
 
+  const fetchAllUnits = useCallback(async () => {
+    try {
+      const response = await unitApi.getAll({ limit: 100 });
+      setAllUnits(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      setAllUnits([]);
+    }
+  }, []);
+
   const refreshOperationalData = useCallback(async () => {
     setIsRefreshingStatus(true);
     try {
-      await Promise.all([fetchStatus(), fetchMetrics(), fetchPendingUnits()]);
+      await Promise.all([fetchStatus(), fetchMetrics(), fetchPendingUnits(), fetchAllUnits()]);
     } finally {
       setIsRefreshingStatus(false);
     }
-  }, [fetchMetrics, fetchPendingUnits, fetchStatus]);
+  }, [fetchAllUnits, fetchMetrics, fetchPendingUnits, fetchStatus]);
 
   useEffect(() => {
     const task = window.setTimeout(() => {
@@ -369,7 +381,10 @@ const NotifikasiPage = () => {
   const handleSendToUnit = async (idUnit) => {
     setSendingUnitId(idUnit);
     try {
-      const response = await waCloudApi.kirimPerUnit(idUnit, { force: true });
+      const response = await waCloudApi.kirimPerUnit(idUnit, {
+        force: true,
+        requestKey: `manual-${Date.now()}-${idUnit}`,
+      });
       showQueueOutcome(response.data);
       await refreshAfterQueue();
     } catch (error) {
@@ -380,32 +395,54 @@ const NotifikasiPage = () => {
   };
 
   const openCustomModal = (unit = null) => {
-    setCustomUnit(unit);
+    if (unit) {
+      setCustomTarget(String(unit.id_unit));
+      setCustomUnit(unit);
+    } else {
+      setCustomTarget('ALL');
+      setCustomUnit(null);
+    }
     setCustomText('');
     setIsCustomModalOpen(true);
   };
 
   const handleSendCustomMessage = async (event) => {
     event.preventDefault();
-    if (!customText.trim()) {
+    const text = customText.trim();
+    if (!text) {
       toast.error(t('notifikasi.custom_msg_empty'));
-      return;
-    }
-    if (!customUnit?.id_unit) {
-      toast.error(t('notifikasi.no_recipient'));
       return;
     }
 
     setIsSendingCustom(true);
     try {
-      const response = await waCloudApi.kirimPerUnit(customUnit.id_unit, {
-        messageText: customText.trim(),
-        force: true,
-      });
+      let response;
+      if (customTarget === 'ALL') {
+        response = await waCloudApi.sendBroadcast({
+          messageType: 'text',
+          messageText: text,
+          unitPenerima: 'SEMUA',
+          force: true,
+          requestKey: `custom-all-${Date.now()}`,
+        });
+      } else {
+        const targetId = Number(customTarget);
+        if (!targetId || targetId <= 0) {
+          toast.error(t('notifikasi.no_recipient'));
+          setIsSendingCustom(false);
+          return;
+        }
+        response = await waCloudApi.kirimPerUnit(targetId, {
+          messageText: text,
+          force: true,
+          requestKey: `custom-${Date.now()}-${targetId}`,
+        });
+      }
       showQueueOutcome(response.data);
       setIsCustomModalOpen(false);
       setCustomText('');
       setCustomUnit(null);
+      setCustomTarget('ALL');
       await refreshAfterQueue();
     } catch (error) {
       handleQueueError(error);
@@ -542,6 +579,15 @@ const NotifikasiPage = () => {
           >
             <RefreshCw size={14} className={isRefreshingStatus ? 'animate-spin' : ''} aria-hidden="true" />
             {t('notifikasi.refresh')}
+          </button>
+          <button
+            type="button"
+            onClick={() => openCustomModal(null)}
+            className="btn btn-sm flex items-center gap-2"
+            style={{ backgroundColor: 'var(--kai-orange)', color: '#fff', border: 'none', fontWeight: 600 }}
+          >
+            <MessageSquare size={14} aria-hidden="true" />
+            {t('notifikasi.send_custom_top')}
           </button>
         </div>
       </div>
@@ -797,6 +843,9 @@ const NotifikasiPage = () => {
             <button type="button" onClick={fetchTemplates} disabled={isLoadingTemplates} className="btn btn-secondary btn-sm flex items-center gap-2">
               <RefreshCw size={14} className={isLoadingTemplates ? 'animate-spin' : ''} aria-hidden="true" />
               {t('notifikasi.refresh')}
+            </button>
+            <button type="button" onClick={() => openCustomModal(null)} className="btn btn-sm flex items-center gap-2" style={{ backgroundColor: 'var(--kai-orange)', color: '#fff', border: 'none', fontWeight: 600 }}>
+              <MessageSquare size={14} aria-hidden="true" /> {t('notifikasi.send_custom_top')}
             </button>
             <button type="button" onClick={() => setIsBroadcastModalOpen(true)} className="btn btn-sm flex items-center gap-2" style={{ backgroundColor: '#2563eb', color: '#fff' }}>
               <Send size={14} aria-hidden="true" /> {t('notifikasi.broadcast_now')}
@@ -1063,25 +1112,36 @@ const NotifikasiPage = () => {
               <select
                 id="custom-target-unit"
                 className="form-control"
-                value={customUnit?.id_unit || ''}
+                value={customTarget}
                 onChange={(event) => {
-                  const selectedId = Number(event.target.value);
-                  const found = pendingUnits.find((u) => u.id_unit === selectedId);
-                  setCustomUnit(found || null);
+                  const val = event.target.value;
+                  setCustomTarget(val);
+                  if (val === 'ALL') {
+                    setCustomUnit(null);
+                  } else {
+                    const found = (allUnits.length > 0 ? allUnits : pendingUnits).find((u) => u.id_unit === Number(val));
+                    setCustomUnit(found || null);
+                  }
                 }}
                 required
               >
-                <option value="">-- {t('notifikasi.custom_msg_select_unit')} --</option>
-                {pendingUnits.map((u) => (
-                  <option key={u.id_unit} value={u.id_unit}>
-                    {u.nama_unit} ({u.contacts?.length || u.penanggung?.length || 0} kontak)
-                  </option>
-                ))}
+                <option value="ALL">📢 {t('notifikasi.tpl_all')} (Broadcast Seluruh Unit)</option>
+                <optgroup label="Pilih Unit Spesifik">
+                  {(allUnits.length > 0 ? allUnits : pendingUnits).map((u) => (
+                    <option key={u.id_unit} value={u.id_unit}>
+                      {u.nama_unit} ({u.jenis_unit || 'UNIT'})
+                    </option>
+                  ))}
+                </optgroup>
               </select>
-              {customUnit && (
+              {customTarget === 'ALL' ? (
+                <p className="mt-1.5 text-xs text-muted">
+                  📢 Pesan kustom akan dikirimkan ke seluruh kontak penanggung jawab dari semua unit terdaftar secara langsung.
+                </p>
+              ) : customUnit && (
                 <p className="mt-1.5 text-xs text-muted">
                   {t('notifikasi.custom_msg_contacts')}:{' '}
-                  {(customUnit.penanggung || customUnit.contacts || []).map((c) => `${c.nama} (${c.no_hp || '-'})`).join(', ') || t('notifikasi.no_contact')}
+                  {(customUnit.penanggung || customUnit.contacts || customUnit.pengguna || []).map((c) => `${c.nama} (${c.no_hp || '-'})`).join(', ') || t('notifikasi.no_contact')}
                 </p>
               )}
             </div>
@@ -1113,8 +1173,9 @@ const NotifikasiPage = () => {
               </button>
               <button
                 type="submit"
-                disabled={isSendingCustom || !customUnit}
+                disabled={isSendingCustom || !customText.trim() || (!customUnit && customTarget !== 'ALL')}
                 className="btn btn-primary flex items-center gap-2"
+                style={{ backgroundColor: 'var(--kai-orange)', borderColor: 'var(--kai-orange)', color: '#fff' }}
               >
                 {isSendingCustom ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
                 {isSendingCustom ? t('notifikasi.custom_msg_sending') : t('notifikasi.custom_msg_send')}

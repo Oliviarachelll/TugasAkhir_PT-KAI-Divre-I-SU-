@@ -1,0 +1,5 @@
+{
+  "watch": ["src"],
+  "ext": "js,json",
+  "ignore": ["whatsapp-session/**", "test/**", "node_modules/**"]
+}

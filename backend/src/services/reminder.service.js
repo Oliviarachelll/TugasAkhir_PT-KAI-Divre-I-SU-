@@ -332,24 +332,44 @@ async function kirimPengingatUnit(unit, options = {}) {
   addSkipReasons(result, resolved.skip_reasons);
   addSkipReasons(result, unit.skipped_contact_reasons);
 
+  const customMessage = typeof (options.messageText || options.pesan) === 'string'
+    ? (options.messageText || options.pesan).trim()
+    : '';
+  const isCustom = customMessage.length > 0;
+
   for (const recipient of resolved.recipients) {
     try {
-      const queued = await queueDeadlineReminder({
-        dedupeKey: `deadline:${dispatchKey}:unit-${unit.id_unit}:${recipientIdentity(recipient)}`,
-        recipientName: recipient.nama,
-        recipientPhone: recipient.phone,
-        unitName: unit.nama_unit,
-        deadline: deadlineLabel,
-        daysRemaining,
-        templateText: options.messageText || options.pesan,
-        expiresAt: new Date(startOfBusinessDayUtc(businessDate).getTime() + DAY_MS),
-        metadata: {
-          source: options.source || 'manual',
-          businessDate,
-          unitId: unit.id_unit,
-          deadline,
-        },
-      });
+      const queued = isCustom
+        ? await queueCustomText({
+            dedupeKey: `custom:${dispatchKey}:unit-${unit.id_unit}:${recipientIdentity(recipient)}`,
+            recipientName: recipient.nama,
+            recipientPhone: recipient.phone,
+            text: customMessage,
+            expiresAt: new Date(startOfBusinessDayUtc(businessDate).getTime() + DAY_MS),
+            metadata: {
+              source: options.source || 'manual',
+              businessDate,
+              unitId: unit.id_unit,
+              unitName: unit.nama_unit,
+              event: 'custom_message',
+            },
+          })
+        : await queueDeadlineReminder({
+            dedupeKey: `deadline:${dispatchKey}:unit-${unit.id_unit}:${recipientIdentity(recipient)}`,
+            recipientName: recipient.nama,
+            recipientPhone: recipient.phone,
+            unitName: unit.nama_unit,
+            deadline: deadlineLabel,
+            daysRemaining,
+            templateText: options.templateText,
+            expiresAt: new Date(startOfBusinessDayUtc(businessDate).getTime() + DAY_MS),
+            metadata: {
+              source: options.source || 'manual',
+              businessDate,
+              unitId: unit.id_unit,
+              deadline,
+            },
+          });
       recordQueueOutcome(result, recipient, queued);
     } catch (error) {
       recordQueueFailure(result, recipient, error);
