@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_ERROR_TOAST_ID } from '../../api/client';
 import { PlusCircle, Search, Edit2, Trash2, Building2 } from 'lucide-react';
@@ -10,6 +10,8 @@ const ManajemenUnit = () => {
   const [showModal, setShowModal] = useState(false);
   const [units, setUnits] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterJenis, setFilterJenis] = useState('ALL');
   const [formData, setFormData] = useState({ nama_unit: '', jenis_unit: 'DAERAH' });
   const [editingId, setEditingId] = useState(null);
 
@@ -17,7 +19,7 @@ const ManajemenUnit = () => {
     setIsLoading(true);
     try {
       const res = await unitApi.getAll({ limit: 100 });
-      setUnits(res.data);
+      setUnits(res.data || []);
     } catch (error) {
       toast.error(t('manajemen.unit.fetch_fail'), { id: API_ERROR_TOAST_ID });
     } finally {
@@ -28,6 +30,22 @@ const ManajemenUnit = () => {
   useEffect(() => {
     fetchUnits();
   }, []);
+
+  const filteredUnits = useMemo(() => {
+    return (units || []).filter((u) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = (u.nama_unit || '').toLowerCase().includes(q);
+        const matchId = String(u.id_unit).includes(q);
+        const matchJenis = (u.jenis_unit || '').toLowerCase().includes(q);
+        if (!matchName && !matchId && !matchJenis) return false;
+      }
+      if (filterJenis !== 'ALL' && u.jenis_unit !== filterJenis) {
+        return false;
+      }
+      return true;
+    });
+  }, [units, searchQuery, filterJenis]);
 
   const handleEdit = (unit) => {
     setEditingId(unit.id_unit);
@@ -85,23 +103,36 @@ const ManajemenUnit = () => {
       <div className="card mb-4" style={{ padding: '16px 24px', marginBottom: '24px' }}>
         <div className="flex justify-between items-center" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="flex gap-3" style={{ display: 'flex', gap: '12px' }}>
-            <select className="form-control form-control-sm" style={{ width: 'auto', padding: '6px 12px' }}>
-              <option>{t('manajemen.unit.filter_all')}</option>
-              <option>{t('manajemen.unit.filter_active')}</option>
-              <option>{t('manajemen.unit.filter_inactive')}</option>
+            <select 
+              className="form-control form-control-sm" 
+              value={filterJenis}
+              onChange={(e) => setFilterJenis(e.target.value)}
+              style={{ width: 'auto', padding: '6px 12px' }}
+            >
+              <option value="ALL">{t('manajemen.unit.filter_all')}</option>
+              <option value="PUSAT">PUSAT</option>
+              <option value="DAERAH">DAERAH</option>
+              <option value="CABANG">CABANG</option>
             </select>
           </div>
           <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
             <div className="relative" style={{ position: 'relative' }}>
               <Search className="absolute left-2.5 top-2 text-muted" size={16} style={{ position: 'absolute', left: '10px', top: '8px', color: 'var(--text-muted)' }} />
-              <input type="text" className="form-control form-control-sm pl-8" placeholder={t('manajemen.unit.search_ph')} style={{ paddingLeft: '32px' }} />
+              <input 
+                type="text" 
+                className="form-control form-control-sm pl-8" 
+                placeholder={t('manajemen.unit.search_ph')} 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ paddingLeft: '32px' }} 
+              />
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
-        {isLoading ? <p className="text-muted">{t('manajemen.unit.loading')}</p> : (units || []).map(unit => (
+        {isLoading ? <p className="text-muted">{t('manajemen.unit.loading')}</p> : (filteredUnits || []).map(unit => (
           <div key={unit.id_unit} className="card relative" style={{ padding: '24px' }}>
             <div className="flex justify-between items-start mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
               <div className="flex items-center gap-3" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

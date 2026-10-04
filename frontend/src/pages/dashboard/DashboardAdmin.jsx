@@ -1,8 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { FileText, CheckCircle, Clock, AlertTriangle, Download, LayoutDashboard, Truck, Users, Activity, Building2, FileSpreadsheet } from 'lucide-react';
+import { FileText, CheckCircle, Clock, AlertTriangle, Download, LayoutDashboard, Truck, Users, Activity, Building2, FileSpreadsheet, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import StatCard from '../../components/ui/StatCard';
 import useLaporanStore from '../../store/laporan.store';
 import {
@@ -39,6 +39,44 @@ const DashboardAdmin = () => {
   const [isExporting, setIsExporting] = useState(null);
   // Target tahunan master per kategori (denominator % dashboard).
   const [masterTargets, setMasterTargets] = useState([]);
+
+  const tabsRef = useRef(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(false);
+
+  const checkScroll = () => {
+    if (tabsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+      setShowLeftArrow(scrollLeft > 6);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 6);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const handleResize = () => checkScroll();
+    window.addEventListener('resize', handleResize);
+    const timer = setTimeout(checkScroll, 120);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timer);
+    };
+  }, []);
+
+  const scrollTabs = (direction) => {
+    if (tabsRef.current) {
+      tabsRef.current.scrollBy({
+        left: direction === 'left' ? -220 : 220,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handleTabsWheel = (e) => {
+    if (tabsRef.current && e.deltaY !== 0) {
+      e.currentTarget.scrollLeft += e.deltaY;
+    }
+  };
 
   useEffect(() => {
     fetchLaporan({ limit: 500 }); // Ambil lebih banyak untuk dashboard admin global
@@ -258,8 +296,11 @@ const DashboardAdmin = () => {
         <div>
           <p className="page-subtitle">{t('admin.subtitle')}</p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
-          <span className="text-xs font-semibold text-slate-500 mr-1 uppercase tracking-wider">{t('admin.export_filter')}</span>
+        <div className="flex flex-wrap gap-2 items-center p-2 rounded-xl admin-export-bar">
+          <span className="text-xs font-semibold mr-1 uppercase tracking-wider flex items-center gap-1.5 admin-export-label">
+            <Filter size={14} />
+            {t('admin.export_filter')}
+          </span>
           
           <input 
             type="date" 
@@ -270,7 +311,7 @@ const DashboardAdmin = () => {
             title={t('admin.start_date')}
             aria-label={t('admin.start_date')}
           />
-          <span className="text-slate-400">-</span>
+          <span className="admin-export-sep font-bold">-</span>
           <input 
             type="date" 
             className="form-control text-sm" 
@@ -281,13 +322,25 @@ const DashboardAdmin = () => {
             aria-label={t('admin.end_date')}
           />
 
-          <select aria-label={t('laporan.filter_unit')} className="form-control text-sm" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} value={filterUnit} onChange={(e) => setFilterUnit(e.target.value)}>
+          <select 
+            aria-label={t('laporan.filter_unit')} 
+            className="form-control text-sm" 
+            style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} 
+            value={filterUnit} 
+            onChange={(e) => setFilterUnit(e.target.value)}
+          >
             <option value="ALL">{t('admin.semua_unit')}</option>
             {units.map((unit) => (
               <option key={unit.id_unit} value={unit.id_unit}>{unit.nama_unit}</option>
             ))}
           </select>
-          <select aria-label={t('laporan.filter_status')} className="form-control text-sm" style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+          <select 
+            aria-label={t('laporan.filter_status')} 
+            className="form-control text-sm" 
+            style={{ width: 'auto', padding: '0.375rem 2rem 0.375rem 0.5rem' }} 
+            value={filterStatus} 
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
             <option value="ALL_STATUS">{t('laporan.filter_status')}</option>
             <option value="DRAFT">DRAFT</option>
             <option value="DIAJUKAN">DIAJUKAN</option>
@@ -295,46 +348,75 @@ const DashboardAdmin = () => {
             <option value="REVISI">REVISI</option>
             <option value="DITOLAK">DITOLAK</option>
           </select>
-          <div className="h-6 w-px bg-slate-300 mx-1"></div>
-          <button type="button" disabled={Boolean(isExporting)} aria-busy={isExporting === 'xlsx'} className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" onClick={handleExportExcel} style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669', opacity: isExporting ? 0.65 : 1 }}>
+          <div className="h-6 w-px admin-export-divider mx-1"></div>
+          <button 
+            type="button" 
+            disabled={Boolean(isExporting)} 
+            aria-busy={isExporting === 'xlsx'} 
+            className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" 
+            onClick={handleExportExcel} 
+            style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669', opacity: isExporting ? 0.65 : 1, fontWeight: '600' }}
+          >
             <FileSpreadsheet size={16} /> {isExporting === 'xlsx' ? t('export.processing') : 'Excel'}
           </button>
-          <button type="button" disabled={Boolean(isExporting)} aria-busy={isExporting === 'pdf'} className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" onClick={handleExportPDF} style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#dc2626', opacity: isExporting ? 0.65 : 1 }}>
+          <button 
+            type="button" 
+            disabled={Boolean(isExporting)} 
+            aria-busy={isExporting === 'pdf'} 
+            className="btn btn-secondary flex items-center gap-1.5 text-sm py-1.5 px-3" 
+            onClick={handleExportPDF} 
+            style={{ backgroundColor: '#ef4444', color: 'white', borderColor: '#dc2626', opacity: isExporting ? 0.65 : 1, fontWeight: '600' }}
+          >
             <Download size={16} /> {isExporting === 'pdf' ? t('export.processing') : 'PDF'}
           </button>
         </div>
       </div>
 
-      {/* TABS */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '8px', overflowX: 'auto' }}>
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: '8px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                borderRadius: '8px',
-                backgroundColor: isActive ? 'var(--brand-50)' : 'transparent',
-                color: isActive ? 'var(--brand-600)' : 'var(--text-muted)',
-                fontWeight: isActive ? '600' : '500',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap'
-              }}
-              className="hover:bg-slate-100"
-            >
-              <Icon size={16} />
-              {tab.label}
-            </button>
-          )
-        })}
+      {/* TABS SLIDER */}
+      <div className="admin-tabs-wrapper">
+        {showLeftArrow && (
+          <button 
+            type="button"
+            className="admin-tab-nav-btn admin-tab-nav-left"
+            onClick={() => scrollTabs('left')}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
+
+        <div 
+          ref={tabsRef}
+          onScroll={checkScroll}
+          onWheel={handleTabsWheel}
+          className="admin-tabs-container"
+        >
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`admin-tab-btn ${isActive ? 'active' : ''}`}
+              >
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {showRightArrow && (
+          <button 
+            type="button"
+            className="admin-tab-nav-btn admin-tab-nav-right"
+            onClick={() => scrollTabs('right')}
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
       </div>
 
       {/* CONTENT */}

@@ -322,7 +322,8 @@ const getWaStatus = async (req, res) => {
 
 const getUnitBelumLapor = async (req, res) => {
   try {
-    const data = await reminderService.cariUnitBelumLapor();
+    const periode = req.query.periode || 'HARIAN';
+    const data = await reminderService.cariUnitBelumLapor(new Date(), { periode });
     return sendSuccess(res, data);
   } catch (error) {
     return handleControllerError(res, error, 'Gagal mengambil unit belum lapor');
@@ -342,6 +343,10 @@ const kirimPerUnit = async (req, res) => {
     });
     if (!unit) return sendError(res, 'Unit tidak ditemukan', 404);
 
+    const messageText = req.body.messageText || req.body.pesan;
+    const force = req.body.force !== undefined ? req.body.force : true;
+    const requestKey = req.body.requestKey || (force ? `manual-${Date.now()}-u${unit.id_unit}` : undefined);
+
     const result = await reminderService.kirimPengingatUnit({
       id_unit: unit.id_unit,
       nama_unit: unit.nama_unit,
@@ -349,11 +354,13 @@ const kirimPerUnit = async (req, res) => {
       contacts: unit.pengguna,
     }, {
       tenggat: req.body.tenggat,
-      force: req.body.force,
-      requestKey: req.body.requestKey,
+      force,
+      requestKey,
+      messageText,
       source: 'manual',
     });
-    return sendQueueOutcome(res, result, 'Pengingat unit berhasil diantrikan');
+    const successMsg = messageText ? 'Pesan custom berhasil diantrikan' : 'Pengingat unit berhasil diantrikan';
+    return sendQueueOutcome(res, result, successMsg);
   } catch (error) {
     return handleControllerError(res, error, 'Gagal mengantrikan pengingat unit');
   }

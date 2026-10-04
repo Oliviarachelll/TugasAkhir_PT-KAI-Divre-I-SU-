@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import i18n from '../i18n';
 import { apiErrorMessage, API_ERROR_TOAST_ID } from '../api/client';
 import useAuthStore from './auth.store';
+import { toDateOnly } from '../utils/format';
 
 // Helper guard revisi: minimal 1 angka DATA berubah (target/realisasi/
 // rincian/catatan/tanggal tidak dihitung). Cukup 1 field.
@@ -144,7 +145,7 @@ const useLaporanStore = create((set, get) => ({
   fetchLaporan: async (params) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await laporanApi.getAll(params);
+      const res = await laporanApi.getAll({ limit: 500, ...params });
       set({ laporanList: res.data || [] });
     } catch (error) {
       set({ error: error.message });
@@ -211,7 +212,7 @@ const useLaporanStore = create((set, get) => ({
 
       let idLaporanBaru = draft.id_laporan;
       const indukPayload = {
-        tanggal: new Date(draft.tanggal).toISOString(),
+        tanggal: toDateOnly(draft.tanggal),
         id_unit: finalIdUnit,
         kotak_detail: draft.kotak_detail || null,
       };
@@ -267,7 +268,7 @@ const useLaporanStore = create((set, get) => ({
         const KEU_NUM_FIELDS = ['target_rkad', 'pendapatan', 'pengeluaran'];
         const normalizeNumerics = (value, numericFields, intFields = []) => value ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, numericFields.includes(key) ? (intFields.includes(key) ? toInt(item) : toNum(item)) : item])) : null;
         await laporanApi.resubmit(draft.id_laporan, {
-          tanggal: new Date(draft.tanggal).toISOString(),
+          tanggal: toDateOnly(draft.tanggal),
           kotak_detail: draft.kotak_detail || null,
           status_internal: draft.status_internal || 'PENDING',
           kna: normalizeNumerics(kna, KNA_NUM_FIELDS, ['jml_kontrak_row', 'jml_kontrak_non_row']),

@@ -5,7 +5,7 @@ const { getBusinessDate } = require('../services/business-time');
 
 const NotificationScopeEnum = z.enum(['SEMUA', 'PUSAT', 'DAERAH', 'CABANG']);
 const NotificationTemplateTypeEnum = z.enum(['DEADLINE', 'REVISI', 'BROADCAST']);
-const NotificationTriggerEnum = z.enum(['MANUAL', 'MINGGUAN', 'BULANAN', 'H_MIN_1', 'H_MIN_3']);
+const NotificationTriggerEnum = z.enum(['MANUAL', 'HARIAN', 'MINGGUAN', 'BULANAN', 'H_MIN_1', 'H_MIN_3']);
 const NotificationStatusEnum = z.enum([
   'PENDING',
   'PROCESSING',
@@ -156,6 +156,8 @@ const notificationUnitParamsSchema = z.object({
 
 const queueUnitReminderSchema = z.object({
   tenggat: dateOnlySchema.optional(),
+  messageText: optionalTrimmedString(100000),
+  pesan: optionalTrimmedString(100000),
   ...forceFields,
 }).strict().superRefine(requireForceRequestKey);
 

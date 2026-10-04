@@ -20,7 +20,7 @@ const DashboardUserUnit = () => {
   const { t, i18n } = useTranslation();
 
   useEffect(() => {
-    fetchLaporan({ limit: 50 });
+    fetchLaporan({ limit: 500 });
   }, [fetchLaporan]);
 
   // Identifikasi unit pengguna
@@ -163,7 +163,19 @@ const DashboardUserUnit = () => {
                       if (orderA !== orderB) return orderA - orderB;
                       return new Date(b.tanggal) - new Date(a.tanggal);
                     }).map(row => (
-                    <div key={row.id_laporan} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.5fr 1fr 2fr 1fr', alignItems: 'center', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', backgroundColor: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                    <div 
+                      key={row.id_laporan} 
+                      style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '1.2fr 1.5fr 1fr 2fr 1fr', 
+                        alignItems: 'center', 
+                        padding: '16px', 
+                        borderRadius: '12px', 
+                        border: '1px solid var(--border)', 
+                        backgroundColor: 'var(--bg-card-2)', 
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)' 
+                      }}
+                    >
                       <span className="text-sm font-medium text-gray-800">{formatDate(row.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }, i18n.language)}</span>
                       <span className="text-sm text-gray-600">{t('dashboard.data_prefix')} {isKNA ? 'KNA' : isBarang ? 'Barang' : isPenumpang ? 'Penumpang' : 'Keuangan'}</span>
                       <div>
@@ -176,8 +188,9 @@ const DashboardUserUnit = () => {
                       </span>
                       <div className="text-center">
                         <button
+                          className="btn btn-secondary btn-sm"
                           onClick={() => navigate(`/laporan/detail/${row.id_laporan}`)}
-                          style={{ padding: '6px 16px', borderRadius: '8px', backgroundColor: 'var(--bg-main)', border: '1px solid var(--border)', fontSize: '13px', fontWeight: '500', color: 'var(--text-main)', cursor: 'pointer' }}
+                          style={{ borderRadius: '8px', fontSize: '13px', fontWeight: '500' }}
                         >
                           {t('dashboard.view_detail')}
                         </button>

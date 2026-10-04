@@ -73,6 +73,80 @@ const SettingsPage = () => {
         </div>
       </div>
 
+      {/* 1. Preferensi Tampilan (Bahasa & Tema) diletakkan di bagian atas */}
+      <section className="card mb-6" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
+          <h3 className="text-lg font-bold">{t('settings.appearance_title')}</h3>
+          <p className="text-sm text-muted mt-1">{t('settings.appearance_desc')}</p>
+        </div>
+
+        <div
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+          style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}
+        >
+          <div className="flex items-center gap-3">
+            <Languages className="text-primary" size={20} />
+            <div>
+              <h4 className="font-bold text-base mb-1">{t('settings.lang_title')}</h4>
+              <p className="text-sm text-muted">{t('settings.lang_desc')}</p>
+            </div>
+          </div>
+          <select
+            className="form-control"
+            style={{ width: '220px', cursor: 'pointer' }}
+            value={i18n.language === 'en' ? 'en' : 'id'}
+            onChange={(event) => i18n.changeLanguage(event.target.value)}
+          >
+            <option value="id">Bahasa Indonesia</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+          style={{ padding: '20px 24px' }}
+        >
+          <div className="flex items-center gap-3">
+            {isDark ? <Moon className="text-primary" size={20} /> : <Sun className="text-primary" size={20} />}
+            <div>
+              <h4 className="font-bold text-base mb-1">{t('settings.mode_title')}</h4>
+              <p className="text-sm text-muted">{t('settings.mode_desc')}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-pressed={isDark}
+            aria-label={t('settings.mode_title')}
+            onClick={toggleMode}
+            style={{
+              width: '56px',
+              height: '32px',
+              border: 0,
+              borderRadius: '16px',
+              backgroundColor: isDark ? 'var(--brand-500)' : '#E5E7EB',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'background-color 0.3s ease',
+            }}
+          >
+            <span
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '50%',
+                backgroundColor: '#FFFFFF',
+                position: 'absolute',
+                top: '4px',
+                left: isDark ? '28px' : '4px',
+                transition: 'left 0.3s ease',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+              }}
+            />
+          </button>
+        </div>
+      </section>
+
+      {/* 2. Pengaturan Nomor Telepon & Profil Akun */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <section className="card xl:col-span-2" style={{ padding: 0, overflow: 'hidden' }}>
           <div
@@ -228,78 +302,6 @@ const SettingsPage = () => {
           </dl>
         </aside>
       </div>
-
-      <section className="card mt-6" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}>
-          <h3 className="text-lg font-bold">{t('settings.appearance_title')}</h3>
-          <p className="text-sm text-muted mt-1">{t('settings.appearance_desc')}</p>
-        </div>
-
-        <div
-          className="flex flex-col md:flex-row md:items-center justify-between gap-4"
-          style={{ padding: '24px', borderBottom: '1px solid var(--border)' }}
-        >
-          <div className="flex items-center gap-3">
-            <Languages className="text-primary" size={20} />
-            <div>
-              <h4 className="font-bold text-base mb-1">{t('settings.lang_title')}</h4>
-              <p className="text-sm text-muted">{t('settings.lang_desc')}</p>
-            </div>
-          </div>
-          <select
-            className="form-control"
-            style={{ width: '220px', cursor: 'pointer' }}
-            value={i18n.language === 'en' ? 'en' : 'id'}
-            onChange={(event) => i18n.changeLanguage(event.target.value)}
-          >
-            <option value="id">Bahasa Indonesia</option>
-            <option value="en">English</option>
-          </select>
-        </div>
-
-        <div
-          className="flex flex-col md:flex-row md:items-center justify-between gap-4"
-          style={{ padding: '24px' }}
-        >
-          <div className="flex items-center gap-3">
-            {isDark ? <Moon className="text-primary" size={20} /> : <Sun className="text-primary" size={20} />}
-            <div>
-              <h4 className="font-bold text-base mb-1">{t('settings.mode_title')}</h4>
-              <p className="text-sm text-muted">{t('settings.mode_desc')}</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            aria-pressed={isDark}
-            aria-label={t('settings.mode_title')}
-            onClick={toggleMode}
-            style={{
-              width: '56px',
-              height: '32px',
-              border: 0,
-              borderRadius: '16px',
-              backgroundColor: isDark ? 'var(--brand-500)' : '#E5E7EB',
-              position: 'relative',
-              cursor: 'pointer',
-              transition: 'background-color 0.3s ease',
-            }}
-          >
-            <span
-              style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                backgroundColor: '#FFFFFF',
-                position: 'absolute',
-                top: '4px',
-                left: isDark ? '28px' : '4px',
-                transition: 'left 0.3s ease',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
-              }}
-            />
-          </button>
-        </div>
-      </section>
     </div>
   );
 };

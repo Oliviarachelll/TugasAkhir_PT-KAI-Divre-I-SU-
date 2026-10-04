@@ -95,7 +95,7 @@ function getDailyTriggers(ref = new Date()) {
   const { year, month, day } = getJakartaDateParts(ref);
   const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
   const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const triggers = [];
+  const triggers = ['HARIAN'];
   if (dayOfWeek === 1) triggers.push('MINGGUAN');
   if (day === 1) triggers.push('BULANAN');
   if (day === lastDayOfMonth - 1) triggers.push('H_MIN_1');
@@ -105,15 +105,18 @@ function getDailyTriggers(ref = new Date()) {
 
 async function cekTriggerHarian({ now = new Date() } = {}) {
   const triggers = getDailyTriggers(now);
-  if (triggers.length === 0) return { ...emptyResult(), trigger_count: 0, template_count: 0 };
-
   const templates = await prisma.konfigurasiTemplate.findMany({
     where: { trigger_waktu: { in: triggers } },
     orderBy: { id_konfig: 'asc' },
   });
   const results = [];
+  let deadlineExecuted = false;
+
   for (const template of templates) {
     try {
+      if (template.tipe_notifikasi === 'DEADLINE') {
+        deadlineExecuted = true;
+      }
       results.push(await executeReminderBaileys(template, { now }));
     } catch (error) {
       results.push({
@@ -131,6 +134,39 @@ async function cekTriggerHarian({ now = new Date() } = {}) {
       });
     }
   }
+
+  // Jika tidak ada template DEADLINE yang dikonfigurasi, jalankan pengingat harian otomatis
+  // untuk semua unit yang belum lapor hari ini tanpa terhalang deduplikasi (force = true)
+  if (!deadlineExecuted && templates.length === 0) {
+    try {
+      const pendingUnits = await reminderService.cariUnitBelumLapor(now);
+      const { getBusinessDate } = require('./business-time');
+      const bDate = getBusinessDate(now);
+      for (const unit of pendingUnits) {
+        results.push(await reminderService.kirimPengingatUnit(unit, {
+          now,
+          source: 'scheduled',
+          force: true,
+          requestKey: `auto-daily-${bDate}-u${unit.id_unit}-${Date.now()}`.slice(0, 50),
+        }));
+      }
+    } catch (error) {
+      results.push({
+        ...emptyResult(),
+        total: 1,
+        failed: 1,
+        errors: [{
+          template_id: null,
+          template: 'default_daily_deadline',
+          code: typeof error?.code === 'string' ? error.code : 'DAILY_DEADLINE_FAILED',
+        }],
+        template: 'default_daily_deadline',
+        tipe_notifikasi: 'DEADLINE',
+        target_count: 0,
+      });
+    }
+  }
+
   return {
     ...reminderService.mergeQueueResults(results),
     trigger_count: triggers.length,
@@ -179,7 +215,7 @@ function initCronJobs({ cronClient = cron, env = process.env } = {}) {
   const definitions = [
     {
       name: 'notification-deadline-daily',
-      expression: '0 8 * * *',
+      expression: '0 17 * * *',
       handler: () => runScheduledTask('deadline-daily', () => cekTriggerHarian()),
     },
     {

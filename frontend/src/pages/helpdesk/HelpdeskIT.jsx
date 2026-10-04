@@ -214,7 +214,6 @@ const HelpdeskIT = () => {
                       <td>
                         <button 
                           className="btn btn-secondary btn-sm"
-                          style={{ backgroundColor: '#ffffff', color: '#1e293b', border: '1px solid #cbd5e1' }}
                           onClick={() => handleSelectTicket(ticket)}
                           disabled={isUpdating}
                         >

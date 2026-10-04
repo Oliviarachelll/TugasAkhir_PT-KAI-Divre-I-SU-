@@ -11,6 +11,21 @@ export function formatDate(date, options, language = 'id') {
   }
 }
 
+export function toDateOnly(date) {
+  if (!date) return new Date().toISOString().split('T')[0];
+  if (typeof date === 'string') {
+    const match = date.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+  }
+  if (date instanceof Date && !Number.isNaN(date.getTime())) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(date).slice(0, 10);
+}
+
 export function formatDateOnly(date, options, language = 'id') {
   if (!date) return '-';
   const match = String(date).match(/^(\d{4})-(\d{2})-(\d{2})/);

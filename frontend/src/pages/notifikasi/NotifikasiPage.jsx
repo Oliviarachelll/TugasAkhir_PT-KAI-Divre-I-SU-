@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, Edit2, Loader2, QrCode, RefreshCw, Send, ShieldCheck, Smartphone, X } from 'lucide-react';
+import { AlertCircle, Edit2, Loader2, MessageSquare, QrCode, RefreshCw, Send, ShieldCheck, Smartphone, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { waCloudApi } from '../../api/waCloud.api';
 import { API_ERROR_TOAST_ID } from '../../api/client';
@@ -148,6 +148,11 @@ const NotifikasiPage = () => {
   const [templateName, setTemplateName] = useState('');
   const [broadcastUnit, setBroadcastUnit] = useState('SEMUA');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  const [customUnit, setCustomUnit] = useState(null);
+  const [customText, setCustomText] = useState('');
+  const [isSendingCustom, setIsSendingCustom] = useState(false);
 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
@@ -364,13 +369,48 @@ const NotifikasiPage = () => {
   const handleSendToUnit = async (idUnit) => {
     setSendingUnitId(idUnit);
     try {
-      const response = await waCloudApi.kirimPerUnit(idUnit);
+      const response = await waCloudApi.kirimPerUnit(idUnit, { force: true });
       showQueueOutcome(response.data);
       await refreshAfterQueue();
     } catch (error) {
       handleQueueError(error);
     } finally {
       setSendingUnitId(null);
+    }
+  };
+
+  const openCustomModal = (unit = null) => {
+    setCustomUnit(unit);
+    setCustomText('');
+    setIsCustomModalOpen(true);
+  };
+
+  const handleSendCustomMessage = async (event) => {
+    event.preventDefault();
+    if (!customText.trim()) {
+      toast.error(t('notifikasi.custom_msg_empty'));
+      return;
+    }
+    if (!customUnit?.id_unit) {
+      toast.error(t('notifikasi.no_recipient'));
+      return;
+    }
+
+    setIsSendingCustom(true);
+    try {
+      const response = await waCloudApi.kirimPerUnit(customUnit.id_unit, {
+        messageText: customText.trim(),
+        force: true,
+      });
+      showQueueOutcome(response.data);
+      setIsCustomModalOpen(false);
+      setCustomText('');
+      setCustomUnit(null);
+      await refreshAfterQueue();
+    } catch (error) {
+      handleQueueError(error);
+    } finally {
+      setIsSendingCustom(false);
     }
   };
 
@@ -673,15 +713,26 @@ const NotifikasiPage = () => {
       </div>
 
       <div className="card p-0 mb-6" style={{ padding: 0, marginBottom: '24px' }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
           <div>
             <h3 className="font-bold text-lg m-0">{t('notifikasi.pending_title')}</h3>
             <p className="text-xs text-muted mt-1">{t('notifikasi.outbox_hint')}</p>
           </div>
-          <button type="button" onClick={fetchPendingUnits} disabled={isLoadingPendingUnits} className="btn btn-secondary btn-sm flex items-center gap-2">
-            <RefreshCw size={14} className={isLoadingPendingUnits ? 'animate-spin' : ''} aria-hidden="true" />
-            {t('notifikasi.refresh')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openCustomModal(pendingUnits[0] || null)}
+              disabled={pendingUnits.length === 0}
+              className="btn btn-secondary btn-sm flex items-center gap-2"
+            >
+              <MessageSquare size={14} aria-hidden="true" />
+              {t('notifikasi.send_custom_top')}
+            </button>
+            <button type="button" onClick={fetchPendingUnits} disabled={isLoadingPendingUnits} className="btn btn-secondary btn-sm flex items-center gap-2">
+              <RefreshCw size={14} className={isLoadingPendingUnits ? 'animate-spin' : ''} aria-hidden="true" />
+              {t('notifikasi.refresh')}
+            </button>
+          </div>
         </div>
         <div className="table-wrapper" style={{ border: 'none' }}>
           <table>
@@ -707,17 +758,30 @@ const NotifikasiPage = () => {
                       ? unit.penanggung.map((person) => `${person.nama} (${person.no_hp || t('notifikasi.no_phone')})`).join(', ')
                       : t('notifikasi.no_contact')}
                   </td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => handleSendToUnit(unit.id_unit)}
-                      disabled={sendingUnitId === unit.id_unit}
-                      className="btn btn-sm flex items-center gap-2"
-                      style={{ backgroundColor: '#2563eb', color: '#fff', padding: '4px 12px', borderRadius: '6px' }}
-                    >
-                      {sendingUnitId === unit.id_unit ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Send size={14} aria-hidden="true" />}
-                      {sendingUnitId === unit.id_unit ? t('notifikasi.queueing') : t('notifikasi.remind')}
-                    </button>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSendToUnit(unit.id_unit)}
+                        disabled={sendingUnitId === unit.id_unit}
+                        className="btn btn-sm flex items-center gap-1.5"
+                        style={{ backgroundColor: '#2563eb', color: '#fff', padding: '4px 10px', borderRadius: '6px' }}
+                        title={t('notifikasi.remind')}
+                      >
+                        {sendingUnitId === unit.id_unit ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <Send size={14} aria-hidden="true" />}
+                        {sendingUnitId === unit.id_unit ? t('notifikasi.queueing') : t('notifikasi.remind')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openCustomModal(unit)}
+                        className="btn btn-secondary btn-sm flex items-center gap-1.5"
+                        style={{ padding: '4px 10px', borderRadius: '6px' }}
+                        title={t('notifikasi.custom_msg_btn')}
+                      >
+                        <MessageSquare size={14} aria-hidden="true" />
+                        {t('notifikasi.custom_msg_btn')}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -935,7 +999,7 @@ const NotifikasiPage = () => {
                   const type = event.target.value;
                   setNewTemplateType(type);
                   if (type !== 'BROADCAST' && newTemplateTrigger === 'MANUAL') {
-                    setNewTemplateTrigger('H_MIN_1');
+                    setNewTemplateTrigger('HARIAN');
                   }
                 }}
                 required
@@ -950,6 +1014,7 @@ const NotifikasiPage = () => {
                 <label htmlFor="template-trigger" className="block text-sm font-semibold mb-2">{t('notifikasi.tpl_trigger')}</label>
                 <select id="template-trigger" className="form-control" value={newTemplateTrigger} onChange={(event) => setNewTemplateTrigger(event.target.value)}>
                   {newTemplateType === 'BROADCAST' && <option value="MANUAL">{t('notifikasi.tpl_manual')}</option>}
+                  <option value="HARIAN">{t('notifikasi.tpl_daily')}</option>
                   <option value="H_MIN_1">{t('notifikasi.tpl_h1')}</option>
                   <option value="H_MIN_3">{t('notifikasi.tpl_h3')}</option>
                   <option value="MINGGUAN">{t('notifikasi.tpl_weekly')}</option>
@@ -971,6 +1036,88 @@ const NotifikasiPage = () => {
               <button type="submit" disabled={isCreatingTemplate} className="btn btn-primary flex items-center gap-2">
                 {isCreatingTemplate ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
                 {isCreatingTemplate ? t('notifikasi.tpl_saving') : t('notifikasi.tpl_create')}
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+
+      {isCustomModalOpen && (
+        <Dialog
+          titleId="custom-message-dialog-title"
+          title={t('notifikasi.custom_msg_title')}
+          icon={<MessageSquare className="text-blue-600" size={18} aria-hidden="true" />}
+          closeLabel={t('notifikasi.close_dialog')}
+          onClose={() => setIsCustomModalOpen(false)}
+        >
+          <form onSubmit={handleSendCustomMessage} className="p-6 space-y-5">
+            <div className="bg-blue-50/80 border border-blue-200/60 rounded-lg p-3.5 text-sm flex gap-3" style={{ color: 'var(--accent-blue)' }}>
+              <AlertCircle size={18} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+              <p>{t('notifikasi.custom_msg_desc')}</p>
+            </div>
+
+            <div>
+              <label htmlFor="custom-target-unit" className="block text-sm font-semibold mb-2">
+                {t('notifikasi.custom_msg_recipient')}
+              </label>
+              <select
+                id="custom-target-unit"
+                className="form-control"
+                value={customUnit?.id_unit || ''}
+                onChange={(event) => {
+                  const selectedId = Number(event.target.value);
+                  const found = pendingUnits.find((u) => u.id_unit === selectedId);
+                  setCustomUnit(found || null);
+                }}
+                required
+              >
+                <option value="">-- {t('notifikasi.custom_msg_select_unit')} --</option>
+                {pendingUnits.map((u) => (
+                  <option key={u.id_unit} value={u.id_unit}>
+                    {u.nama_unit} ({u.contacts?.length || u.penanggung?.length || 0} kontak)
+                  </option>
+                ))}
+              </select>
+              {customUnit && (
+                <p className="mt-1.5 text-xs text-muted">
+                  {t('notifikasi.custom_msg_contacts')}:{' '}
+                  {(customUnit.penanggung || customUnit.contacts || []).map((c) => `${c.nama} (${c.no_hp || '-'})`).join(', ') || t('notifikasi.no_contact')}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="custom-message-text" className="block text-sm font-semibold mb-2">
+                {t('notifikasi.custom_msg_label')}
+              </label>
+              <textarea
+                id="custom-message-text"
+                className="form-control"
+                rows="5"
+                maxLength={100000}
+                placeholder={t('notifikasi.custom_msg_placeholder')}
+                value={customText}
+                onChange={(event) => setCustomText(event.target.value)}
+                required
+                autoFocus
+              />
+            </div>
+
+            <div className="pt-4 flex justify-end gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
+              <button
+                type="button"
+                onClick={() => setIsCustomModalOpen(false)}
+                className="btn btn-secondary"
+              >
+                {t('notifikasi.cancel')}
+              </button>
+              <button
+                type="submit"
+                disabled={isSendingCustom || !customUnit}
+                className="btn btn-primary flex items-center gap-2"
+              >
+                {isSendingCustom ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
+                {isSendingCustom ? t('notifikasi.custom_msg_sending') : t('notifikasi.custom_msg_send')}
               </button>
             </div>
           </form>

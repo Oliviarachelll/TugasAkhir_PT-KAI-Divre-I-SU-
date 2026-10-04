@@ -27,7 +27,7 @@ const HelpdeskUser = () => {
 
   useEffect(() => {
     fetchPermintaan();
-    fetchLaporan();
+    fetchLaporan({ limit: 500 });
   }, [fetchPermintaan, fetchLaporan]);
 
   const handleSubmit = async () => {

@@ -56,13 +56,29 @@ function createPenggunaController(dependencies = {}) {
 
   const getAllPengguna = async (req, res) => {
     const { skip, take, page, limit } = parsePagination(req.query);
-    const { search, peran, id_unit } = req.query;
+    const { search, peran, id_unit, status, terkunci } = req.query;
+
+    const parsedIdUnit = id_unit ? Number.parseInt(id_unit, 10) : null;
+    let terkunciCondition;
+    if (terkunci !== undefined && terkunci !== '') {
+      terkunciCondition = terkunci === 'true' || terkunci === true;
+    } else if (status === 'terkunci' || status === 'locked') {
+      terkunciCondition = true;
+    } else if (status === 'aktif' || status === 'active') {
+      terkunciCondition = false;
+    }
+
     const where = {
       ...(search && {
-        OR: [{ nama: { contains: search } }, { email: { contains: search } }],
+        OR: [
+          { nama: { contains: search } },
+          { email: { contains: search } },
+          { no_hp: { contains: search } },
+        ],
       }),
-      ...(peran && { peran }),
-      ...(id_unit && { id_unit: Number.parseInt(id_unit, 10) }),
+      ...(peran && peran !== 'ALL' && { peran }),
+      ...(Number.isInteger(parsedIdUnit) && parsedIdUnit > 0 && { id_unit: parsedIdUnit }),
+      ...(terkunciCondition !== undefined && { terkunci: terkunciCondition }),
     };
 
     const [data, total] = await db.$transaction([

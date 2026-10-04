@@ -60,14 +60,15 @@ function assertTemplateType(value) {
 
 function resolveForceKey({ force = false, requestKey } = {}) {
   if (!force) return null;
-  if (typeof requestKey !== 'string' || !REQUEST_KEY_PATTERN.test(requestKey)) {
+  const key = requestKey || `force-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  if (typeof key !== 'string' || !REQUEST_KEY_PATTERN.test(key)) {
     throw new ReminderServiceError(
       'requestKey unik wajib untuk pengiriman force',
       422,
       'FORCE_REQUEST_KEY_REQUIRED'
     );
   }
-  return stableDigest(requestKey);
+  return stableDigest(key);
 }
 
 function recipientIdentity(recipient) {
@@ -188,8 +189,7 @@ function recordQueueOutcome(result, recipient, outcome) {
 
 function normalizeDeadline(value, now) {
   if (value === undefined || value === null || value === '') {
-    const { end } = getBusinessMonthRangeUtc(now);
-    return getBusinessDate(new Date(end.getTime() - 1));
+    return getBusinessDate(now);
   }
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new ReminderServiceError(
@@ -211,11 +211,21 @@ function scopeMatches(jenisUnit, scope) {
 }
 
 /**
- * Unit yang belum memiliki laporan non-DRAFT pada bulan bisnis Jakarta.
+ * Unit yang belum memiliki laporan non-DRAFT pada periode bisnis Jakarta.
+ * Default harian (hari ini), atau bulanan jika options === 'BULANAN' atau options.periode === 'BULANAN'.
  * Semua unit pending tetap dikembalikan, termasuk yang tidak contactable.
  */
-async function cariUnitBelumLapor(ref = new Date()) {
-  const { start, end } = getBusinessMonthRangeUtc(ref);
+async function cariUnitBelumLapor(ref = new Date(), options = {}) {
+  const isMonthly = options === 'BULANAN' || options?.periode === 'BULANAN';
+  let start;
+  let end;
+  if (isMonthly) {
+    ({ start, end } = getBusinessMonthRangeUtc(ref));
+  } else {
+    start = startOfBusinessDayUtc(ref);
+    end = new Date(start.getTime() + DAY_MS);
+  }
+
   const [units, submittedReports] = await Promise.all([
     prisma.unit.findMany({
       include: {
@@ -331,7 +341,7 @@ async function kirimPengingatUnit(unit, options = {}) {
         unitName: unit.nama_unit,
         deadline: deadlineLabel,
         daysRemaining,
-        templateText: options.messageText,
+        templateText: options.messageText || options.pesan,
         expiresAt: new Date(startOfBusinessDayUtc(businessDate).getTime() + DAY_MS),
         metadata: {
           source: options.source || 'manual',

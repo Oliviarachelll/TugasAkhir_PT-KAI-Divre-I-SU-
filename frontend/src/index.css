@@ -34,6 +34,7 @@ img, svg, canvas {
   --sidebar-active: #FF7A00;
   --bg-card: rgba(255, 255, 255, 0.55);
   --bg-card-2: rgba(248, 250, 252, 0.65);
+  --surface-soft: rgba(241, 245, 249, 0.8);
   /* Solid backgrounds untuk popup/modal & toast (tidak ikut glass) */
   --bg-modal: #FFFFFF;
   --bg-modal-2: #F8FAFC;
@@ -85,6 +86,7 @@ img, svg, canvas {
   /* System Mappings & Aliases */
   --bg: var(--bg-main);
   --card: var(--bg-card);
+  --text-main: var(--text-primary);
   --text-inverse: #FFFFFF;
   --bg-sidebar: var(--sidebar);
   
@@ -117,6 +119,7 @@ img, svg, canvas {
   --sidebar-active: #FF7A00;
   --bg-card: #1E293B;
   --bg-card-2: #243246;
+  --surface-soft: rgba(255, 255, 255, 0.05);
   /* Solid backgrounds untuk popup/modal & toast (tidak ikut glass) */
   --bg-modal: #1E293B;
   --bg-modal-2: #243246;
@@ -172,6 +175,7 @@ img, svg, canvas {
   /* System Mappings & Aliases */
   --bg: var(--bg-main);
   --card: var(--bg-card);
+  --text-main: var(--text-primary);
   --text-inverse: #FFFFFF;
   --bg-sidebar: var(--sidebar);
   
@@ -185,6 +189,192 @@ img, svg, canvas {
   --error: var(--danger);
 
   --shadow-sm: 0 10px 30px rgba(0,0,0,.45);
+}
+
+[data-theme="dark"] .text-blue-900 {
+  color: var(--text-primary) !important;
+}
+
+/* Admin Export Filter Bar - Light vs Dark Mode */
+.admin-export-bar {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.admin-export-label {
+  color: #64748B;
+}
+.admin-export-sep {
+  color: #94A3B8;
+}
+.admin-export-divider {
+  background-color: #CBD5E1;
+}
+
+[data-theme="dark"] .admin-export-bar {
+  background-color: rgba(255, 122, 0, 0.12);
+  border: 1px solid rgba(255, 140, 50, 0.35);
+  box-shadow: 0 4px 15px rgba(255, 122, 0, 0.08);
+}
+[data-theme="dark"] .admin-export-label {
+  color: var(--kai-orange);
+}
+[data-theme="dark"] .admin-export-sep {
+  color: var(--kai-orange);
+}
+[data-theme="dark"] .admin-export-divider {
+  background-color: rgba(255, 140, 50, 0.3);
+}
+
+/* Admin Dashboard Tabs - Light vs Dark Mode */
+.admin-tab-btn {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  background-color: transparent;
+  color: var(--text-muted);
+}
+.admin-tab-btn:hover {
+  background-color: var(--surface-soft);
+}
+.admin-tab-btn.active {
+  background-color: var(--brand-50);
+  color: var(--brand-600);
+  font-weight: 600;
+}
+[data-theme="dark"] .admin-tab-btn.active {
+  background-color: var(--kai-orange);
+  color: #FFFFFF;
+}
+
+/* =============================================
+   CUSTOM MODERN SCROLLBAR (LIGHT & DARK MODE)
+   ============================================= */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-focus) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-focus);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--kai-orange);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Admin Tabs Slider & Container */
+.admin-tabs-wrapper {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.admin-tabs-container {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--kai-orange) var(--surface-soft);
+  scroll-padding: 0 36px;
+}
+
+.admin-tabs-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.admin-tabs-container::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.admin-tabs-container::-webkit-scrollbar-track {
+  background: var(--surface-soft);
+  border-radius: 9999px;
+  margin: 0 4px;
+}
+
+.admin-tabs-container::-webkit-scrollbar-thumb {
+  background: var(--kai-orange);
+  border-radius: 9999px;
+  box-shadow: 0 1px 4px rgba(255, 122, 0, 0.35);
+  cursor: grab;
+}
+
+.admin-tabs-container::-webkit-scrollbar-thumb:hover {
+  background: var(--kai-orange-hover);
+}
+
+.admin-tabs-container::-webkit-scrollbar-thumb:active {
+  cursor: grabbing;
+}
+
+.admin-tab-nav-btn {
+  position: absolute;
+  top: calc(50% - 6px);
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background-color: var(--bg-modal, #FFFFFF);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-tab-nav-btn:hover {
+  background-color: var(--kai-orange);
+  color: #FFFFFF;
+  border-color: var(--kai-orange);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 16px rgba(255, 122, 0, 0.4);
+}
+
+.admin-tab-nav-left {
+  left: 0px;
+}
+
+.admin-tab-nav-right {
+  right: 0px;
 }
 
 /* =============================================
@@ -469,15 +659,27 @@ body {
 }
 
 .badge-disetujui {
-  background-color: rgba(16, 185, 129, 0.1);
-  color: #059669;
-  border-color: rgba(16, 185, 129, 0.2);
+  background-color: var(--success-bg);
+  color: var(--success);
+  border-color: var(--success-border);
 }
 
 .badge-revisi {
-  background-color: rgba(245, 158, 11, 0.1);
-  color: #D97706;
-  border-color: rgba(245, 158, 11, 0.2);
+  background-color: var(--warning-bg);
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+.badge-diajukan {
+  background-color: var(--info-bg);
+  color: var(--info);
+  border-color: var(--info-border);
+}
+
+.badge-ditolak {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger-border);
 }
 
 /* Tables */

@@ -32,7 +32,7 @@ test.after(() => {
   delete globalThis.prisma;
 });
 
-test('scheduler is gated by both flags and creates only 08:00/16:00 no-overlap tasks', () => {
+test('scheduler is gated by both flags and creates only 17:00/16:00 no-overlap tasks', () => {
   const scheduled = [];
   const fakeCron = {
     schedule(expression, handler, options) {
@@ -62,7 +62,7 @@ test('scheduler is gated by both flags and creates only 08:00/16:00 no-overlap t
     env: { ENABLE_WHATSAPP: 'true', ENABLE_NOTIFICATION_SCHEDULER: 'true' },
   });
   assert.equal(started.state, 'started');
-  assert.deepEqual(scheduled.map((entry) => entry.expression), ['0 8 * * *', '0 16 * * *']);
+  assert.deepEqual(scheduled.map((entry) => entry.expression), ['0 17 * * *', '0 16 * * *']);
   assert.equal(scheduled.some((entry) => entry.expression === '0 9 * * *'), false);
   for (const entry of scheduled) {
     assert.equal(entry.options.timezone, 'Asia/Jakarta');

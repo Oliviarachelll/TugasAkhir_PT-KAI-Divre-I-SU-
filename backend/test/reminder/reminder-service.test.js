@@ -49,7 +49,7 @@ test.after(() => {
   delete globalThis.prisma;
 });
 
-test('cariUnitBelumLapor uses a Jakarta half-open month and keeps uncontactable units', async () => {
+test('cariUnitBelumLapor uses a Jakarta half-open day by default and supports monthly mode', async () => {
   let laporanQuery;
   let unitQuery;
   fakePrisma.unit = {
@@ -93,7 +93,7 @@ test('cariUnitBelumLapor uses a Jakarta half-open month and keeps uncontactable 
   );
 
   assert.equal(laporanQuery.where.tanggal.gte.toISOString(), '2026-09-30T17:00:00.000Z');
-  assert.equal(laporanQuery.where.tanggal.lt.toISOString(), '2026-10-31T17:00:00.000Z');
+  assert.equal(laporanQuery.where.tanggal.lt.toISOString(), '2026-10-01T17:00:00.000Z');
   assert.deepEqual(laporanQuery.where.status.in, [
     'DIAJUKAN',
     'DISETUJUI',
@@ -111,6 +111,14 @@ test('cariUnitBelumLapor uses a Jakarta half-open month and keeps uncontactable 
   assert.equal(result[0].skipped_contact_count, 2);
   assert.equal(result[1].contactable, false);
   assert.equal(result[1].contact_count, 0);
+
+  // Verifikasi mode bulanan bila diminta eksplisit
+  await reminderService.cariUnitBelumLapor(
+    new Date('2026-09-30T17:00:00.000Z'),
+    { periode: 'BULANAN' }
+  );
+  assert.equal(laporanQuery.where.tanggal.gte.toISOString(), '2026-09-30T17:00:00.000Z');
+  assert.equal(laporanQuery.where.tanggal.lt.toISOString(), '2026-10-31T17:00:00.000Z');
 });
 
 test('cariRevisiTertunda has deterministic ordering without an oldest-100 cap', async () => {

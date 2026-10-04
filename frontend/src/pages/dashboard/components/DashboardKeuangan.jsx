@@ -113,18 +113,18 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan, targetTahunan = null 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '24px' }}>
       
       {/* Box 1: Pendapatan, Pengeluaran, Laba Rugi */}
-      <div className="card shadow-sm" style={{ padding: '24px', border: '2px solid #fb923c', borderRadius: '12px', backgroundColor: '#fff' }}>
+      <div className="card shadow-sm" style={{ padding: '24px', border: '2px solid #fb923c', borderRadius: '12px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
           <div style={{ borderRight: '1px solid var(--border)' }}>
-            <p className="text-sm font-medium text-blue-900 mb-2">{t('keuangan.total_income')}</p>
+            <p className="text-sm font-medium text-gray-600 mb-2">{t('keuangan.total_income')}</p>
             <h3 className="text-3xl font-bold text-green-600">{cur} {formatCompact(totalPendapatanKeuangan, lang, 2)}</h3>
           </div>
           <div style={{ borderRight: '1px solid var(--border)' }}>
-            <p className="text-sm font-medium text-blue-900 mb-2">{t('keuangan.total_expense')}</p>
+            <p className="text-sm font-medium text-gray-600 mb-2">{t('keuangan.total_expense')}</p>
             <h3 className="text-3xl font-bold text-red-600">{cur} {formatCompact(totalPengeluaranKeuangan, lang, 2)}</h3>
           </div>
           <div>
-            <p className="text-sm font-medium text-blue-900 mb-2">{t('keuangan.total_profit')}</p>
+            <p className="text-sm font-medium text-gray-600 mb-2">{t('keuangan.total_profit')}</p>
             <h3 className={`text-3xl font-bold ${totalLabaRugiKeuangan >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {cur} {formatCompact(Math.abs(totalLabaRugiKeuangan), lang, 2)}
             </h3>
@@ -133,20 +133,20 @@ const DashboardKeuangan = ({ laporanList, approvedLaporan, targetTahunan = null 
       </div>
 
       {/* Box 2: Ringkasan SPJ, Invoice, Transaksi */}
-      <div className="card shadow-sm" style={{ padding: '24px', border: '2px solid #6366f1', borderRadius: '12px', backgroundColor: '#fff' }}>
+      <div className="card shadow-sm" style={{ padding: '24px', border: '2px solid #6366f1', borderRadius: '12px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
           <div style={{ borderRight: '1px solid var(--border)' }}>
-            <p className="text-sm font-medium text-blue-900 mb-1">{t('unit.trx_total')}</p>
+            <p className="text-sm font-medium text-gray-600 mb-1">{t('unit.trx_total')}</p>
             <p className="text-xs text-gray-400 mb-2">{t('unit.data_count', { count: countTransaksi })}</p>
             <h3 className="text-3xl font-bold text-blue-600">{cur} {formatCompact(totalPendapatanKeuangan + totalPengeluaranKeuangan, lang, 2)}</h3>
           </div>
           <div style={{ borderRight: '1px solid var(--border)' }}>
-            <p className="text-sm font-medium text-blue-900 mb-1">{t('unit.spj_total')}</p>
+            <p className="text-sm font-medium text-gray-600 mb-1">{t('unit.spj_total')}</p>
             <p className="text-xs text-gray-400 mb-2">{t('unit.data_count', { count: countSPJ })}</p>
             <h3 className="text-3xl font-bold text-purple-600">{cur} {formatCompact(totalSPJ, lang, 2)}</h3>
           </div>
           <div>
-            <p className="text-sm font-medium text-blue-900 mb-1">{t('unit.invoice_total')}</p>
+            <p className="text-sm font-medium text-gray-600 mb-1">{t('unit.invoice_total')}</p>
             <p className="text-xs text-gray-400 mb-2">{countInvoiceBelumLunas > 0 ? <span className="text-red-500 font-bold">{countInvoiceBelumLunas} {t('unit.unpaid')}</span> : <span className="text-green-500">{t('unit.all_paid')}</span>}</p>
             <h3 className="text-3xl font-bold text-orange-600">{cur} {formatCompact(totalInvoice, lang, 2)}</h3>
           </div>
