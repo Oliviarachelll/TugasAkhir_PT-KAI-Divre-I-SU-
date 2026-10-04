@@ -116,6 +116,7 @@ test('three failed logins create a 15-minute lock with generic responses', async
     clock: () => new Date(currentTime),
   });
 
+  const messages = [];
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const res = createResponse();
     await controller.login(
@@ -123,8 +124,11 @@ test('three failed logins create a 15-minute lock with generic responses', async
       res
     );
     assert.equal(res.statusCode, 401);
-    assert.equal(res.body.message, GENERIC_LOGIN_MESSAGE);
+    messages.push(res.body.message);
   }
+  assert.equal(messages[0], 'Kata sandi salah. Sisa percobaan login: 2 kali sebelum akun terkunci.');
+  assert.equal(messages[1], 'Kata sandi salah. Sisa percobaan login: 1 kali sebelum akun terkunci.');
+  assert.equal(messages[2], 'Akun Anda telah terkunci karena 3 kali salah memasukkan kata sandi. Silakan minta token pemulihan ke IT Support.');
 
   assert.equal(user.percobaan_login, 3);
   assert.equal(user.terkunci, true);
@@ -135,7 +139,7 @@ test('three failed logins create a 15-minute lock with generic responses', async
     createRequest({ body: { email: user.email, kata_sandi: 'wrong' } }),
     lockedResponse
   );
-  assert.equal(lockedResponse.body.message, GENERIC_LOGIN_MESSAGE);
+  assert.equal(lockedResponse.body.message, 'Akun Anda sedang terkunci karena 3 kali salah memasukkan kata sandi. Silakan minta token pemulihan ke IT Support.');
   assert.equal(user.percobaan_login, 3);
 
   currentTime = initialTime + LOGIN_LOCK_MS + 1;
@@ -154,9 +158,8 @@ test('three failed logins create a 15-minute lock with generic responses', async
   assert.equal(jwtPayload.session_version, 4);
 });
 
-test('reset request stores only a digest and queues plaintext inside the transaction', async () => {
-  const tokenWrites = [];
-  const queueCalls = [];
+test('reset request creates access ticket for IT review instead of auto-dispatching', async () => {
+  const tickets = [];
   const user = {
     id_pengguna: 12,
     nama: 'Siti',
@@ -167,14 +170,13 @@ test('reset request stores only a digest and queues plaintext inside the transac
       findUnique: async (query) =>
         query.where.email === 'known@example.com' ? user : null,
     },
-    tokenReset: {
-      async updateMany(query) {
-        tokenWrites.push({ operation: 'invalidate', query });
-        return { count: 0 };
-      },
+    permintaanBantuan: {
+      findFirst: async (query) =>
+        tickets.find((t) => t.id_pengguna_pengaju === query.where.id_pengguna_pengaju) || null,
       async create(query) {
-        tokenWrites.push({ operation: 'create', query });
-        return { id_token_reset: 44 };
+        const ticket = { id_permintaan: tickets.length + 1, ...query.data };
+        tickets.push(ticket);
+        return ticket;
       },
     },
     async $transaction(callback) {
@@ -183,16 +185,6 @@ test('reset request stores only a digest and queues plaintext inside the transac
   };
   const controller = createAuthController({
     prismaClient: db,
-    generateHumanTokenFn: () => ({
-      plainToken: '0123-4567-89AB-CDEF',
-      normalizedToken: '0123456789ABCDEF',
-      tokenDigest: 'd'.repeat(64),
-    }),
-    queuePasswordResetFn: async (args) => {
-      queueCalls.push(args);
-      return { state: 'queued', jobId: 1 };
-    },
-    isValidPhoneFn: () => true,
     clock: () => new Date('2026-09-30T01:00:00.000Z'),
   });
 
@@ -210,14 +202,9 @@ test('reset request stores only a digest and queues plaintext inside the transac
   assert.equal(knownResponse.body.message, GENERIC_RESET_REQUEST_MESSAGE);
   assert.equal(unknownResponse.body.message, GENERIC_RESET_REQUEST_MESSAGE);
   assert.equal(knownResponse.statusCode, unknownResponse.statusCode);
-
-  const createWrite = tokenWrites.find((entry) => entry.operation === 'create').query.data;
-  assert.equal(createWrite.token, 'd'.repeat(64));
-  assert.equal(JSON.stringify(createWrite).includes('0123-4567-89AB-CDEF'), false);
-  assert.equal(queueCalls.length, 1);
-  assert.strictEqual(queueCalls[0].tx, db);
-  assert.equal(queueCalls[0].token, '0123-4567-89AB-CDEF');
-  assert.equal(queueCalls[0].dedupeKey, 'password-reset:44');
+  assert.equal(tickets.length, 1);
+  assert.equal(tickets[0].jenis, 'PERMINTAAN_AKSES');
+  assert.equal(tickets[0].status, 'MENUNGGU');
 });
 
 test('recovery failures are logged without email, token, or internal error details', async () => {
@@ -262,7 +249,7 @@ test('recovery failures are logged without email, token, or internal error detai
   assert.equal(resetResponse.body.message, GENERIC_RESET_REQUEST_MESSAGE);
   assert.equal(unlockResponse.body.message, GENERIC_UNLOCK_REQUEST_MESSAGE);
   assert.deepEqual(logs, [
-    ['[Auth] Password reset request could not be queued.'],
+    ['[Auth] Password reset ticket could not be created.'],
     ['[Auth] Unlock request could not be processed.'],
   ]);
   const serializedLogs = JSON.stringify(logs);

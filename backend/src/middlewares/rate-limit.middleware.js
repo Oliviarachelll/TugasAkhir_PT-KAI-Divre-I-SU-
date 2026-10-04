@@ -26,7 +26,7 @@ function createAuthRateLimiter({ windowMs, limit, message, skipSuccessfulRequest
 
 const loginRateLimiter = createAuthRateLimiter({
   windowMs: boundedInteger(process.env.AUTH_LOGIN_RATE_WINDOW_MS, 15 * 60 * 1000),
-  limit: boundedInteger(process.env.AUTH_LOGIN_RATE_LIMIT, 10),
+  limit: boundedInteger(process.env.AUTH_LOGIN_RATE_LIMIT, 100),
   skipSuccessfulRequests: true,
   message: 'Terlalu banyak percobaan login. Silakan coba lagi nanti.',
 });

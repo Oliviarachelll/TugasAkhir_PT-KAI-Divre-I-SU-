@@ -68,6 +68,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isAccountLocked, setIsAccountLocked] = useState(false);
 
   // Request reset token state
   const [resetRequestEmail, setResetRequestEmail] = useState('');
@@ -111,11 +112,17 @@ const LoginPage = () => {
     }
 
     setIsLoading(true);
+    setIsAccountLocked(false);
     try {
       await login(email, password);
       toast.success(t('auth.login_success'));
     } catch (error) {
       const message = error.response?.data?.message || t('auth.server_error');
+      const isLocked = Boolean(
+        error.response?.data?.errors?.locked ||
+        message.toLowerCase().includes('terkunci')
+      );
+      setIsAccountLocked(isLocked);
       setErrorMsg(message);
     } finally {
       setIsLoading(false);
@@ -204,6 +211,7 @@ const LoginPage = () => {
 
   const switchToLogin = () => {
     setErrorMsg('');
+    setIsAccountLocked(false);
     setView('login');
   };
 
@@ -316,9 +324,28 @@ const LoginPage = () => {
 
             {/* Error Banner */}
             {errorMsg && (
-              <div role="alert" className="p-3 bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/70 dark:border-red-500/50 dark:text-red-200 rounded-lg flex items-start gap-2.5">
-                <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs font-medium leading-relaxed">{errorMsg}</p>
+              <div
+                role="alert"
+                className={`p-3 rounded-lg flex flex-col gap-2 ${
+                  isAccountLocked
+                    ? 'bg-amber-50 border border-amber-300 text-amber-900 dark:bg-amber-950/70 dark:border-amber-500/50 dark:text-amber-200'
+                    : 'bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/70 dark:border-red-500/50 dark:text-red-200'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <AlertCircle size={16} className={`${isAccountLocked ? 'text-amber-600' : 'text-red-500'} flex-shrink-0 mt-0.5`} />
+                  <p className="text-xs font-medium leading-relaxed">{errorMsg}</p>
+                </div>
+                {isAccountLocked && (
+                  <button
+                    type="button"
+                    className="mt-1 py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-semibold border-none cursor-pointer flex items-center justify-center gap-1.5 transition-colors self-start"
+                    onClick={() => switchToForgot('request')}
+                  >
+                    <KeyRound size={14} />
+                    <span>{t('auth.account_locked_btn')}</span>
+                  </button>
+                )}
               </div>
             )}
 

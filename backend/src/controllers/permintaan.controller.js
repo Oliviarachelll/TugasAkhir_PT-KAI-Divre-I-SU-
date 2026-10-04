@@ -342,6 +342,16 @@ function createPermintaanController(dependencies = {}) {
 
         let delivery;
         if (isAccessCompletion) {
+          if (typeof tx.pengguna?.update === 'function') {
+            await tx.pengguna.update({
+              where: { id_pengguna: existing.id_pengguna_pengaju },
+              data: {
+                terkunci: false,
+                terkunci_sampai: null,
+                percobaan_login: 0,
+              },
+            });
+          }
           await tx.tokenReset.updateMany({
             where: {
               id_pengguna: existing.id_pengguna_pengaju,

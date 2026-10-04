@@ -23,9 +23,9 @@ const DUMMY_PASSWORD_HASH =
   '$2a$12$dr7SEN3tPaSkb0EaA1SGv.bWg0HKdladks7w/I1UQ5QsAn69mLVve';
 const GENERIC_LOGIN_MESSAGE = 'Email atau kata sandi salah';
 const GENERIC_RESET_REQUEST_MESSAGE =
-  'Jika email terdaftar dan dapat menerima pesan, instruksi reset akan dikirim.';
+  'Permintaan token pemulihan telah diajukan ke IT Support. Admin IT akan memverifikasi dan mengirimkan token melalui WhatsApp.';
 const GENERIC_UNLOCK_REQUEST_MESSAGE =
-  'Jika akun memenuhi syarat, permintaan pembukaan kunci telah dikirim.';
+  'Permintaan pembukaan akun telah diajukan ke IT Support. Admin IT akan memverifikasi dan mengirimkan token melalui WhatsApp.';
 const GENERIC_RESET_TOKEN_MESSAGE = 'Token tidak valid atau kedaluwarsa';
 
 class ResetTokenRaceError extends Error {
@@ -136,9 +136,9 @@ function createAuthController(dependencies = {}) {
             terkunci_sampai: new Date(currentTime.getTime() + LOGIN_LOCK_MS),
           },
         });
-        return true;
+        return { locked: true, attempts: failed.percobaan_login };
       }
-      return false;
+      return { locked: false, attempts: failed.percobaan_login };
     });
   }
 
@@ -156,7 +156,14 @@ function createAuthController(dependencies = {}) {
     if (!pengguna) return rejectLogin(res);
 
     const currentTime = now();
-    if (activeLock(pengguna, currentTime)) return rejectLogin(res);
+    if (activeLock(pengguna, currentTime)) {
+      return sendError(
+        res,
+        'Akun Anda sedang terkunci karena 3 kali salah memasukkan kata sandi. Silakan minta token pemulihan ke IT Support.',
+        401,
+        { locked: true, attemptsLeft: 0 }
+      );
+    }
 
     if (pengguna.terkunci) {
       await clearExpiredLock(pengguna.id_pengguna, currentTime);
@@ -166,9 +173,23 @@ function createAuthController(dependencies = {}) {
     }
 
     if (!passwordMatches) {
-      const wasLocked = await recordFailedLogin(pengguna.id_pengguna, currentTime);
-      if (wasLocked) disconnectUserSockets(req, pengguna.id_pengguna);
-      return rejectLogin(res);
+      const failedResult = await recordFailedLogin(pengguna.id_pengguna, currentTime);
+      if (failedResult.locked) {
+        disconnectUserSockets(req, pengguna.id_pengguna);
+        return sendError(
+          res,
+          'Akun Anda telah terkunci karena 3 kali salah memasukkan kata sandi. Silakan minta token pemulihan ke IT Support.',
+          401,
+          { locked: true, attemptsLeft: 0 }
+        );
+      }
+      const sisa = Math.max(0, MAX_LOGIN_ATTEMPTS - failedResult.attempts);
+      return sendError(
+        res,
+        `Kata sandi salah. Sisa percobaan login: ${sisa} kali sebelum akun terkunci.`,
+        401,
+        { locked: false, attemptsLeft: sisa }
+      );
     }
 
     const unlocked = await db.pengguna.updateMany({
@@ -293,49 +314,38 @@ function createAuthController(dependencies = {}) {
 
   const requestResetPassword = async (req, res) => {
     try {
-      const tokenBundle = createHumanToken();
-      const pengguna = await db.pengguna.findUnique({
-        where: { email: req.body.email },
-        select: {
-          id_pengguna: true,
-          nama: true,
-          no_hp: true,
-        },
-      });
-
-      if (pengguna && pengguna.no_hp && phoneIsValid(pengguna.no_hp)) {
-        const issuedAt = now();
-        const expiresAt = new Date(issuedAt.getTime() + RESET_TOKEN_TTL_MS);
-
-        await runTransaction(db, async (tx) => {
-          await invalidateUnusedResetTokens(tx, pengguna.id_pengguna, issuedAt);
-          const tokenRecord = await tx.tokenReset.create({
-            data: {
-              token: tokenBundle.tokenDigest,
-              tujuan: 'RESET_PASSWORD',
-              sudah_dipakai: false,
-              attempt_count: 0,
-              kedaluwarsa_pada: expiresAt,
-              id_pengguna: pengguna.id_pengguna,
-            },
-            select: { id_token_reset: true },
-          });
-
-          await enqueuePasswordReset({
-            tx,
-            dedupeKey: `password-reset:${tokenRecord.id_token_reset}`,
-            recipientName: pengguna.nama,
-            recipientPhone: pengguna.no_hp,
-            token: tokenBundle.plainToken,
-            expiresAt,
-            metadata: { tokenResetId: tokenRecord.id_token_reset },
-          });
+      await runTransaction(db, async (tx) => {
+        const pengguna = await tx.pengguna.findUnique({
+          where: { email: req.body.email },
+          select: {
+            id_pengguna: true,
+            nama: true,
+            no_hp: true,
+          },
         });
-      }
+        if (!pengguna) return;
+
+        const existingTicket = await tx.permintaanBantuan.findFirst({
+          where: {
+            id_pengguna_pengaju: pengguna.id_pengguna,
+            jenis: 'PERMINTAAN_AKSES',
+            status: { in: ['MENUNGGU', 'DIPROSES'] },
+          },
+          select: { id_permintaan: true },
+        });
+        if (existingTicket) return;
+
+        await tx.permintaanBantuan.create({
+          data: {
+            jenis: 'PERMINTAAN_AKSES',
+            deskripsi: 'Permintaan token pemulihan kata sandi / akses akun.',
+            status: 'MENUNGGU',
+            id_pengguna_pengaju: pengguna.id_pengguna,
+          },
+        });
+      });
     } catch (error) {
-      // Deliberately return the same response for unknown users, invalid contact
-      // data, and internal delivery setup failures to prevent account discovery.
-      logRecoveryFailure('[Auth] Password reset request could not be queued.');
+      logRecoveryFailure('[Auth] Password reset ticket could not be created.');
     }
 
     return sendSuccess(res, null, GENERIC_RESET_REQUEST_MESSAGE);
@@ -343,7 +353,6 @@ function createAuthController(dependencies = {}) {
 
   const requestUnlockTicket = async (req, res) => {
     try {
-      const currentTime = now();
       await runTransaction(
         db,
         async (tx) => {
@@ -355,8 +364,7 @@ function createAuthController(dependencies = {}) {
               terkunci_sampai: true,
             },
           });
-          if (!pengguna) return;
-
+          const currentTime = now();
           if (!activeLock(pengguna, currentTime)) {
             if (pengguna.terkunci) {
               await tx.pengguna.updateMany({
@@ -397,7 +405,6 @@ function createAuthController(dependencies = {}) {
         { isolationLevel: 'Serializable' }
       );
     } catch (error) {
-      // The response remains indistinguishable even if a concurrent request won.
       logRecoveryFailure('[Auth] Unlock request could not be processed.');
     }
 
