@@ -1,7 +1,6 @@
-# 🚆 RACHE — Sistem Laporan Operasional Harian Terintegrasi
+# 🚆 DashKAI — Sistem Laporan Operasional Harian Terintegrasi
 ### PT Kereta Api Indonesia (Persero) Divisi Regional I Sumatera Utara
 
-[![Production Status](https://img.shields.io/badge/Production-Live-success?style=for-the-badge&logo=nginx&logoColor=white)](https://rache.us.ci)
 [![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js_22-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
@@ -14,7 +13,7 @@
 
 ## 📌 Ringkasan Eksekutif
 
-**RACHE** (*Reporting & Automated Coordination Hub Enterprise*) adalah sistem informasi terpadu yang dirancang dan dikembangkan untuk mendigitalisasi serta mengotomatisasi alur pelaporan harian pada **PT Kereta Api Indonesia (Persero) Divisi Regional I Sumatera Utara**. 
+**DashKAI** (*Dashboard KAI*) adalah sistem informasi operasional terpadu yang dirancang dan dikembangkan untuk mendigitalisasi serta mengotomatisasi alur pelaporan harian pada **PT Kereta Api Indonesia (Persero) Divisi Regional I Sumatera Utara**. 
 
 Platform ini menyelesaikan kendala fragmentasi data operasional lintas unit, mempercepat rekonsiliasi data angkutan penumpang, barang, sarana/prasarana (KNA), dan keuangan harian, serta menyediakan visibilitas analitik *real-time* kepada jajaran manajemen eksekutif.
 
@@ -29,7 +28,7 @@ graph TD
     end
 
     subgraph Edge & Reverse Proxy
-        Nginx["Nginx Reverse Proxy & SSL (rache.us.ci)"]
+        Nginx["Nginx Reverse Proxy & SSL (Domain Kustom)"]
     end
 
     subgraph Application Tier
@@ -83,7 +82,7 @@ Sistem memisahkan alur penginputan dan verifikasi secara ketat berdasarkan hiera
 
 - **Autentikasi & Otorisasi**: JSON Web Token (JWT) dengan *stateless expiration* dan enkripsi password menggunakan algoritma `bcryptjs` (12 salt rounds).
 - **Audit Logging**: Setiap aksi krusial (pembuatan laporan, perubahan data, revisi, hingga penghapusan) tercatat rapi pada tabel audit trail dengan metadata IP, user agent, dan timestamp ISO.
-- **Hardened HTTP Headers**: Perlindungan terhadap XSS, Clickjacking, dan MIME-sniffing menggunakan konfigurasi Helmet dan CORS whitelist ketat.
+- **Hardened HTTP Headers**: Perlindungan terhadap XSS, Clickjacking, dan MIME-sniffing menggunakan konfigurasi Helmet dan CORS whitelist.
 
 ---
 
@@ -100,9 +99,8 @@ Sistem memisahkan alur penginputan dan verifikasi secara ketat berdasarkan hiera
 
 ---
 
-## 🌐 Tautan Produksi
+## 🌐 Deployment Platform
 
-Aplikasi ini dapat diakses secara publik pada infrastruktur cloud:
-- **Production URL**: [https://rache.us.ci](https://rache.us.ci)
-- **Deployment Platform**: Tencent Cloud Lighthouse (Singapore)
-- **Status API Gateway**: Healthy & Monitored
+- **Platform**: Tencent Cloud Lighthouse VPS (Ubuntu 24.04 LTS)
+- **Engine**: Node.js 22 LTS, PM2 Process Manager (`dashkai-backend`), Nginx Reverse Proxy
+- **Database**: MySQL 8.0 Engine
