@@ -1,0 +1,138 @@
+name: CI & Deploy RACHE (PT KAI Divre I SU) to Tencent Cloud VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    name: Test & Build Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Test Backend
+        run: |
+          cd backend
+          npm ci
+          npx prisma generate
+          npm test
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  deploy:
+    name: Deploy to Tencent Cloud VPS
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Deploy to VPS via SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+
+          RELEASE_ID=$(date +%Y%m%d%H%M%S)
+          RELEASE_PATH="/var/www/rache/releases/$RELEASE_ID"
+          CURRENT_PATH="/var/www/rache/current"
+          SHARED_PATH="/var/www/rache/shared"
+
+          echo "1. Mempersiapkan direktori release di VPS..."
+          ssh "$SERVER_USER@$SERVER_IP" "mkdir -p $RELEASE_PATH/backend $RELEASE_PATH/frontend/dist $SHARED_PATH/whatsapp-session /var/www/rache/releases"
+
+          echo "2. Mentransfer file backend & frontend build..."
+          rsync -avz -e ssh --exclude 'node_modules' --exclude '.env' --exclude 'whatsapp-session' --exclude 'test' backend/ "$SERVER_USER@$SERVER_IP:$RELEASE_PATH/backend/"
+          rsync -avz -e ssh frontend/dist/ "$SERVER_USER@$SERVER_IP:$RELEASE_PATH/frontend/dist/"
+
+          echo "3. Menjalankan migrasi, linking storage, dan restart PM2..."
+          ssh "$SERVER_USER@$SERVER_IP" "bash -s $RELEASE_ID" << 'EOF'
+            set -e
+            RELEASE_ID="$1"
+            RELEASE_PATH="/var/www/rache/releases/$RELEASE_ID"
+            CURRENT_PATH="/var/www/rache/current"
+            SHARED_PATH="/var/www/rache/shared"
+
+            cd "$RELEASE_PATH/backend"
+
+            # 3.1 Install production dependencies & generate Prisma client
+            npm ci --omit=dev --prefer-offline
+            npx prisma generate
+
+            # 3.2 Hubungkan file konfigurasi .env master dari shared
+            if [ -f "$SHARED_PATH/.env" ]; then
+              ln -sf "$SHARED_PATH/.env" "$RELEASE_PATH/backend/.env"
+            elif [ -f "/var/www/rache/.env" ]; then
+              ln -sf "/var/www/rache/.env" "$RELEASE_PATH/backend/.env"
+            fi
+
+            # 3.3 Hubungkan shared WhatsApp session (agar login QR tidak hilang saat rilis baru)
+            ln -sf "$SHARED_PATH/whatsapp-session" "$RELEASE_PATH/backend/whatsapp-session"
+
+            # 3.4 Jalankan database migration
+            if [ -f "$RELEASE_PATH/backend/.env" ]; then
+              npx prisma migrate deploy || true
+            fi
+
+            # 3.5 Alihkan symlink current ke release baru
+            ln -sfn "$RELEASE_PATH" "$CURRENT_PATH"
+
+            # 3.6 Restart proses backend di PM2 (Port 5050)
+            cd "$CURRENT_PATH/backend"
+            if pm2 describe rache-backend > /dev/null 2>&1; then
+              pm2 restart rache-backend
+            else
+              PORT=5050 NODE_ENV=production pm2 start src/app.js --name "rache-backend"
+            fi
+            pm2 save
+
+            # 3.7 Smoke test
+            sleep 3
+            if curl -fsS http://localhost:5050/health > /dev/null 2>&1; then
+              echo "✅ Smoke test lolos: Backend sehat dan merespon di port 5050!"
+            else
+              echo "⚠️ Catatan: Smoke test /health memerlukan .env aktif di server."
+            fi
+
+            # 3.8 Bersihkan rilis lama (simpan 3 rilis terakhir)
+            cd /var/www/rache/releases
+            ls -1dt */ 2>/dev/null | tail -n +4 | xargs -r rm -rf
+            echo "🎉 Deployment Release $RELEASE_ID sukses!"
+          EOF

@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production Build Outputs
+dist/
+*/dist/
+build/
+*.tsbuildinfo
+*.log
+npm-debug.log*
+
+# Environment & Sensitive Files
+.env
+.env.*
+!.env.example
+!.env.production.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+!backend/.env.production.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# WhatsApp Session (Credentials)
+whatsapp-session/
+*/whatsapp-session/
+
+# Uploads & Scratch
+uploads/
+*/uploads/
+scratch/
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Documentation & Installation Guides (Private)
+INSTALLATION_GUIDE.md
+INSTALLATION.md
+DEPLOYMENT.md
+
+# AI / IDE Workspace Artifacts
+.agents/
+.gemini/
+.kilo/
+skills/
+skills-lock.json
+*.bak
