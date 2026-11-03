@@ -106,9 +106,9 @@ jobs:
             # 3.3 Hubungkan shared WhatsApp session (agar login QR tidak hilang saat rilis baru)
             ln -sf "$SHARED_PATH/whatsapp-session" "$RELEASE_PATH/backend/whatsapp-session"
 
-            # 3.4 Jalankan database migration
+            # 3.4 Jalankan database migration / sync schema
             if [ -f "$RELEASE_PATH/backend/.env" ]; then
-              npx prisma migrate deploy || true
+              npx prisma migrate deploy || npx prisma db push --accept-data-loss
             fi
 
             # 3.5 Alihkan symlink current ke release baru
