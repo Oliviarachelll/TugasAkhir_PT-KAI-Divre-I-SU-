@@ -20,6 +20,7 @@ function createAuthRateLimiter({ windowMs, limit, message, skipSuccessfulRequest
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     skipSuccessfulRequests,
+    validate: { xForwardedForHeader: false },
     handler: (req, res) => sendError(res, message, 429),
   });
 }

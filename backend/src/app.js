@@ -132,6 +132,7 @@ function createApplication(options = {}) {
   const socketFactory = options.setupSocketEventsFn || setupSocketEvents;
 
   const app = express();
+  app.set('trust proxy', 1);
   const httpServer = options.httpServer || createHttpServer(app);
   const io =
     options.io ||
