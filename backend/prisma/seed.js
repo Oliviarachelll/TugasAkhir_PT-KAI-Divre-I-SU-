@@ -267,8 +267,18 @@ async function main() {
   });
 
   const statusInternalList = ['PENDING', 'DALAM_PROSES', 'SELESAI', 'DIBATALKAN'];
-  // KA asli Unit Angkutan Penumpang Divre I (huruf besar semua).
-  const namaKaList = ['SRILELAWANGSA', 'SRIBILAH UTAMA', 'DATUK BELAMBANGAN', 'PUTRI DELI', 'SIANTAR EKSPRES', 'AMIR HAMZAH', 'NURMALA', 'CUT MUTIA'];
+  // KA asli Unit Angkutan Penumpang Divre I (lengkap dengan jadwal dan relasi lintas).
+  const KA_DEFAULT_INFO = {
+    'SRILELAWANGSA':     { no_ka: 'U1',       lintas: 'KNM - MDN',  berangkat: '06:45', kedatangan: '07:27' },
+    'SRIBILAH UTAMA':    { no_ka: 'U51',      lintas: 'RAP - MDN',  berangkat: '08:15', kedatangan: '13:15' },
+    'DATUK BELAMBANGAN': { no_ka: 'U61',      lintas: 'LAG - TBI',  berangkat: '09:55', kedatangan: '10:59' },
+    'PUTRI DELI':        { no_ka: 'U95',      lintas: 'TNB - MDN',  berangkat: '08:15', kedatangan: '12:23' },
+    'SIANTAR EKSPRES':   { no_ka: 'U101',     lintas: 'SIR - MDN',  berangkat: '07:10', kedatangan: '10:03' },
+    'AMIR HAMZAH':       { no_ka: 'U111F',    lintas: 'BSG - BIJ',  berangkat: '08:25', kedatangan: '10:36' },
+    'NURMALA':           { no_ka: 'U117F',    lintas: 'PS5 - RAPB', berangkat: '12:50', kedatangan: '13:52' },
+    'CUT MUTIA':         { no_ka: 'V1/U121A', lintas: 'KRM - KRG',  berangkat: '08:54', kedatangan: '09:22' }
+  };
+  const namaKaList = Object.keys(KA_DEFAULT_INFO);
 
   let countKNA = 0;
   let countBarang = 0;
@@ -337,6 +347,27 @@ async function main() {
         };
       });
 
+      // Hitung baris TOTAL SUMMARY (id_komoditi: 99) sesuai input laporan frontend
+      const totVol = arrayLaporanBarang.reduce((s, it) => s + it.volume, 0);
+      const totVolKum = arrayLaporanBarang.reduce((s, it) => s + (it.volume_kumulatif || 0), 0);
+      const totVolProg = arrayLaporanBarang.reduce((s, it) => s + (it.volume_program || 0), 0);
+      const totPdt = arrayLaporanBarang.reduce((s, it) => s + it.pendapatan, 0);
+      const totPdtKum = arrayLaporanBarang.reduce((s, it) => s + (it.pendapatan_kumulatif || 0), 0);
+      const totPdtProg = arrayLaporanBarang.reduce((s, it) => s + (it.pendapatan_program || 0), 0);
+
+      arrayLaporanBarang.push({
+        jml_ka: 0,
+        volume: parseFloat(totVol.toFixed(4)),
+        volume_kumulatif: parseFloat(totVolKum.toFixed(4)),
+        volume_program: totVolProg,
+        volume_pencapaian: totVolProg > 0 ? parseFloat(((totVolKum / totVolProg) * 100).toFixed(2)) : 0,
+        pendapatan: parseFloat(totPdt.toFixed(2)),
+        pendapatan_kumulatif: parseFloat(totPdtKum.toFixed(2)),
+        pendapatan_program: totPdtProg,
+        pendapatan_pencapaian: totPdtProg > 0 ? parseFloat(((totPdtKum / totPdtProg) * 100).toFixed(2)) : 0,
+        id_komoditi: 99
+      });
+
       await prisma.laporan.create({
         data: {
           tanggal: pastDate,
@@ -359,11 +390,18 @@ async function main() {
     if (userPenumpang && !sudahAda.has(tglKey(pastDate, unitPenumpang.id_unit))) {
       const rng = rngFor(unitPenumpang.id_unit, day);
       const pickInternal = internalFor(rng);
-      const arrayLaporanPenumpang = namaKaList.map(ka => ({
-        nama_ka: ka,
-        jml_penumpang: Math.floor(rng() * 5000) + 1000,
-        pendapatan: parseFloat((rng() * 500000000 + 50000000).toFixed(2))
-      }));
+      const arrayLaporanPenumpang = namaKaList.map(ka => {
+        const info = KA_DEFAULT_INFO[ka] || {};
+        return {
+          nama_ka: ka,
+          no_ka: info.no_ka || null,
+          lintas: info.lintas || null,
+          berangkat: info.berangkat || null,
+          kedatangan: info.kedatangan || null,
+          jml_penumpang: Math.floor(rng() * 5000) + 1000,
+          pendapatan: parseFloat((rng() * 500000000 + 50000000).toFixed(2))
+        };
+      });
 
       await prisma.laporan.create({
         data: {
