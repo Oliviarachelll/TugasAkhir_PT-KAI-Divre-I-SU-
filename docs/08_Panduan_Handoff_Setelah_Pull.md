@@ -146,7 +146,7 @@ Konfigurasi minimum untuk boot pertama tanpa WhatsApp:
 NODE_ENV=development
 PORT=5000
 CORS_ORIGIN=http://localhost:3000
-DATABASE_URL="mysql://USER:PASSWORD@localhost:3306/rache_db"
+DATABASE_URL="mysql://USER:PASSWORD@localhost:3306/dashkai_db"
 
 JWT_SECRET=<secret-random-1>
 TOKEN_PEPPER=<secret-random-2>
@@ -198,7 +198,7 @@ acak atau mencampur skenario.
 Buat database kosong:
 
 ```sql
-CREATE DATABASE rache_db
+CREATE DATABASE dashkai_db
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 ```

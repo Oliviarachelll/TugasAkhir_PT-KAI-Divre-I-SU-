@@ -1,5 +1,5 @@
 {
-  "name": "rache-backend",
+  "name": "dashkai-backend",
   "version": "1.0.0",
   "description": "Backend API untuk Sistem Laporan Operasional - Node.js + Express + Prisma + MySQL",
   "main": "src/app.js",

@@ -65,12 +65,14 @@ async function main() {
 
   // IT — Super admin teknis (1 akun, unit pusat)
   const it = await prisma.pengguna.upsert({
-    where: { email: 'it@rache.id' },
-    update: {},
+    where: { email: 'it@kai.id' },
+    update: {
+      kata_sandi: await bcrypt.hash('it@kai123', SALT_ROUNDS),
+    },
     create: {
       nama: 'IT Administrator',
-      email: 'it@rache.id',
-      kata_sandi: await bcrypt.hash('it@rache123', SALT_ROUNDS),
+      email: 'it@kai.id',
+      kata_sandi: await bcrypt.hash('it@kai123', SALT_ROUNDS),
       peran: 'IT',
       no_hp: '6281234560001',
       id_unit: unitPusat.id_unit,
@@ -80,12 +82,14 @@ async function main() {
 
   // ADMIN_GLOBAL — Admin seluruh unit (unit pusat)
   const adminGlobal = await prisma.pengguna.upsert({
-    where: { email: 'admin@rache.id' },
-    update: {},
+    where: { email: 'admin@kai.id' },
+    update: {
+      kata_sandi: await bcrypt.hash('admin@kai123', SALT_ROUNDS),
+    },
     create: {
       nama: 'Admin Global',
-      email: 'admin@rache.id',
-      kata_sandi: await bcrypt.hash('admin@rache123', SALT_ROUNDS),
+      email: 'admin@kai.id',
+      kata_sandi: await bcrypt.hash('admin@kai123', SALT_ROUNDS),
       peran: 'ADMIN_GLOBAL',
       no_hp: '6281234560002',
       id_unit: unitPusat.id_unit,
@@ -97,36 +101,36 @@ async function main() {
   const userUnitSeeds = [
     {
       nama: 'Admin Unit KNA',
-      email: 'unit.kna@rache.id',
-      password: 'kna@rache123',
+      email: 'unit.kna@kai.id',
+      password: 'kna@kai123',
       no_hp: '6281234560011',
       id_unit: unitKNA.id_unit,
     },
     {
       nama: 'Admin Unit Barang',
-      email: 'unit.barang@rache.id',
-      password: 'barang@rache123',
+      email: 'unit.barang@kai.id',
+      password: 'barang@kai123',
       no_hp: '6281234560012',
       id_unit: unitBarang.id_unit,
     },
     {
       nama: 'Admin Unit Penumpang',
-      email: 'unit.penumpang@rache.id',
-      password: 'penumpang@rache123',
+      email: 'unit.penumpang@kai.id',
+      password: 'penumpang@kai123',
       no_hp: '6281234560013',
       id_unit: unitPenumpang.id_unit,
     },
     {
       nama: 'Admin Unit Keuangan',
-      email: 'unit.keuangan@rache.id',
-      password: 'keuangan@rache123',
+      email: 'unit.keuangan@kai.id',
+      password: 'keuangan@kai123',
       no_hp: '6281234560014',
       id_unit: unitKeuangan.id_unit,
     },
     {
       nama: 'User Terkunci',
-      email: 'terkunci@rache.id',
-      password: 'admin123',
+      email: 'terkunci@kai.id',
+      password: 'kunci@kai123',
       no_hp: '6281234560099',
       id_unit: unitPusat.id_unit,
     },
@@ -135,7 +139,9 @@ async function main() {
   for (const u of userUnitSeeds) {
     const created = await prisma.pengguna.upsert({
       where: { email: u.email },
-      update: {},
+      update: {
+        kata_sandi: await bcrypt.hash(u.password, SALT_ROUNDS),
+      },
       create: {
         nama: u.nama,
         email: u.email,
@@ -143,8 +149,8 @@ async function main() {
         peran: 'USER_UNIT',
         no_hp: u.no_hp,
         id_unit: u.id_unit,
-        terkunci: u.email === 'terkunci@rache.id' ? true : false,
-        percobaan_login: u.email === 'terkunci@rache.id' ? 5 : 0,
+        terkunci: u.email === 'terkunci@kai.id' ? true : false,
+        percobaan_login: u.email === 'terkunci@kai.id' ? 5 : 0,
       },
     });
     const namaUnit = createdUnits.find(cu => cu.id_unit === u.id_unit)?.nama_unit;
@@ -254,10 +260,10 @@ async function main() {
       .map((l) => `${l.id_unit}-${dateKeyWib(new Date(l.tanggal))}`)
   );
 
-  const userKna = await prisma.pengguna.findUnique({ where: { email: 'unit.kna@rache.id' } });
-  const userBarang = await prisma.pengguna.findUnique({ where: { email: 'unit.barang@rache.id' } });
-  const userPenumpang = await prisma.pengguna.findUnique({ where: { email: 'unit.penumpang@rache.id' } });
-  const userKeuangan = await prisma.pengguna.findUnique({ where: { email: 'unit.keuangan@rache.id' } });
+  const userKna = await prisma.pengguna.findUnique({ where: { email: 'unit.kna@kai.id' } });
+  const userBarang = await prisma.pengguna.findUnique({ where: { email: 'unit.barang@kai.id' } });
+  const userPenumpang = await prisma.pengguna.findUnique({ where: { email: 'unit.penumpang@kai.id' } });
+  const userKeuangan = await prisma.pengguna.findUnique({ where: { email: 'unit.keuangan@kai.id' } });
   
   const semuaKomoditiBarang = await prisma.komoditiBarang.findMany({
     where: { 
@@ -486,12 +492,13 @@ async function main() {
 
   console.log('\n🔑 AKUN LOGIN:');
   console.log('  Peran         Email                      Password');
-  console.log('  IT          : it@rache.id              → it@rache123');
-  console.log('  ADMIN_GLOBAL: admin@rache.id           → admin@rache123');
-  console.log('  USER_UNIT   : unit.kna@rache.id        → kna@rache123');
-  console.log('  USER_UNIT   : unit.barang@rache.id     → barang@rache123');
-  console.log('  USER_UNIT   : unit.penumpang@rache.id  → penumpang@rache123');
-  console.log('  USER_UNIT   : unit.keuangan@rache.id   → keuangan@rache123');
+  console.log('  IT          : it@kai.id                → it@kai123');
+  console.log('  ADMIN_GLOBAL: admin@kai.id             → admin@kai123');
+  console.log('  USER_UNIT   : unit.kna@kai.id          → kna@kai123');
+  console.log('  USER_UNIT   : unit.barang@kai.id       → barang@kai123');
+  console.log('  USER_UNIT   : unit.penumpang@kai.id    → penumpang@kai123');
+  console.log('  USER_UNIT   : unit.keuangan@kai.id     → keuangan@kai123');
+  console.log('  USER_UNIT   : terkunci@kai.id          → kunci@kai123 (status terkunci)');
 
   console.log('\n💡 Untuk menambah unit baru:');
   console.log('  POST /api/unit { nama_unit, jenis_unit } (login sebagai IT)');

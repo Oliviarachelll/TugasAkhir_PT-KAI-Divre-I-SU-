@@ -16,7 +16,7 @@ function walk(dir) {
   return results;
 }
 
-const files = walk('D:/RACHE_TA/source_code/frontend/src/pages');
+const files = walk(path.join(__dirname, 'src/pages'));
 files.forEach((file) => {
   let content = fs.readFileSync(file, 'utf8');
   let match = content.match(/<div className="text-sm text-muted font-medium mb-1">/g);

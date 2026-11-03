@@ -1,6 +1,6 @@
 # Panduan Instalasi dan Setup Proyek (Tutorial Setup)
 
-Dokumen ini memandu langkah demi langkah menjalankan Sistem Informasi RACHE secara lokal dari nol sampai bisa login.
+Dokumen ini memandu langkah demi langkah menjalankan Sistem Informasi DashKAI (PT KAI Divre I SU) secara lokal dari nol sampai bisa login.
 
 > Untuk rekan yang melakukan pull implementasi export, keamanan, dan WhatsApp,
 > gunakan urutan terbaru di `08_Panduan_Handoff_Setelah_Pull.md`.
@@ -31,9 +31,9 @@ Pastikan sudah terinstal:
 ## 2. Setup Database
 
 1. Nyalakan MySQL (mis. klik *Start* pada MySQL di XAMPP).
-2. Buat database kosong bernama `rache_db` (via phpMyAdmin atau CLI):
+2. Buat database kosong bernama `dashkai_db` (via phpMyAdmin atau CLI):
    ```sql
-   CREATE DATABASE rache_db;
+   CREATE DATABASE dashkai_db;
    ```
 
 ---
@@ -54,11 +54,11 @@ Pastikan sudah terinstal:
    ```
    Lalu buka `.env` dan sesuaikan minimal 2 baris ini:
    ```env
-   DATABASE_URL="mysql://root:PASSWORD_ANDA@localhost:3306/rache_db"
+   DATABASE_URL="mysql://root:PASSWORD_ANDA@localhost:3306/dashkai_db"
    JWT_SECRET="ganti_dengan_kata_acak_yang_panjang"
    ```
    Keterangan:
-   - `PASSWORD_ANDA` = password MySQL Anda (kosongkan bila MySQL tanpa password: `mysql://root:@localhost:3306/rache_db`).
+   - `PASSWORD_ANDA` = password MySQL Anda (kosongkan bila MySQL tanpa password: `mysql://root:@localhost:3306/dashkai_db`).
    - `PORT` default `5000`, `CORS_ORIGIN` default `http://localhost:3000` — umumnya tidak perlu diubah.
    - WhatsApp (`ENABLE_WHATSAPP`) default mati, jadi bisa diabaikan untuk pertama kali jalan.
 
@@ -109,15 +109,15 @@ Pastikan sudah terinstal:
 
 1. Buka browser (Chrome/Edge): `http://localhost:3000`
 2. Login dengan salah satu akun bawaan (daftar lengkap di `01_Akun_dan_Akses.md`):
-   - IT: `it@rache.id` / `it@rache123`
-   - Admin Global: `admin@rache.id` / `admin@rache123`
-   - Unit KNA: `unit.kna@rache.id` / `kna@rache123`
-   - Unit Barang: `unit.barang@rache.id` / `barang@rache123`
-   - Unit Penumpang: `unit.penumpang@rache.id` / `penumpang@rache123`
-   - Unit Keuangan: `unit.keuangan@rache.id` / `keuangan@rache123`
+   - IT: `it@kai.id` / `it@kai123`
+   - Admin Global: `admin@kai.id` / `admin@kai123`
+   - Unit KNA: `unit.kna@kai.id` / `kna@kai123`
+   - Unit Barang: `unit.barang@kai.id` / `barang@kai123`
+   - Unit Penumpang: `unit.penumpang@kai.id` / `penumpang@kai123`
+   - Unit Keuangan: `unit.keuangan@kai.id` / `keuangan@kai123`
 3. Setelah login sebagai unit, buka **Target Saya** — isi target + (khusus unit barang) program tahunan **sekali setahun**, lalu buat laporan harian di **Input Laporan**.
 
-Selamat! RACHE sudah berjalan lokal di komputer Anda. 🚀
+Selamat! DashKAI sudah berjalan lokal di komputer Anda. 🚀
 
 ---
 

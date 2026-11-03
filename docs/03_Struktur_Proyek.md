@@ -2,7 +2,7 @@
 
 Sistem ini menganut arsitektur terpisah (*decoupled*) di mana Frontend dan Backend berdiri secara mandiri dan saling berkomunikasi melalui protokol HTTP/REST API.
 
-## D:\RACHE_TA (Root Directory)
+## Root Directory
 Folder utama yang menampung seluruh file skripsi / proyek Anda, termasuk referensi gambar wireframe dan dokumen lainnya.
 
 ### 📁 /backend

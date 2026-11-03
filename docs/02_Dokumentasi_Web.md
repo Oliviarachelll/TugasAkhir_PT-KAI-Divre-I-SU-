@@ -1,6 +1,6 @@
 # Dokumentasi Web & Arsitektur Frontend
 
-Dokumen ini menjelaskan struktur teknologi yang digunakan untuk membangun antarmuka pengguna (Frontend) Sistem Informasi RACHE.
+Dokumen ini menjelaskan struktur teknologi yang digunakan untuk membangun antarmuka pengguna (Frontend) Sistem Informasi DashKAI (PT KAI Divre I SU).
 
 ## 1. Tech Stack (Frontend)
 - **Framework:** React.js (v18+)
